@@ -52,6 +52,7 @@ import searchCandidatesHandler from './src/api-lib/handlers/search-candidates';
 import billingHandler from './src/api-lib/handlers/billing';
 import aiGatewayHandler from './src/api-lib/handlers/ai-gateway';
 import agentsExecuteHandler from './src/api-lib/handlers/agents-execute';
+import rufloHandler from './src/api-lib/handlers/ruflo';
 import openAIRouter from './src/api-lib/handlers/openai';
 import { CRMEventBridge } from './src/integrations/crm/CRMEventBridge.js';
 
@@ -312,6 +313,7 @@ hirenest_active_requests 0
   app.use('/api/cron', cronHandler);
   app.use('/api/events', eventsHandler);
   app.use('/api/google', googleProxyHandler);
+  app.use('/api/ruflo', rufloHandler);
 
   // OpenAI-Compatible API Gateway routes
   app.use('/v1', aiLimiter, openAIRouter);
