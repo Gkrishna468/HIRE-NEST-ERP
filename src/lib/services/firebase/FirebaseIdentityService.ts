@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc, limit } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc, collection, query, where, getDocs, deleteDoc, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { IIdentityService } from '../contracts/IIdentityService';
 
@@ -18,17 +18,17 @@ export class FirebaseIdentityService implements IIdentityService {
 
   async updateUserProfile(uid: string, data: Partial<Record<string, any>>): Promise<void> {
     const docRef = doc(db, "users", uid);
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   }
 
   async updateDemoFlag(uid: string, hasSeenDemo: boolean): Promise<void> {
     const docRef = doc(db, "users", uid);
-    await updateDoc(docRef, { hasSeenDemo });
+    await setDoc(docRef, { hasSeenDemo }, { merge: true });
   }
 
   async updatePilotMode(uid: string, enabled: boolean): Promise<void> {
     const docRef = doc(db, "users", uid);
-    await updateDoc(docRef, { pilotMode: enabled });
+    await setDoc(docRef, { pilotMode: enabled }, { merge: true });
   }
 
   async executeAdminCleanup(email: string): Promise<void> {

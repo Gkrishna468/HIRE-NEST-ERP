@@ -309,7 +309,8 @@ service cloud.firestore {
          isValidUser(incoming()) &&
          (
            !incoming().keys().hasAny(['role']) ||
-           incoming().role in ['PENDING_VERIFICATION', 'client', 'vendor', 'independent']
+           incoming().role in ['PENDING_VERIFICATION', 'client', 'vendor', 'independent', 'super_admin', 'admin'] ||
+           isAdmin()
          );
 
       allow update:
@@ -319,7 +320,10 @@ service cloud.firestore {
              isValidUser(incoming()) &&
              (
                !incoming().keys().hasAny(['role']) ||
-               incoming().role == existing().role
+               resource == null ||
+               !('role' in resource.data) ||
+               incoming().role == resource.data.role ||
+               isAdmin()
              )
            )
            ||
