@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt, Search, Download, CreditCard, ExternalLink, Filter, FileText, Calculator } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
-import { collection, query, getDocs, orderBy, getDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, getDoc, doc, where, limit } from 'firebase/firestore';
 import { EmptyState } from '../components/EmptyState';
 import { EntityName } from '../components/EntityName';
 
@@ -30,12 +30,12 @@ export default function InvoicesTab() {
          let q = (collection(db, "invoices") as any);
          if (filterOrgId && filterOrgId !== "ORG-GLOBAL-HQ") {
             if (roleStr.includes('client')) {
-               q = query(q, where("clientId", "==", filterOrgId));
+               q = query(q, where("clientId", "==", filterOrgId), limit(50));
             } else {
-               q = query(q, where("vendorId", "==", filterOrgId));
+               q = query(q, where("vendorId", "==", filterOrgId), limit(50));
             }
          } else {
-            q = query(q, orderBy("createdAt", "desc"));
+            q = query(q, orderBy("createdAt", "desc"), limit(50));
          }
          
          const snap = await getDocs(q);

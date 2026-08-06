@@ -36,20 +36,21 @@ export default function RecruiterPerformanceTab({
           query(
             collection(db, "users"),
             where("role", "in", ["recruiter", "hq_admin", "admin"]),
+            limit(50)
           ),
         );
         const users = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         // 2. Fetch Opportunities
-        const oppsSnap = await getDocs(collection(db, "match_opportunities"));
+        const oppsSnap = await getDocs(query(collection(db, "match_opportunities"), limit(25)));
         const opps = oppsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
 
         // 3. Fetch Submissions
-        const subsSnap = await getDocs(collection(db, "submissions"));
+        const subsSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
         const subs = subsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
 
         // 4. Fetch DealRooms (Placements)
-        const dealSnap = await getDocs(collection(db, "dealRooms"));
+        const dealSnap = await getDocs(query(collection(db, "dealRooms"), limit(25)));
         const deals = dealSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
 
         if (!active) return;

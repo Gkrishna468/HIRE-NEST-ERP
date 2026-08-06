@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Users, TrendingUp, BarChart, MousePointerClick, HeartHandshake, Briefcase, UserCheck, HelpCircle, Compass, ShieldAlert, CheckCircle } from "lucide-react";
 import { cn } from "../lib/utils";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export default function CustomerSuccessDashboard() {
@@ -24,7 +24,7 @@ export default function CustomerSuccessDashboard() {
   useEffect(() => {
     const fetchAdoption = async () => {
       try {
-        const orgsSnap = await getDocs(collection(db, "organizations"));
+        const orgsSnap = await getDocs(query(collection(db, "organizations"), limit(25)));
         let clients = 0;
         let vendors = 0;
         orgsSnap.docs.forEach(d => {
@@ -32,18 +32,18 @@ export default function CustomerSuccessDashboard() {
           if (d.data().type === 'vendor') vendors++;
         });
 
-        const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "recruiter")));
+        const usersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "recruiter"), limit(50)));
         let recruiters = usersSnap.size;
 
-        const subsSnap = await getDocs(query(collection(db, "submissions"), where("status", "in", ["PLACED", "HIRED"])));
+        const subsSnap = await getDocs(query(collection(db, "submissions"), where("status", "in", ["PLACED", "HIRED"]), limit(50)));
         let placements = subsSnap.size;
 
-        const eventsSnap = await getDocs(collection(db, "eventLedger"));
+        const eventsSnap = await getDocs(query(collection(db, "eventLedger"), limit(25)));
         let totalEvents = eventsSnap.size;
         let loginEvents = eventsSnap.docs.filter(e => e.data().type === 'UserLoggedIn').length;
 
         // Experience Engine Onboarding & Telemetry Adoption
-        const onboardingSnap = await getDocs(collection(db, "user_onboarding"));
+        const onboardingSnap = await getDocs(query(collection(db, "user_onboarding"), limit(25)));
         let onboardingUsers = onboardingSnap.size;
         let completedOnboardings = 0;
         let totalHelpClicks = 0;

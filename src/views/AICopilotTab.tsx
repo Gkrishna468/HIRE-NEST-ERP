@@ -75,10 +75,10 @@ export default function AICopilotTab({ userRole }: { userRole: string }) {
           reqsSnap,
           invoicesSnap
         ] = await Promise.all([
-          getDocs(collection(db, "vendor_performance")),
-          getDocs(collection(db, "placements")),
-          getDocs(collection(db, "requirements_public")),
-          getDocs(collection(db, "invoices")),
+          getDocs(query(collection(db, "vendor_performance"), limit(25))),
+          getDocs(query(collection(db, "placements"), limit(25))),
+          getDocs(query(collection(db, "requirements_public"), limit(25))),
+          getDocs(query(collection(db, "invoices"), limit(25))),
         ]);
 
         if (!active) return;

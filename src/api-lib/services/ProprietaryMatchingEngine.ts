@@ -21,8 +21,8 @@ export class ProprietaryMatchingEngine {
     if (!db) throw new Error("Database not initialized");
 
     const [candDoc, reqDoc] = await Promise.all([
-      db.collection('candidates').doc(candidateId).get(),
-      db.collection('jobs').doc(requirementId).get()
+      db.collection('candidatePool').doc(candidateId).get(),
+      db.collection('requirements_public').doc(requirementId).get()
     ]);
 
     if (!candDoc.exists || !reqDoc.exists) {
@@ -163,7 +163,7 @@ export class ProprietaryMatchingEngine {
    * Health Score calculation for a Requirement.
    */
   static async calculateRequirementHealth(requirementId: string): Promise<number> {
-    const matchesSnap = await db.collection('candidateMatches')
+    const matchesSnap = await db.collection('candidate_matches')
       .where('requirementId', '==', requirementId)
       .where('matchScore', '>=', 80)
       .get();

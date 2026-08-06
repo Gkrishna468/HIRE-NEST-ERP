@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Search, Plus, FileSignature, ShieldCheck, Download, Filter } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
 
 export default function ContractsTab() {
   const [contracts, setContracts] = useState<any[]>([]);
@@ -12,7 +12,7 @@ export default function ContractsTab() {
     // We simulate the fetching delay but only use real data if it exists.
     const fetchContracts = async () => {
       try {
-         const q = query(collection(db, "contracts"), orderBy("createdAt", "desc"));
+         const q = query(collection(db, "contracts"), orderBy("createdAt", "desc"), limit(50));
          const snap = await getDocs(q);
          const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
          setContracts(fetched);

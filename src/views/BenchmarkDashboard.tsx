@@ -21,11 +21,11 @@ export default function BenchmarkDashboard() {
   useEffect(() => {
     const fetchBenchmarks = async () => {
       try {
-        const eventsSnap = await getDocs(collection(db, "eventLedger"));
-        const candsSnap = await getDocs(collection(db, "candidatePool"));
-        const subsSnap = await getDocs(collection(db, "submissions"));
-        const vaultsSnap = await getDocs(collection(db, "ownershipVault"));
-        const feedbackSnap = await getDocs(collection(db, "aiFeedback"));
+        const eventsSnap = await getDocs(query(collection(db, "eventLedger"), limit(25)));
+        const candsSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
+        const subsSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
+        const vaultsSnap = await getDocs(query(collection(db, "ownershipVault"), limit(25)));
+        const feedbackSnap = await getDocs(query(collection(db, "aiFeedback"), limit(25)));
 
         let parseSuccess = candsSnap.size;
         let totalParsed = candsSnap.size + 1; // rough mock replacement logic not allowed, we actually just count candidates

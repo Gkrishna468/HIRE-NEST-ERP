@@ -106,18 +106,18 @@ export default function MatchIntelligenceTab() {
 
     let q;
     if (roleIsAdmin) {
-      q = query(collection(db, "candidate_matches"), limit(100));
+      q = query(collection(db, "candidate_matches"), limit(50));
     } else if (isClient && orgId) {
       q = query(
         collection(db, "candidate_matches"),
         where("clientId", "==", orgId),
-        limit(100),
+        limit(50),
       );
     } else if (isVendor && orgId) {
       q = query(
         collection(db, "candidate_matches"),
         where("vendorId", "==", orgId),
-        limit(100),
+        limit(50),
       );
     } else {
       q = query(collection(db, "candidate_matches"), limit(1));

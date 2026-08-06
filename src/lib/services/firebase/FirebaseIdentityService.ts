@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, deleteDoc, limit } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { IIdentityService } from '../contracts/IIdentityService';
 
@@ -75,9 +75,7 @@ export class FirebaseIdentityService implements IIdentityService {
           }
 
           try {
-            const qCand = await getDocs(
-              collection(db, "candidatePool"),
-            );
+            const qCand = await getDocs(query(collection(db, "candidatePool"), limit(50)));
             for (let cDoc of qCand.docs) {
               const cd = cDoc.data();
               if (
@@ -95,7 +93,7 @@ export class FirebaseIdentityService implements IIdentityService {
             );
           }
 
-          const qDeal = await getDocs(collection(db, "dealRooms"));
+          const qDeal = await getDocs(query(collection(db, "dealRooms"), limit(25)));
           for (let dDoc of qDeal.docs) {
             const dd = dDoc.data();
             if (dd.requirementId && reqIds.includes(dd.requirementId)) {

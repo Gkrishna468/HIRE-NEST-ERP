@@ -7,7 +7,10 @@ import {
   query, 
   where,
   limit,
-  orderBy
+  orderBy,
+  doc,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import { ProductionDataGuard } from "../lib/ProductionDataGuard";
 
@@ -40,6 +43,43 @@ export interface BusinessGraphData {
 
 export class EnterpriseViewModelService {
   /**
+   * Caches the result of a dashboard computation in Firestore to reduce read costs.
+   */
+  private static async withCache(cacheKey: string, computeFn: () => Promise<any>): Promise<any> {
+    const cacheRef = doc(db, "dashboard_cache", cacheKey);
+    try {
+      const cacheSnap = await getDoc(cacheRef);
+      if (cacheSnap.exists()) {
+        const data = cacheSnap.data();
+        const lastUpdated = data.lastUpdated?.toDate();
+        if (lastUpdated) {
+          const minutesSinceUpdate = (new Date().getTime() - lastUpdated.getTime()) / (1000 * 60);
+          if (minutesSinceUpdate < 15) {
+            console.log(`[EnterpriseViewModelService] Using cached ${cacheKey} (${Math.round(minutesSinceUpdate)} mins old)`);
+            return data.payload;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[EnterpriseViewModelService] Cache read failed for ${cacheKey}:`, err);
+    }
+
+    console.log(`[EnterpriseViewModelService] Computing fresh ${cacheKey}...`);
+    const payload = await computeFn();
+
+    try {
+      await setDoc(cacheRef, {
+        payload,
+        lastUpdated: new Date()
+      });
+    } catch (err) {
+      console.warn(`[EnterpriseViewModelService] Cache write failed for ${cacheKey}:`, err);
+    }
+
+    return payload;
+  }
+
+  /**
    * Universal helper to safely fetch all documents from a collection.
    * Gracefully falls back to empty array if collection is empty or fails.
    */
@@ -65,7 +105,12 @@ export class EnterpriseViewModelService {
   /**
    * 1. Dashboard Tab Data: Business Graph, AI COO Tower, and Formatted Timeline
    */
+  
   static async getDashboardViewModel(userOrgId?: string) {
+    const cacheKey = "getDashboardViewModel_" + (userOrgId || "global");
+    return this.withCache(cacheKey, () => this._compute_getDashboardViewModel(userOrgId));
+  }
+private static async _compute_getDashboardViewModel(userOrgId?: string) {
     // Fetch live datasets
     const orgs = await this.safeGetDocs("organizations");
     const candidates = await this.safeGetDocs("candidatePool");
@@ -305,7 +350,12 @@ export class EnterpriseViewModelService {
   /**
    * 2. Predictive Placements (Success Simulation Tab)
    */
-  static async getPredictiveSimulation(): Promise<PredictivePlacement[]> {
+  
+  static async getPredictiveSimulation() {
+    const cacheKey = "getPredictiveSimulation_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getPredictiveSimulation());
+  }
+private static async _compute_getPredictiveSimulation(): Promise<PredictivePlacement[]> {
     const submissions = await this.safeGetDocs("submissions");
     const candidates = await this.safeGetDocs("candidatePool");
     const requirements = await this.safeGetDocs("requirements_public");
@@ -413,7 +463,12 @@ export class EnterpriseViewModelService {
   /**
    * 4. Vendor Intelligence (Computes Derived Trust Scores & Stats)
    */
-  static async getVendorIntelligence(): Promise<any[]> {
+  
+  static async getVendorIntelligence() {
+    const cacheKey = "getVendorIntelligence_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getVendorIntelligence());
+  }
+private static async _compute_getVendorIntelligence(): Promise<any[]> {
     const orgs = await this.safeGetDocs("organizations");
     const submissions = await this.safeGetDocs("submissions");
     const candidates = await this.safeGetDocs("candidatePool");
@@ -467,7 +522,12 @@ export class EnterpriseViewModelService {
   /**
    * 5. Success Intelligence (Computes Client Portfolio metrics)
    */
-  static async getSuccessDashboard(): Promise<any> {
+  
+  static async getSuccessDashboard() {
+    const cacheKey = "getSuccessDashboard_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getSuccessDashboard());
+  }
+private static async _compute_getSuccessDashboard(): Promise<any> {
     const orgs = await this.safeGetDocs("organizations");
     const requirements = await this.safeGetDocs("requirements_public");
     const submissions = await this.safeGetDocs("submissions");
@@ -504,7 +564,12 @@ export class EnterpriseViewModelService {
   /**
    * 6. Enterprise Command Center metrics
    */
-  static async getExecutiveMetrics(): Promise<any> {
+  
+  static async getExecutiveMetrics() {
+    const cacheKey = "getExecutiveMetrics_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getExecutiveMetrics());
+  }
+private static async _compute_getExecutiveMetrics(): Promise<any> {
     const recruiters = await this.safeGetDocs("users", [where("role", "==", "recruiter")]);
     const submissions = await this.safeGetDocs("submissions");
     const orgs = await this.safeGetDocs("organizations");
@@ -554,7 +619,12 @@ export class EnterpriseViewModelService {
   /**
    * 7. Identity Resolution Deduplication (Deduplicates candidate names / email / phone)
    */
-  static async getIdentityResolution(): Promise<any[]> {
+  
+  static async getIdentityResolution() {
+    const cacheKey = "getIdentityResolution_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getIdentityResolution());
+  }
+private static async _compute_getIdentityResolution(): Promise<any[]> {
     const candidates = await this.safeGetDocs("candidatePool");
     const seenEmails = new Map<string, any[]>();
     const seenNames = new Map<string, any[]>();
@@ -614,7 +684,12 @@ export class EnterpriseViewModelService {
   /**
    * 8. Unified Executive Command Center Metrics
    */
-  static async getEnterpriseCommandCenterMetrics(): Promise<any> {
+  
+  static async getEnterpriseCommandCenterMetrics() {
+    const cacheKey = "getEnterpriseCommandCenterMetrics_" + ("" || "global");
+    return this.withCache(cacheKey, () => this._compute_getEnterpriseCommandCenterMetrics());
+  }
+private static async _compute_getEnterpriseCommandCenterMetrics(): Promise<any> {
     const placements = await this.safeGetDocs("placements");
     const requirements = await this.safeGetDocs("requirements_public");
     const invoices = await this.safeGetDocs("invoices");

@@ -141,7 +141,7 @@ whatsappHandler.get("/chats/:chatId/messages", async (req, res) => {
       .where("workspaceId", "==", workspace.orgId)
       .where("chatId", "==", chatId)
       .orderBy("timestamp", "asc")
-      .limit(100)
+      .limit(50)
       .get();
     
     const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

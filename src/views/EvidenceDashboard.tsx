@@ -18,8 +18,8 @@ export default function EvidenceDashboard() {
   useEffect(() => {
     const fetchEvidence = async () => {
       try {
-        const feedbackSnap = await getDocs(collection(db, "aiFeedback"));
-        const eventsSnap = await getDocs(collection(db, "eventLedger"));
+        const feedbackSnap = await getDocs(query(collection(db, "aiFeedback"), limit(25)));
+        const eventsSnap = await getDocs(query(collection(db, "eventLedger"), limit(25)));
         
         // Compute mock-free actual data from the ledger and system state
         let feedbackVolume = feedbackSnap.size;

@@ -1,8 +1,10 @@
+import { startTracing } from './src/api-lib/telemetry/tracer.js';
+// startTracing(); // Optionally start telemetry (disabled in dev to reduce console spam)
 import 'dotenv/config';
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { createServer as createViteServer } from 'vite';
+
 import path from 'path';
 import fs from 'fs';
 
@@ -25,7 +27,6 @@ import intelHandler from './src/api-lib/handlers/intel';
 import parseJdHandler from './src/api-lib/handlers/parse-jd';
 import extractTextHandler from './src/api-lib/handlers/extract-text';
 import matchDetailedHandler from './src/api-lib/handlers/match-candidates-detailed';
-import matchV2Handler from './src/api-lib/handlers/match-v2';
 import bulkParseHandler from './src/api-lib/handlers/bulk-parse-resumes';
 import workflowsHandler from './src/api-lib/handlers/workflows';
 import rescanMatchesHandler from './src/api-lib/handlers/rescan-matches';
@@ -262,7 +263,6 @@ hirenest_active_requests 0
   app.use('/api/extract-text', aiLimiter);
   app.use('/api/match-candidates', aiLimiter);
   app.use('/api/match-candidates-detailed', aiLimiter);
-  app.use('/api/match-v2', aiLimiter);
   app.use('/api/matching-global', aiLimiter);
   app.use('/api/rescan-matches', aiLimiter);
   app.use('/api/rebuild-matrix', aiLimiter);
@@ -408,9 +408,6 @@ hirenest_active_requests 0
           if (matchDetailedHandler) return await matchDetailedHandler(req, res);
           break;
 
-        case 'match-v2':
-          if (matchV2Handler) return await matchV2Handler(req, res);
-          break;
 
         case 'bulk-parse-resumes':
           if (bulkParseHandler) return await bulkParseHandler(req, res);
@@ -490,8 +487,9 @@ hirenest_active_requests 0
   });
 
   // Vite integration
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd = process.env.NODE_ENV === 'production' || !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')) || fs.existsSync(path.resolve(__dirname, 'dist', 'index.html'));
   if (!isProd) {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'custom',
@@ -546,7 +544,7 @@ hirenest_active_requests 0
     }
   });
 
-  app.listen(port, () => {
+  app.listen(port, "0.0.0.0", () => {
     console.log(`Server running at http://localhost:${port}`);
   });
 }

@@ -25,7 +25,7 @@ export class ContinuousMatchingEngine {
         // 2. Identify candidates needing opportunities (e.g. bench aging > 14 days)
         const agingCandidates = await db.collection('candidatePool')
             .where('status', '==', 'AVAILABLE')
-            .limit(100)
+            .limit(50)
             .get();
             
         // 3. For each stalled requirement, we can queue a deep matching job

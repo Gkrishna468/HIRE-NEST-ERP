@@ -357,8 +357,8 @@ export function EnterpriseSearchModal({
     try {
       // 1. Fetch live records from candidatePool and requirements_public to merge into the graph traversal!
       const [candsSnap, reqsSnap] = await Promise.all([
-        getDocs(collection(db, "candidatePool")),
-        getDocs(collection(db, "requirements_public"))
+        getDocs(query(collection(db, "candidatePool"), limit(25))),
+        getDocs(query(collection(db, "requirements_public"), limit(25)))
       ]);
 
       const liveCandidates: GraphSearchResult[] = candsSnap.docs

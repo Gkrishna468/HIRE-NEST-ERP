@@ -133,9 +133,9 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
       setSyncMode("FS_FALLBACK");
       try {
         const [userSnap, orgSnap, reqSnap] = await Promise.all([
-          getDocs(collection(db, "users")),
-          getDocs(collection(db, "organizations")),
-          getDocs(collection(db, "onboarding_requests"))
+          getDocs(query(collection(db, "users"), limit(25))),
+          getDocs(query(collection(db, "organizations"), limit(25))),
+          getDocs(query(collection(db, "onboarding_requests"), limit(25)))
         ]);
         const orgs = orgSnap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
         setUsers(userSnap.docs.map(d => {

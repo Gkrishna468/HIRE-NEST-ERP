@@ -1,5 +1,26 @@
 import { adminDb } from "../../lib/firebase-admin.js";
 
+
+async function getCachedAnalytics(cacheKey: string, computeFn: () => Promise<any>): Promise<any> {
+  const cacheRef = adminDb.collection("dashboard_cache").doc(cacheKey);
+  const cacheDoc = await cacheRef.get();
+  
+  const now = Date.now();
+  if (cacheDoc.exists) {
+    const data = cacheDoc.data();
+    const age = now - (data.lastUpdated || 0);
+    if (age < 5 * 60 * 1000) {
+      return data.metrics;
+    }
+    computeFn().then(metrics => cacheRef.set({ metrics, lastUpdated: Date.now() })).catch(e => console.error("Cache refresh failed", e));
+    return data.metrics;
+  }
+  
+  const metrics = await computeFn();
+  await cacheRef.set({ metrics, lastUpdated: now });
+  return metrics;
+}
+
 export default async function analyticsHandler(req: any, res: any) {
   const pathString = req.path || req.url || "";
   const apiPathMatch = pathString.match(/analytics\/(.*)/);
@@ -65,6 +86,9 @@ export default async function analyticsHandler(req: any, res: any) {
     }
 
     if (apiPath === "client") {
+      const cacheKey = `analytics_client_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       // Query jobs
       const reqsSnap = await adminDb
         .collection("requirements_public")
@@ -117,17 +141,22 @@ export default async function analyticsHandler(req: any, res: any) {
           placements++;
       });
 
-      return res.status(200).json({
+      return {
         spending: totalSpend,
         totalJobs: activeReqs, // Represents "Active Requirements"
         openJobs: activeReqs,
         totalCandidates: pendingReview, // Represents "Pending Review" on Client Dash
         interviewsToday: interviews, // Represents "Interviews Scheduled"
         placements: placements,
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     if (apiPath === "vendor") {
+      const cacheKey = `analytics_vendor_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       const reqsSnapPublic = await adminDb
         .collection("requirements_public")
         .where("visibility", "==", "VENDOR_NETWORK")
@@ -272,7 +301,7 @@ export default async function analyticsHandler(req: any, res: any) {
       // We already computed activeReqs above
       let vendorAllocatedReqs = activeReqs;
 
-      return res.status(200).json({
+      return {
         revenue: revenue,
         totalJobs: vendorAllocatedReqs, // Represents "Allocated Requirements" on Vendor Dash
         totalCandidates: activeCands, // Represents "Bench Candidates" on Vendor Dash
@@ -281,10 +310,15 @@ export default async function analyticsHandler(req: any, res: any) {
         placements: placements, // Represents "Active Placements"
         aiMatches: aiMatches,
         readyForSubmission: readyForSubmit,
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     if (apiPath === "recruiter") {
+      const cacheKey = `analytics_recruiter_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       const reqsSnap = await adminDb.collection("requirements_public").select("status", "financials").get();
       const candsSnap = await adminDb.collection("candidatePool").select("assignedRecruiterId", "uploaderId", "vendorId", "status").get();
       const subsSnap = await adminDb.collection("submissions").select("recruiterId", "vendorId", "status", "candidateId").get();
@@ -329,7 +363,7 @@ export default async function analyticsHandler(req: any, res: any) {
           activeReqs++;
       });
 
-      return res.status(200).json({
+      return {
         totalJobs: activeReqs, // Represents "New Requirements"
         pendingSubmissions: pendingSubmissions,
         interviewsToday: interviews,
@@ -346,10 +380,15 @@ export default async function analyticsHandler(req: any, res: any) {
             : 0,
         recruiterProductivity:
           activeCandidates > 0 ? (placements / activeCandidates) * 100 : 0,
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     if (apiPath === "hq") {
+      const cacheKey = `analytics_hq_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       const reqsSnap = await adminDb.collection("requirements_public").select("status", "financials").get();
       const candsSnap = await adminDb.collection("candidatePool").select("assignedRecruiterId", "uploaderId", "vendorId", "status").get();
       const subsSnap = await adminDb.collection("submissions").select("recruiterId", "vendorId", "status", "candidateId").get();
@@ -362,7 +401,7 @@ export default async function analyticsHandler(req: any, res: any) {
         }
       });
 
-      return res.status(200).json({
+      return {
         revenue: platformRevenue,
         totalJobs: reqsSnap.size,
         totalCandidates: candsSnap.size,
@@ -371,10 +410,15 @@ export default async function analyticsHandler(req: any, res: any) {
           (d: any) =>
             d.data().status === "HIRED" || d.data().status === "PLACED",
         ).length,
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     if (apiPath === "hq-production-health") {
+      const cacheKey = `analytics_hq-production-health_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       if (
         userRole !== "admin" &&
         userRole !== "hq_admin" &&
@@ -459,7 +503,7 @@ export default async function analyticsHandler(req: any, res: any) {
             7 * 24 * 60 * 60 * 1000,
       ).length;
 
-      return res.status(200).json({
+      return {
         integrity: {
           healthyReqs,
           parityHealthy,
@@ -483,10 +527,15 @@ export default async function analyticsHandler(req: any, res: any) {
           waiting48,
           waiting7d,
         },
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     if (apiPath === "hq-health") {
+      const cacheKey = `analytics_hq-health_${orgId || 'no_org'}_${userId || 'no_user'}`;
+      const metrics = await getCachedAnalytics(cacheKey, async () => {
+
       // Only accessible if role is 'admin', 'hq_admin', or 'super_admin'
       if (
         userRole !== "admin" &&
@@ -535,7 +584,7 @@ export default async function analyticsHandler(req: any, res: any) {
           e.type?.includes("Error"),
       ).length;
 
-      return res.status(200).json({
+      return {
         eventThroughput,
         failedAIParses,
         failedMatches,
@@ -543,7 +592,9 @@ export default async function analyticsHandler(req: any, res: any) {
         dealRoomGrowth,
         systemErrors,
         eventsAnalyzed: events.length,
+      };
       });
+      return res.status(200).json(metrics);
     }
 
     return res.status(404).json({ error: "Unknown analytics route" });

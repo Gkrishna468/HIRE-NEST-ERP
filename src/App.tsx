@@ -63,7 +63,6 @@ import NetworkDirectoryTab from "./views/NetworkDirectoryTab";
 import Client360Tab from "./views/Client360Tab";
 import AutonomousOperationsTab from "./views/AutonomousOperationsTab";
 import WorkflowStudioTab from "./views/WorkflowStudioTab";
-import HumanApprovalCenterTab from "./views/HumanApprovalCenterTab";
 import ValidationCenterTab from "./views/ValidationCenterTab";
 import SuccessIntelligenceTab from "./views/SuccessIntelligenceTab";
 import Vendor360Tab from "./views/Vendor360Tab";
@@ -879,12 +878,6 @@ const AppContent = () => {
               <Route
                 path="/workflow-studio"
                 element={<WorkflowStudioTab userRole={role || ""} />}
-              />
-            )}
-            {isAdmin && (
-              <Route
-                path="/approval-center"
-                element={<HumanApprovalCenterTab userRole={role || ""} />}
               />
             )}
             {isAdmin && (

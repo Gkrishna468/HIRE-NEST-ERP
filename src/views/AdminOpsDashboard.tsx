@@ -15,7 +15,6 @@ import { cn } from "../lib/utils";
 import WorkflowDashboard from "./ops/WorkflowDashboard";
 import DLQViewer from "./ops/DLQViewer";
 import ReplayUI from "./ops/ReplayUI";
-import ApprovalQueue from "./ops/ApprovalQueue";
 import SLAMonitor from "./ops/SLAMonitor";
 import EventExplorer from "./ops/EventExplorer";
 import ObservabilityDashboard from "./ops/ObservabilityDashboard";
@@ -29,7 +28,6 @@ export default function AdminOpsDashboard() {
     { id: "workflows", label: "Workflows", icon: Server },
     { id: "dlq", label: "DLQ", icon: AlertTriangle },
     { id: "replay", label: "Replay Engine", icon: RotateCcw },
-    { id: "approvals", label: "Approvals", icon: ShieldAlert },
     { id: "sla", label: "SLA Monitor", icon: Clock },
     { id: "events", label: "Event Explorer", icon: Terminal },
     { id: "capabilities", label: "Capabilities", icon: Cpu },
@@ -80,7 +78,6 @@ export default function AdminOpsDashboard() {
         {activeTab === "workflows" && <WorkflowDashboard />}
         {activeTab === "dlq" && <DLQViewer />}
         {activeTab === "replay" && <ReplayUI />}
-        {activeTab === "approvals" && <ApprovalQueue />}
         {activeTab === "sla" && <SLAMonitor />}
         {activeTab === "events" && <EventExplorer />}
         {activeTab === "capabilities" && <CapabilitiesRegistryView />}

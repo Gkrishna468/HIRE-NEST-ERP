@@ -17,7 +17,7 @@ export default function MemoryMapView() {
       setLoading(true);
 
       try {
-        const snap = await getDocs(collection(db, "organizations"));
+        const snap = await getDocs(query(collection(db, "organizations"), limit(25)));
         const orgs = snap.docs.map(d => ({ id: d.id, ...d.data() }) as any);
 
         const data: any = {

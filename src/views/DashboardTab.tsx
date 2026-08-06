@@ -38,7 +38,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { auth, db } from "../lib/firebase";
-import { collection, getDocs, query, where, deleteDoc, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, query, where, deleteDoc, doc, setDoc, updateDoc, getCountFromServer, limit } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { Badge } from "../lib/Badge";
 import { Button } from "../lib/Button";
@@ -128,14 +128,14 @@ export default function DashboardTab() {
         setPredictionsList(preds);
 
         // Fetch simulation lists
-        const reqSnap = await getDocs(collection(db, "requirements_public"));
+        const reqSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
         const reqs = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setRequirementsList(reqs);
         if (reqs.length > 0) {
           setSimRequirement(reqs[0].id);
         }
 
-        const candSnap = await getDocs(collection(db, "candidatePool"));
+        const candSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
         const cands = candSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setCandidatesList(cands);
         if (cands.length > 0) {
@@ -157,11 +157,11 @@ export default function DashboardTab() {
     if (!session) return;
     const unsubEvents = subscribeToEvents(async (events) => {
       try {
-        const reqSnap = await getDocs(collection(db, "requirements_public"));
+        const reqSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
         const reqs = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const orgSnap = await getDocs(collection(db, "organizations"));
+        const orgSnap = await getDocs(query(collection(db, "organizations"), limit(25)));
         const orgs = orgSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const candSnap = await getDocs(collection(db, "candidatePool"));
+        const candSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
         const cands = candSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         const formatted = EnterpriseViewModelService.formatSystemTimeline(events, reqs, orgs, cands);
@@ -176,17 +176,17 @@ export default function DashboardTab() {
   const fetchReportingStats = async () => {
     try {
       // Requirements
-      const reqSnap = await getDocs(collection(db, "requirements_public"));
+      const reqSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
       const requirements = reqSnap.docs.map(d => d.data());
       const openReqs = requirements.filter(r => r.status && ["ACTIVE", "PUBLISHED", "PENDING", "OPEN"].includes(r.status.toUpperCase())).length;
 
       // Candidates
-      const candSnap = await getDocs(collection(db, "candidatePool"));
+      const candSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
       const candidates = candSnap.docs.map(d => d.data()).filter((c:any) => c.status !== "DELETED" && c.isActive !== false);
       const candidatesAvailable = candidates.length;
 
       // Submissions
-      const subSnap = await getDocs(collection(db, "submissions"));
+      const subSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
       const allSubs = subSnap.docs.map(d => d.data()).filter((s:any) => s.status !== "DELETED" && s.isActive !== false);
       
       let submissions = 0;
@@ -203,7 +203,7 @@ export default function DashboardTab() {
       });
 
       // DealRooms (Backup placements count, etc.)
-      const drSnap = await getDocs(collection(db, "dealRooms"));
+      const drSnap = await getDocs(query(collection(db, "dealRooms"), limit(25)));
       const dealRooms = drSnap.docs.map(d => d.data());
       
       let activeDealRooms = 0;
@@ -217,11 +217,11 @@ export default function DashboardTab() {
       });
 
       // AI Matches Generated
-      const matchesSnap = await getDocs(collection(db, "candidate_matches"));
+      const matchesSnap = await getDocs(query(collection(db, "candidate_matches"), limit(25)));
       const aiMatchesGenerated = matchesSnap.size;
 
       // Invoices & Revenue
-      const invoicesSnap = await getDocs(collection(db, "invoices"));
+      const invoicesSnap = await getDocs(query(collection(db, "invoices"), limit(25)));
       let invoiceValue = 0;
       let collections = 0;
       let todaysRevenue = 0;
@@ -240,7 +240,7 @@ export default function DashboardTab() {
       });
 
       // Vendor Payouts
-      const payoutsSnap = await getDocs(collection(db, "vendor_payouts"));
+      const payoutsSnap = await getDocs(query(collection(db, "vendor_payouts"), limit(25)));
       let vendorPayouts = 0;
       payoutsSnap.docs.forEach(doc => {
           vendorPayouts += (doc.data().amount || 0);
@@ -285,21 +285,21 @@ export default function DashboardTab() {
         return;
       }
       try {
-          const candSnap = await getDocs(collection(db, "candidatePool"));
+          const candSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
           for (let doc of candSnap.docs) {
               const d = doc.data();
               if (d.name?.toLowerCase().includes("test") || d.email?.toLowerCase().includes("test") || d.testData || d.email === "john@example.com") {
                   await deleteDoc(doc.ref);
               }
           }
-          const reqSnap = await getDocs(collection(db, "requirements_public"));
+          const reqSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
           for (let doc of reqSnap.docs) {
               const d = doc.data();
               if (d.title?.toLowerCase().includes("test") || d.testData) {
                   await deleteDoc(doc.ref);
               }
           }
-          const subSnap = await getDocs(collection(db, "submissions"));
+          const subSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
           for (let doc of subSnap.docs) {
               if (doc.data().testData) await deleteDoc(doc.ref);
           }
@@ -315,7 +315,7 @@ export default function DashboardTab() {
         return;
       }
       try {
-          const cacheSnap = await getDocs(collection(db, "resume_cache"));
+          const cacheSnap = await getDocs(query(collection(db, "resume_cache"), limit(25)));
           for(const d of cacheSnap.docs) {
              const data = d.data();
              if (
@@ -328,7 +328,7 @@ export default function DashboardTab() {
                 await deleteDoc(doc(db, "resume_cache", d.id));
              }
           }
-          const snap = await getDocs(collection(db, "candidatePool"));
+          const snap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
           let count = 0;
           for (const d of snap.docs) {
              const data = d.data();
@@ -357,8 +357,8 @@ export default function DashboardTab() {
         return;
       }
       try {
-          const cands = await getDocs(collection(db, "candidatePool"));
-          const subs = await getDocs(collection(db, "submissions"));
+          const cands = await getDocs(query(collection(db, "candidatePool"), limit(25)));
+          const subs = await getDocs(query(collection(db, "submissions"), limit(25)));
 
           const subMap: Record<string, string> = {};
           subs.forEach((d) => {
@@ -391,8 +391,8 @@ export default function DashboardTab() {
         return;
       }
       try {
-          const cands = await getDocs(collection(db, "candidatePool"));
-          const subs = await getDocs(collection(db, "submissions"));
+          const cands = await getDocs(query(collection(db, "candidatePool"), limit(25)));
+          const subs = await getDocs(query(collection(db, "submissions"), limit(25)));
 
           let fixedCount = 0;
 
@@ -443,7 +443,7 @@ export default function DashboardTab() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (u) {
         try {
-          const dRef = await getDocs(query(collection(db, "users"), where("email", "==", u.email || "")));
+          const dRef = await getDocs(query(collection(db, "users"), where("email", "==", u.email || ""), limit(1)));
           const d = !dRef.empty ? dRef.docs[0] : null;
           if (d) {
             const data = d.data();
@@ -527,11 +527,11 @@ export default function DashboardTab() {
                             let allocatedReqs = 0;
                             try {
                                 if (isVendor) {
-                                    const reqSnap = await getDocs(query(collection(db, "requirements_public"), where("assignedVendorIds", "array-contains", orgId)));
-                                    allocatedReqs = reqSnap.docs.length;
+                                    const reqSnap = await getCountFromServer(query(collection(db, "requirements_public"), where("assignedVendorIds", "array-contains", orgId)));
+                                    allocatedReqs = reqSnap.data().count;
                                 } else if (isClient) {
-                                     const reqSnap = await getDocs(query(collection(db, "requirements_public"), where("clientId", "==", orgId)));
-                                     allocatedReqs = reqSnap.docs.length;
+                                     const reqSnap = await getCountFromServer(query(collection(db, "requirements_public"), where("clientId", "==", orgId)));
+                                     allocatedReqs = reqSnap.data().count;
                                 }
                             } catch (e: any) { console.error("requirements_public query failed:", e.message); }
                             
@@ -541,11 +541,11 @@ export default function DashboardTab() {
                                 if (orgId) {
                                     let candQuery;
                                     if (isAdmin || session.user.role === 'hq') {
-                                        candQuery = query(collection(db, "candidatePool"));
+                                        candQuery = query(collection(db, "candidatePool"), limit(50));
                                     } else if (isVendor) {
-                                        candQuery = query(collection(db, "candidatePool"), where("vendorId", "==", orgId));
+                                        candQuery = query(collection(db, "candidatePool"), where("vendorId", "==", orgId), limit(50));
                                     } else {
-                                        candQuery = query(collection(db, "candidatePool"), where("clientId", "==", orgId));
+                                        candQuery = query(collection(db, "candidatePool"), where("clientId", "==", orgId), limit(50));
                                     }
                                     const candsSnap = await getDocs(candQuery);
                                     candsCount = candsSnap.docs.length;
@@ -565,14 +565,14 @@ export default function DashboardTab() {
                             try {
                                 if (orgId) {
                                     if (isAdmin || session.user.role === 'hq') {
-                                        const matchesSnap = await getDocs(query(collection(db, "candidate_matches")));
-                                        matchesCount = matchesSnap.docs.length;
+                                        const matchesSnap = await getCountFromServer(query(collection(db, "candidate_matches")));
+                                        matchesCount = matchesSnap.data().count;
                                     } else if (isVendor) {
-                                        const matchesSnap = await getDocs(query(collection(db, "candidate_matches"), where("vendorId", "==", orgId)));
-                                        matchesCount = matchesSnap.docs.length;
+                                        const matchesSnap = await getCountFromServer(query(collection(db, "candidate_matches"), where("vendorId", "==", orgId)));
+                                        matchesCount = matchesSnap.data().count;
                                     } else {
-                                        const matchesClientSnap = await getDocs(query(collection(db, "candidate_matches"), where("clientId", "==", orgId)));
-                                        matchesCount = matchesClientSnap.docs.length;
+                                        const matchesClientSnap = await getCountFromServer(query(collection(db, "candidate_matches"), where("clientId", "==", orgId)));
+                                        matchesCount = matchesClientSnap.data().count;
                                     }
                                 }
                             } catch(e: any) { console.error("candidate_matches query failed:", e.message); }
@@ -585,11 +585,11 @@ export default function DashboardTab() {
                                 if (orgId) {
                                     let subsQuery;
                                     if (isAdmin || session.user.role === 'hq') {
-                                        subsQuery = query(collection(db, "submissions"));
+                                        subsQuery = query(collection(db, "submissions"), limit(50));
                                     } else if (isVendor) {
-                                        subsQuery = query(collection(db, "submissions"), where("vendorId", "==", orgId));
+                                        subsQuery = query(collection(db, "submissions"), where("vendorId", "==", orgId), limit(50));
                                     } else {
-                                        subsQuery = query(collection(db, "submissions"), where("clientId", "==", orgId));
+                                        subsQuery = query(collection(db, "submissions"), where("clientId", "==", orgId), limit(50));
                                     }
                                     const subsSnap = await getDocs(subsQuery);
                                     subsSnap.docs.forEach((d: any) => {

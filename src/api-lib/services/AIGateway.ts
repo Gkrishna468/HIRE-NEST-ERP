@@ -6,6 +6,7 @@ import { ErrorMonitor } from "../telemetry/errorMonitor.js";
 import { AIGuardrails } from "./AIGuardrails.js";
 import { db } from "../../lib/firebase-admin.js";
 import crypto from "crypto";
+import { redisCache } from "./cache/RedisCache.js";
 
 export type AICapability =
   | "resume_parsing"
@@ -233,6 +234,227 @@ export class GoogleProvider implements AIProvider {
     }
 }
 
+
+export class LiteLLMProvider implements AIProvider {
+    id = "litellm";
+    
+    async execute(
+        prompt: string,
+        model: string,
+        options: {
+            temperature?: number;
+            systemInstruction?: string;
+            schema?: any;
+            timeoutMs?: number;
+        }
+    ): Promise<{ text: string; tokens: number }> {
+        const apiKey = process.env.LITELLM_API_KEY || "dummy";
+        const baseUrl = process.env.LITELLM_URL || "http://localhost:4000/v1";
+        
+        const timeoutMs = options.timeoutMs || 30000;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const messages: any[] = [];
+            if (options.systemInstruction) {
+                messages.push({ role: "system", content: options.systemInstruction });
+            }
+            messages.push({ role: "user", content: prompt });
+
+            const body: any = {
+                model: model || "gemini/gemini-2.5-flash",
+                messages,
+                temperature: options.temperature ?? 0.2
+            };
+
+            if (options.schema) {
+                body.response_format = { type: "json_object" };
+            }
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`LiteLLM failed with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || "";
+            const tokens = data.usage?.total_tokens || 0;
+            return { text, tokens };
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+    
+    async health(): Promise<boolean> {
+        try {
+            const baseUrl = process.env.LITELLM_URL || "http://localhost:4000/v1";
+            const response = await fetch(`${baseUrl}/models`, { method: "GET" });
+            return response.ok;
+        } catch {
+            return false;
+        }
+    }
+    
+    estimateCost(model: string, tokens: number, isCached: boolean): { estimatedCost: number; savedCost: number } {
+        return { estimatedCost: 0, savedCost: 0 };
+    }
+}
+
+
+
+export class OmniRouteProvider implements AIProvider {
+    id = "omniroute";
+    
+    async execute(
+        prompt: string,
+        model: string,
+        options: {
+            temperature?: number;
+            systemInstruction?: string;
+            schema?: any;
+            timeoutMs?: number;
+        }
+    ): Promise<{ text: string; tokens: number }> {
+        const apiKey = process.env.OMNIROUTE_API_KEY || "dummy";
+        const baseUrl = process.env.OMNIROUTE_URL || "http://localhost:20128/v1";
+        
+        const timeoutMs = options.timeoutMs || 30000;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const messages: any[] = [];
+            if (options.systemInstruction) {
+                messages.push({ role: "system", content: options.systemInstruction });
+            }
+            messages.push({ role: "user", content: prompt });
+
+            const body: any = {
+                model: model || "auto",
+                messages,
+                temperature: options.temperature ?? 0.2
+            };
+
+            if (options.schema) {
+                body.response_format = { type: "json_object" };
+            }
+
+            const response = await fetch(`${baseUrl}/chat/completions`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`OmniRoute failed with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || "";
+            const tokens = data.usage?.total_tokens || 0;
+
+            return { text, tokens };
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+    
+    async health(): Promise<boolean> {
+        try {
+            const baseUrl = process.env.OMNIROUTE_URL || "http://localhost:20128/v1";
+            const response = await fetch(`${baseUrl}/models`, { method: "GET" });
+            return response.ok;
+        } catch {
+            return false;
+        }
+    }
+    
+    estimateCost(model: string, tokens: number, isCached: boolean): { estimatedCost: number; savedCost: number } {
+        // OmniRoute compresses tokens and aggregates free tiers, so we'll assume it's basically free or highly optimized
+        return { estimatedCost: 0, savedCost: 0 };
+    }
+}
+
+
+export class FreeLLMProvider implements AIProvider {
+    id = "freellm";
+
+    async health(): Promise<boolean> { return true; }
+    estimateCost(model: string, tokens: number, isCached: boolean): { estimatedCost: number; savedCost: number } { return { estimatedCost: 0, savedCost: 0 }; }
+
+    async execute(
+        prompt: string,
+        model: string,
+        options: {
+            temperature?: number;
+            systemInstruction?: string;
+            schema?: any;
+            timeoutMs?: number;
+        }
+    ): Promise<{ text: string; tokens: number }> {
+        const apiKey = process.env.FREE_LLM_API_KEY || "sk-dummy";
+        const baseUrl = process.env.FREE_LLM_BASE_URL || "https://api.example.com/v1"; // Replace with your chosen free LLM API base URL
+
+        const timeoutMs = options.timeoutMs || 30000;
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const messages: any[] = [];
+            if (options.systemInstruction) {
+                messages.push({ role: "system", content: options.systemInstruction });
+            }
+            messages.push({ role: "user", content: prompt });
+
+            const body: any = {
+                model: model || "gpt-3.5-turbo",
+                messages,
+                temperature: options.temperature ?? 0.2
+            };
+
+            if (options.schema) {
+                body.response_format = { type: "json_object" };
+            }
+
+            const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/chat/completions`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+
+            if (!response.ok) {
+                throw new Error(`FreeLLM failed with status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content || "";
+            const tokens = data.usage?.total_tokens || Math.ceil((prompt.length + text.length) / 4);
+
+            return { text, tokens };
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+}
+
 export class OpenAIProvider implements AIProvider {
     id = "openai";
 
@@ -369,8 +591,11 @@ export class AIGateway {
     private static readonly ROUTE_CACHE_DURATION = 60 * 1000; // 1 minute Cache for Firestore routing
 
     private static providers: Record<string, AIProvider> = {
+        freellm: new FreeLLMProvider(),
         google: new GoogleProvider(),
         openai: new OpenAIProvider(),
+        litellm: new LiteLLMProvider(),
+        omniroute: new OmniRouteProvider(),
         ollama: new OllamaProvider()
     };
 
@@ -399,6 +624,8 @@ export class AIGateway {
     static getModelRoutingByStrategy(strategy: "speed" | "quality" | "cost", preferredProvider?: string): { provider: string, model: string }[] {
         const googleFast = "gemini-2.5-flash";
         const googleAccurate = "gemini-2.5-pro";
+        const litellmFast = process.env.LITELLM_MODEL_FAST || "gemini/gemini-2.5-flash";
+        const litellmAccurate = process.env.LITELLM_MODEL_ACCURATE || "claude-3-5-sonnet";
         
         const openaiFast = process.env.OPENAI_MODEL_FAST || "gpt-4o-mini";
         const openaiAccurate = process.env.OPENAI_MODEL_ACCURATE || "gpt-4o";
@@ -406,22 +633,34 @@ export class AIGateway {
         const ollamaFast = process.env.OLLAMA_MODEL_FAST || "qwen3:8b";
         const ollamaAccurate = process.env.OLLAMA_MODEL_ACCURATE || "deepseek-r1";
 
+        
+        const omnirouteFast = process.env.OMNIROUTE_MODEL_FAST || "auto/fast";
+        const omnirouteAccurate = process.env.OMNIROUTE_MODEL_ACCURATE || "auto/coding";
+        const omnirouteCost = process.env.OMNIROUTE_MODEL_COST || "auto/cheap";
+
         let defaultRoutes: { provider: string, model: string }[] = [];
+
 
         if (strategy === "quality") {
             defaultRoutes = [
+                { provider: "omniroute", model: omnirouteAccurate },
+                { provider: "litellm", model: litellmAccurate },
                 { provider: "google", model: googleAccurate },
                 { provider: "openai", model: openaiAccurate },
                 { provider: "ollama", model: ollamaAccurate }
             ];
         } else if (strategy === "cost") {
             defaultRoutes = [
+                { provider: "omniroute", model: omnirouteCost },
                 { provider: "ollama", model: ollamaFast },
                 { provider: "google", model: googleFast },
+                { provider: "litellm", model: litellmFast },
                 { provider: "openai", model: openaiFast }
             ];
         } else { // "speed" (default)
             defaultRoutes = [
+                { provider: "omniroute", model: omnirouteFast },
+                { provider: "litellm", model: litellmFast },
                 { provider: "google", model: googleFast },
                 { provider: "openai", model: openaiFast },
                 { provider: "ollama", model: ollamaFast }
@@ -444,7 +683,39 @@ export class AIGateway {
      * Determines which model to route to based on feature and strategy
      */
     static getModelRouting(feature: string, customStrategy?: "speed" | "quality" | "cost"): { provider: string, model: string }[] {
-        const preferredProvider = process.env.AI_PROVIDER || "google";
+        // AI Gateway Optimisation (Phase 2): Task-based Model Routing
+        if (feature === "resume_parsing" || feature === "resume.extract") {
+            return [
+                { provider: "litellm", model: "qwen/qwen3-8b" },
+                { provider: "google", model: "gemini-2.5-flash" }
+            ];
+        }
+        if (feature === "candidate_matching") {
+            return [
+                { provider: "litellm", model: "deepseek/deepseek-r1-distill" },
+                { provider: "google", model: "gemini-2.5-pro" }
+            ];
+        }
+        if (feature === "email_drafting") {
+            return [
+                { provider: "litellm", model: "mistral/mistral-small" },
+                { provider: "google", model: "gemini-2.5-flash" }
+            ];
+        }
+        if (feature === "chat" || feature.includes("chat")) {
+            return [
+                { provider: "litellm", model: "qwen/qwen3-14b" },
+                { provider: "google", model: "gemini-2.5-pro" }
+            ];
+        }
+        if (feature === "code_generation" || feature === "sql_generation") {
+            return [
+                { provider: "litellm", model: "qwen/qwen-coder" },
+                { provider: "google", model: "gemini-2.5-pro" }
+            ];
+        }
+
+        const preferredProvider = process.env.AI_PROVIDER || "litellm";
         const strategy = customStrategy || this.getStrategyForCapability(feature as AICapability);
         return this.getModelRoutingByStrategy(strategy, preferredProvider);
     }
@@ -568,10 +839,40 @@ export class AIGateway {
             cacheHash = crypto.createHash("sha256").update(cacheKeyStr).digest("hex");
             
             try {
+                const redisHit = await redisCache.get(cacheHash);
+                if (redisHit) {
+                    console.log(`[AIGateway] Redis cache hit for agent ${agentName}`);
+                    const latency = Date.now() - startTime;
+                    const financialCosts = this.calculateCost(redisHit.provider, redisHit.model, redisHit.tokens, true);
+                    return {
+                        ...redisHit,
+                        latency,
+                        cached: true,
+                        estimatedCost: financialCosts.estimatedCost,
+                        savedCost: financialCosts.savedCost,
+                        tokensSaved,
+                        compressionRatio,
+                        originalTokens
+                    };
+                }
+
                 const cacheDoc = await db.collection("ai_gateway_cache").doc(cacheHash).get();
                 if (cacheDoc.exists) {
-                    const cachedData = cacheDoc.data() as AIGatewayResponse;
-                    console.log(`[AIGateway] Hashed cache hit for agent ${agentName}`);
+                    const cachedData = cacheDoc.data() as AIGatewayResponse & { cachedAt?: string };
+                    let isExpired = false;
+                    
+                    if (cachedData.cachedAt) {
+                        const cachedTime = new Date(cachedData.cachedAt).getTime();
+                        const CACHE_TTL = 60 * 60 * 1000; // 60 minutes expiry
+                        if (Date.now() - cachedTime > CACHE_TTL) {
+                            isExpired = true;
+                        }
+                    }
+
+                    if (isExpired) {
+                        console.log(`[AIGateway] Hashed cache expired for agent ${agentName}`);
+                    } else {
+                        console.log(`[AIGateway] Hashed cache hit for agent ${agentName}`);
                     
                     const latency = Date.now() - startTime;
                     const financialCosts = this.calculateCost(cachedData.provider, cachedData.model, cachedData.tokens, true);
@@ -606,9 +907,10 @@ export class AIGateway {
                         status: "success",
                         tokensSaved,
                         compressionRatio
-                    }).catch(e => console.warn("[AIGateway] Ledger cached write failed", e));
+                    }).catch((e: any) => console.warn("[AIGateway] Ledger cached write failed", e));
 
                     return fullResponse;
+                    }
                 }
             } catch (e) {
                 console.warn("[AIGateway] Cache read failed", e);
@@ -710,13 +1012,17 @@ export class AIGateway {
                 resultObj.originalTokens = originalTokens;
 
                 // Save to Cache asynchronously
-                if (!request.skipCache && db && cacheHash) {
-                    db.collection("ai_gateway_cache").doc(cacheHash).set({
+                if (!request.skipCache && cacheHash) {
+                    const cacheDataToSave = {
                         ...resultObj,
                         cachedAt: new Date().toISOString()
-                    }).catch(e => console.warn("[AIGateway] Cache write failed", e));
+                    };
+                    redisCache.set(cacheHash, cacheDataToSave, 3600);
+                    if (db) {
+                        db.collection("ai_gateway_cache").doc(cacheHash).set(cacheDataToSave).catch((e: any) => console.warn("[AIGateway] Cache write failed", e));
+                    }
                 }
-                
+
                 // AI Execution Ledger Audit Logging
                 if (db) {
                     db.collection("ai_execution_ledger").add({
@@ -737,7 +1043,7 @@ export class AIGateway {
                         status: "success",
                         tokensSaved,
                         compressionRatio
-                    }).catch(e => console.warn("[AIGateway] Ledger write failed", e));
+                    }).catch((e: any) => console.warn("[AIGateway] Ledger write failed", e));
                 }
 
                 // Log execution telemetry asynchronously
@@ -811,7 +1117,7 @@ export class AIGateway {
                         estimatedCost: 0,
                         savedCost: 0,
                         status: "fallback"
-                    }).catch(e => console.warn("[AIGateway] Ledger write for fallback failed", e));
+                    }).catch((e: any) => console.warn("[AIGateway] Ledger write for fallback failed", e));
                 }
 
                 return resultObj;
@@ -832,7 +1138,7 @@ export class AIGateway {
                 fallbackUsed: routeIndex > 1,
                 status: "failed",
                 error: lastError?.message || "All providers failed/circuits open"
-            }).catch(e => console.warn("[AIGateway] Ledger error log write failed", e));
+            }).catch((e: any) => console.warn("[AIGateway] Ledger error log write failed", e));
         }
 
         await ErrorMonitor.captureError({

@@ -191,7 +191,7 @@ export default function DecisionIntelligence() {
 
   // Subscribe to decision_intelligence collection
   useEffect(() => {
-    const q = query(collection(db, "decision_intelligence"), limit(100));
+    const q = query(collection(db, "decision_intelligence"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as DecisionScorecard));

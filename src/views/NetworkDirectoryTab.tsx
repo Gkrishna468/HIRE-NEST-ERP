@@ -27,7 +27,7 @@ export default function NetworkDirectoryTab() {
   useEffect(() => {
     const fetchOrgs = async () => {
       try {
-        const snap = await getDocs(query(collection(db, "organizations"), limit(100)));
+        const snap = await getDocs(query(collection(db, "organizations"), limit(50)));
         const map: Record<string, any> = {};
         snap.docs.forEach(doc => {
           map[doc.id] = { id: doc.id, ...doc.data() };
@@ -52,11 +52,11 @@ export default function NetworkDirectoryTab() {
       try {
         let q;
         if (activeFilter === 'organizations') {
-          q = query(collection(db, "organizations"), limit(100));
+          q = query(collection(db, "organizations"), limit(50));
         } else if (activeFilter === 'people') {
-          q = query(collection(db, "users"), limit(100));
+          q = query(collection(db, "users"), limit(50));
         } else if (activeFilter === 'candidates') {
-          q = query(collection(db, "candidatePool"), limit(100));
+          q = query(collection(db, "candidatePool"), limit(50));
         } else if (activeFilter === 'activity') {
           // Just use the events we already have subscription for
           setData(events);

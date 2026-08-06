@@ -50,7 +50,7 @@ export class AICOORuntime {
         .collection("coo_inbox")
         .where("status", "==", "PENDING")
         .orderBy("enqueuedAt", "asc")
-        .limit(100)
+        .limit(50)
         .get();
     } catch (err: any) {
       console.log("[AICOORuntime] Missing index for coo_inbox, falling back to memory sort", err.message);

@@ -64,7 +64,7 @@ export default function FinancialsTab({ userRole, orgId, userId }: { userRole: s
     // Also fetch requirements to get the approved financials
     const fetchJobs = async () => {
       try {
-         const jobsSnap = await getDocs(collection(db, "requirements_public"));
+         const jobsSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
          setJobs(jobsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       } catch(e) {
          console.warn("Failed to fetch jobs for financials map");

@@ -150,7 +150,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       const { collection, getDocs } = await import("firebase/firestore");
       const { db } = await import("../lib/firebase");
 
-      const subsSnap = await getDocs(collection(db, "submissions"));
+      const subsSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
       const vendorMap = new Map<string, { name: string, submissions: number, interviews: number, placements: number }>();
       
       subsSnap.docs.forEach(doc => {
@@ -172,7 +172,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       setVendorMetrics(vMetrics);
 
       // AI Efficacy Metrics
-      const aiFeedbackSnap = await getDocs(collection(db, "aiFeedback"));
+      const aiFeedbackSnap = await getDocs(query(collection(db, "aiFeedback"), limit(25)));
       let accepted = 0;
       let total = 0;
       let totalScore = 0;
@@ -184,7 +184,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       });
 
       // Top Skills
-      const candsSnap = await getDocs(collection(db, "candidatePool"));
+      const candsSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
       const skillCounts: Record<string, number> = {};
       candsSnap.docs.forEach(doc => {
          const c = doc.data();
@@ -204,8 +204,8 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       });
 
       // Ownership Claims Count
-      const claimsSnap = await getDocs(collection(db, "ownership_claims"));
-      const conflictsSnap = await getDocs(collection(db, "ownership_disputes"));
+      const claimsSnap = await getDocs(query(collection(db, "ownership_claims"), limit(25)));
+      const conflictsSnap = await getDocs(query(collection(db, "ownership_disputes"), limit(25)));
       
       setClaimsData({
         claimsCount: claimsSnap.size || 308,

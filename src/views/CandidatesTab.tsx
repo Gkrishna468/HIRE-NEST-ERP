@@ -526,17 +526,17 @@ export default function CandidatesTab() {
           const isClientUser = role.includes("client");
 
           const q = isAdminUser
-            ? query(collection(db, "candidatePool"), limit(100))
+            ? query(collection(db, "candidatePool"), limit(50))
             : isClientUser
               ? query(
                   collection(db, "candidatePool"),
                   where("clientId", "==", orgId),
-                  limit(100),
+                  limit(50),
                 )
               : query(
                   collection(db, "candidatePool"),
                   where("vendorId", "==", orgId),
-                  limit(100),
+                  limit(50),
                 );
 
           if (!q) {
@@ -562,11 +562,11 @@ export default function CandidatesTab() {
 
           let qSub = null;
           if (isAdmin) {
-             qSub = query(collection(db, "submissions"));
+             qSub = query(collection(db, "submissions"), limit(50));
           } else if (isClientUser) {
-             qSub = query(collection(db, "submissions"), where("clientId", "==", orgId));
+             qSub = query(collection(db, "submissions"), where("clientId", "==", orgId), limit(50));
           } else {
-             qSub = query(collection(db, "submissions"), where("vendorId", "==", orgId));
+             qSub = query(collection(db, "submissions"), where("vendorId", "==", orgId), limit(50));
           }
 
           if (qSub) {
@@ -578,14 +578,14 @@ export default function CandidatesTab() {
           try {
             const vMap: Record<string, string> = {};
             if (isAdmin) {
-              const orgsSnap = await getDocs(collection(db, "organizations"));
+              const orgsSnap = await getDocs(query(collection(db, "organizations"), limit(25)));
               orgsSnap.docs.forEach((d) => {
                 const data = d.data();
                 if (data.name) {
                   vMap[d.id] = data.name;
                 }
               });
-              const usersSnap = await getDocs(collection(db, "users"));
+              const usersSnap = await getDocs(query(collection(db, "users"), limit(25)));
               usersSnap.docs.forEach((d) => {
                 const data = d.data();
                 if (data.organizationId && data.name && !vMap[data.organizationId]) {

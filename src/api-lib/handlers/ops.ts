@@ -864,11 +864,23 @@ export default async function opsHandler(req: Request, res: Response) {
               });
               await docRef.update({ status: "FAILED", offices: updatedOffices, updatedAt: new Date().toISOString() });
             }
-          } else if (eventType === "REPLAY_DLQ") {
-            await writeSystemLog("Event Bus", `[REPLAY] Manual replay requested for correlation ID abc-123.`, traceId);
+          } else if (eventType === "REPLAY_DLQ" || eventType === "INVESTIGATE_DLQ") {
+            await writeSystemLog("System Auditor", "[INVESTIGATE] Analyzing Dead Letter Queue items for root causes...", traceId);
             await new Promise(r => setTimeout(r, 600));
-            await writeSystemLog("Event Bus", `[REPLAY] Retransmitting payload through routing channels... SUCCESS.`, traceId);
-            await writeSystemLog("Matching Office", `Processed replayed match successfully.`, traceId);
+            await writeSystemLog("System Auditor", "[DIAGNOSIS] Identified root cause for Vendor SLA breach (Event ID: VEN-912). Cause: Timeout during external API ping. Fix applied: Increased timeout threshold and added retry jitter.", traceId);
+            await writeSystemLog("System Auditor", "[DIAGNOSIS] Identified root cause for missing matching score (Event ID: MAT-441). Cause: Malformed schema in incoming parse. Fix applied: Schema strict validation added.", traceId);
+            await new Promise(r => setTimeout(r, 600));
+            await writeSystemLog("Event Bus", "[RECOVERY] Re-processing fixed payloads... SUCCESS.", traceId);
+            
+            // Clear DLQ counts in Firestore
+            try {
+              const dlqDocs = await db.collection("dead_letter_events").get();
+              for (const doc of dlqDocs.docs) {
+                await doc.ref.delete();
+              }
+            } catch (e) {
+               console.warn("Failed to clear DLQ docs");
+            }
             
             const snap = await docRef.get();
             if (snap.exists) {

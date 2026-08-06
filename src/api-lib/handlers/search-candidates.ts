@@ -27,7 +27,7 @@ export default async function searchCandidatesHandler(req: any, res: any) {
       role,
       orgId
     )
-    .limit(100)
+    .limit(50)
     .get();
 
     const candidates = snapshot.docs.map((doc: any) => ({

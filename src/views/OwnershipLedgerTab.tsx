@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Search, Filter, ShieldAlert, CheckCircle2, History, AlertTriangle, Fingerprint } from 'lucide-react';
 import { db, auth } from '../lib/firebase';
-import { collection, query, getDocs, orderBy, getDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, getDoc, doc, where, limit } from 'firebase/firestore';
 import { EmptyState } from '../components/EmptyState';
 
 export default function OwnershipLedgerTab() {
@@ -23,10 +23,10 @@ export default function OwnershipLedgerTab() {
          
          let q: any = collection(db, "ownership_claims");
          if (filterOrgId && filterOrgId !== "ORG-GLOBAL-HQ") {
-            q = query(q, where("vendorId", "==", filterOrgId));
+            q = query(q, where("vendorId", "==", filterOrgId), limit(50));
             // Firestore might need index if combining where + orderBy. So just where initially.
          } else {
-            q = query(q, orderBy("claimedAt", "desc"));
+            q = query(q, orderBy("claimedAt", "desc"), limit(50));
          }
          
          const snap = await getDocs(q);

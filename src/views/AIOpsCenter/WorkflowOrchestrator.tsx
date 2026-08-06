@@ -329,7 +329,7 @@ export default function WorkflowOrchestrator() {
 
   // Subscribe to real-time workflow instances
   useEffect(() => {
-    const q = query(collection(db, "workflow_instances"), limit(100));
+    const q = query(collection(db, "workflow_instances"), limit(50));
     const unsub = onSnapshot(q, (snap) => {
       if (!snap.empty) {
         const list = snap.docs.map(d => ({ workflowId: d.id, ...d.data() } as WorkflowInstance));

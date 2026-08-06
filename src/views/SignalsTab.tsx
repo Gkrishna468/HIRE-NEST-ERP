@@ -197,10 +197,10 @@ export default function SignalsTab() {
       let loadedSignals: any[] = [];
       
       try {
-        const reqSnap = await getDocs(collection(db, "requirements_public"));
+        const reqSnap = await getDocs(query(collection(db, "requirements_public"), limit(25)));
         const reqs = reqSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
         
-        const subSnap = await getDocs(collection(db, "submissions"));
+        const subSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
         const subs = subSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
 
         // Real Requirement At Risk Signals
@@ -237,7 +237,7 @@ export default function SignalsTab() {
 
         // Real High-Match Candidate Signals
         try {
-          const matchesSnap = await getDocs(collection(db, "candidate_matches"));
+          const matchesSnap = await getDocs(query(collection(db, "candidate_matches"), limit(25)));
           const matches = matchesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
           setRealCandidateMatches(matches);
 

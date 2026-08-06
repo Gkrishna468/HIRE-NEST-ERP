@@ -33,7 +33,7 @@ export default function Vendor360Tab({ userRole }: { userRole: string }) {
     if (!selectedVendorId) return;
     const fetchMapping = async () => {
       try {
-        const mappingsSnap = await getDocs(collection(db, "integration_mappings"));
+        const mappingsSnap = await getDocs(query(collection(db, "integration_mappings"), limit(25)));
         const mappings = mappingsSnap.docs.map(d => d.data());
         const found = mappings.find((m: any) => m.osEntityId === selectedVendorId);
         setMapping(found || null);
@@ -78,7 +78,7 @@ export default function Vendor360Tab({ userRole }: { userRole: string }) {
     let active = true;
     const fetchVendors = async () => {
       try {
-        const orgsSnap = await getDocs(collection(db, "organizations"));
+        const orgsSnap = await getDocs(query(collection(db, "organizations"), limit(25)));
         const orgs = orgsSnap.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
           .filter(
@@ -118,6 +118,7 @@ export default function Vendor360Tab({ userRole }: { userRole: string }) {
           query(
             collection(db, "candidatePool"),
             where("vendorId", "==", selectedVendorId),
+            limit(50)
           ),
         );
         const candidates = candsSnap.docs.map((d) => ({
@@ -129,6 +130,7 @@ export default function Vendor360Tab({ userRole }: { userRole: string }) {
         const oppQ = query(
           collection(db, "candidate_matches"),
           where("vendorId", "==", selectedVendorId),
+          limit(50)
         );
         const oppSnap = await getDocs(oppQ);
         const opps = oppSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -138,17 +140,18 @@ export default function Vendor360Tab({ userRole }: { userRole: string }) {
           query(
             collection(db, "submissions"),
             where("vendorId", "==", selectedVendorId),
+            limit(50)
           ),
         );
         const subs = subSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         // 5. Fetch Placements / DealRooms
         // Assuming dealRooms might have a vendorId, if not, we use submissions that reached placement
-        const dealSnap = await getDocs(collection(db, "dealRooms"));
+        const dealSnap = await getDocs(query(collection(db, "dealRooms"), limit(25)));
         const deals = dealSnap.docs.map((d) => ({ id: d.id, ...d.data() } as any));
 
         const revSnap = await getDocs(
-          query(collection(db, "revenue_pipeline"), where("vendorId", "==", selectedVendorId))
+          query(collection(db, "revenue_pipeline"), where("vendorId", "==", selectedVendorId), limit(50))
         );
         const revRecords = revSnap.docs.map(d => d.data() as any);
 

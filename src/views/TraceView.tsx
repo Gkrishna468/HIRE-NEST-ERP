@@ -22,7 +22,7 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
       const q = query(
         collection(db, "execution_events"),
         orderBy("timestamp", "desc"),
-        limit(100)
+        limit(50)
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {

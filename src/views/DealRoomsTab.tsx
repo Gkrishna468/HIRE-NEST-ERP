@@ -146,16 +146,16 @@ export default function DealRoomsTab() {
           q = query(
             collection(db, "dealRooms"),
             where("clientId", "==", orgId),
-            limit(100),
+            limit(50),
           );
         } else if (userRole && userRole.includes("vendor")) {
           q = query(
             collection(db, "dealRooms"),
             where("vendorId", "==", orgId),
-            limit(100),
+            limit(50),
           );
         } else {
-          q = query(collection(db, "dealRooms"), limit(100)); // HQ/Admin
+          q = query(collection(db, "dealRooms"), limit(50)); // HQ/Admin
         }
 
         const unsubscribe = onSnapshot(

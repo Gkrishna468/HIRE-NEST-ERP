@@ -97,7 +97,7 @@ export class RuntimeMetricsCollector {
       db.collection("submissions").get(),
       db.collection("invoices").get(),
       db.collection("work_items").get(),
-      db.collection("telemetry_logs").orderBy("timestamp", "desc").limit(100).get(),
+      db.collection("telemetry_logs").orderBy("timestamp", "desc").limit(50).get(),
       db.collection("business_events").orderBy("createdAt", "desc").limit(5).get()
     ]);
 
@@ -126,7 +126,7 @@ export class RuntimeMetricsCollector {
       : workItemsSnap.docs.map(d => d.data());
 
     const recentTelemetry = telemetrySnap.empty
-      ? await db.collection("telemetry_logs").orderBy("timestamp", "desc").limit(100).get().then(s => s.docs.map(d => d.data()))
+      ? await db.collection("telemetry_logs").orderBy("timestamp", "desc").limit(50).get().then(s => s.docs.map(d => d.data()))
       : telemetrySnap.docs.map(d => d.data());
 
     const recentEvents = eventsSnap.docs.map(d => d.data());
@@ -429,7 +429,7 @@ export class RuntimeMetricsService {
     if (!db) return { steps: [], activeJobs: [] };
 
     try {
-      const workSnap = await db.collection("work_items").orderBy("createdAt", "desc").limit(100).get();
+      const workSnap = await db.collection("work_items").orderBy("createdAt", "desc").limit(50).get();
       const items = workSnap.docs.map(d => d.data());
 
       // Let's analyze steps with comprehensive status categorizations

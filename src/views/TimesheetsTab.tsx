@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Search, Filter, Calendar, CheckSquare, Settings } from 'lucide-react';
 import { db } from '../lib/firebase';
-import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where, limit } from 'firebase/firestore';
 import { EmptyState } from '../components/EmptyState';
 
 export default function TimesheetsTab() {
@@ -11,7 +11,7 @@ export default function TimesheetsTab() {
   useEffect(() => {
     const fetchTimesheets = async () => {
       try {
-         const q = query(collection(db, "timesheets"), orderBy("periodEnd", "desc"));
+         const q = query(collection(db, "timesheets"), orderBy("periodEnd", "desc"), limit(50));
          const snap = await getDocs(q);
          const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
          setTimesheets(fetched);

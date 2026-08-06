@@ -33,7 +33,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
     if (!selectedClientId) return;
     const fetchMapping = async () => {
       try {
-        const mappingsSnap = await getDocs(collection(db, "integration_mappings"));
+        const mappingsSnap = await getDocs(query(collection(db, "integration_mappings"), limit(25)));
         const mappings = mappingsSnap.docs.map(d => d.data());
         const found = mappings.find((m: any) => m.osEntityId === selectedClientId);
         setMapping(found || null);
@@ -91,7 +91,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
     let active = true;
     const fetchClients = async () => {
       try {
-        const orgsSnap = await getDocs(collection(db, "organizations"));
+        const orgsSnap = await getDocs(query(collection(db, "organizations"), limit(25)));
         const orgs = orgsSnap.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
           .filter(
@@ -131,6 +131,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
           query(
             collection(db, "requirements_public"),
             where("orgId", "==", selectedClientId),
+            limit(50)
           ),
         );
         const reqs = reqsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -140,6 +141,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
           query(
             collection(db, "requirements_public"),
             where("clientId", "==", selectedClientId),
+            limit(50)
           ),
         );
         const legacyReqs = reqsSnapLegacy.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -152,7 +154,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
         // 3. Fetch Matches
         let opps: any[] = [];
         if (reqIds.length > 0) {
-          const oppSnap = await getDocs(collection(db, "candidate_matches"));
+          const oppSnap = await getDocs(query(collection(db, "candidate_matches"), limit(25)));
           opps = oppSnap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((d: any) => reqIds.includes(d.requirementId));
@@ -161,7 +163,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
         // 4. Fetch Submissions
         let subs: any[] = [];
         if (reqIds.length > 0) {
-          const subSnap = await getDocs(collection(db, "submissions"));
+          const subSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
           subs = subSnap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((d: any) => reqIds.includes(d.requirementId));
@@ -170,14 +172,14 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
         // 5. Fetch Placements / DealRooms
         let deals: any[] = [];
         if (reqIds.length > 0) {
-          const dealSnap = await getDocs(collection(db, "dealRooms"));
+          const dealSnap = await getDocs(query(collection(db, "dealRooms"), limit(25)));
           deals = dealSnap.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter((d: any) => reqIds.includes(d.requirementId));
         }
 
         const revSnap = await getDocs(
-          query(collection(db, "revenue_pipeline"), where("orgId", "==", selectedClientId))
+          query(collection(db, "revenue_pipeline"), where("orgId", "==", selectedClientId), limit(50))
         );
         const revRecords = revSnap.docs.map(d => d.data() as any);
 

@@ -9,13 +9,9 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  resolve: {
+  server: { hmr: false }, resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  },
-  server: {
-    port: 3000,
-    host: true,
   },
 });

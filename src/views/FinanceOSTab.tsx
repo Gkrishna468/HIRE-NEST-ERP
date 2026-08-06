@@ -29,8 +29,8 @@ export default function FinanceOSTab({ userRole }: { userRole: string }) {
     const fetchEntities = async () => {
         try {
             const [clientsSnap, vendorsSnap] = await Promise.all([
-                getDocs(collection(db, "clients")),
-                getDocs(collection(db, "vendors"))
+                getDocs(query(collection(db, "clients"), limit(25))),
+                getDocs(query(collection(db, "vendors"), limit(25)))
             ]);
             
             const clientMap: Record<string, any> = {};

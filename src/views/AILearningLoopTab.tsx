@@ -12,7 +12,7 @@ export default function AILearningLoopTab() {
   useEffect(() => {
     const fetchAIFeedback = async () => {
       try {
-        const snap = await getDocs(collection(db, "aiFeedback"));
+        const snap = await getDocs(query(collection(db, "aiFeedback"), limit(25)));
         const data: any[] = snap.docs.map(d => ({id: d.id, ...d.data()}));
         setFeedbacks(data.reverse()); // most recent first
         

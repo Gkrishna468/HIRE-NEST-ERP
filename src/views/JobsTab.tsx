@@ -591,7 +591,7 @@ export default function JobsTab() {
 
           try {
             if (role === "admin" || role === "super_admin" || role === "ops_admin") {
-              const usersSnap = await getDocs(collection(db, "users"));
+              const usersSnap = await getDocs(query(collection(db, "users"), limit(25)));
               const vMap: Record<string, string> = {};
               usersSnap.docs.forEach((d) => {
                 const data = d.data();

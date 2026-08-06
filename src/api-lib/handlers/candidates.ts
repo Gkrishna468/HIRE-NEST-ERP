@@ -24,7 +24,7 @@ export default async function handler(req: any, res: any) {
       role,
       orgId,
     )
-      .limit(100)
+      .limit(50)
       .get();
     let candidates = snapshot.docs.map((doc: any) => ({
       id: doc.id,

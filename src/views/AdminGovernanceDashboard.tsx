@@ -61,8 +61,8 @@ export default function AdminGovernanceDashboard() {
       pushSuite(rga.product, "Product Governance Validation");
 
       // 2. Cross-Workspace Parity (Requirement Ledger vs Submissions)
-      const submissionsSnap = await getDocs(collection(db, "submissions"));
-      const reqSnap = await getDocs(collection(db, "requirementLedger"));
+      const submissionsSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
+      const reqSnap = await getDocs(query(collection(db, "requirementLedger"), limit(25)));
       
       const reqActiveCounts: Record<string, number> = {};
       reqSnap.docs.forEach(doc => {
@@ -119,7 +119,7 @@ export default function AdminGovernanceDashboard() {
       }
 
       // 2. Reject Flow Synchronization
-      const candidateSnap = await getDocs(collection(db, "candidatePool"));
+      const candidateSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
       const candidateActiveRejections: string[] = [];
       
       submissionsSnap.docs.forEach(doc => {

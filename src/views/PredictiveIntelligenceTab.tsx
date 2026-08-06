@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { BrainCircuit, LineChart, TrendingUp, AlertTriangle, Clock, UserCheck, Activity } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, query, onSnapshot, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, getDocs, limit } from "firebase/firestore";
 
 export default function PredictiveIntelligenceTab({ userRole, orgId }: { userRole: string, orgId: string }) {
   const [deals, setDeals] = useState<any[]>([]);
@@ -19,9 +19,9 @@ export default function PredictiveIntelligenceTab({ userRole, orgId }: { userRol
       
       try {
         const [dealsSnap, jobsSnap, eventsSnap] = await Promise.all([
-           getDocs(query(collection(db, "dealRooms"), orderBy("createdAt", "desc"))),
-           getDocs(collection(db, "requirements_public")),
-           getDocs(query(collection(db, "operationalEvents"), orderBy("timestamp", "desc")))
+           getDocs(query(collection(db, "dealRooms"), orderBy("createdAt", "desc"), limit(25))),
+           getDocs(query(collection(db, "requirements_public"), limit(25))),
+           getDocs(query(collection(db, "operationalEvents"), orderBy("timestamp", "desc"), limit(25)))
         ]);
         
         const allDeals = dealsSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));

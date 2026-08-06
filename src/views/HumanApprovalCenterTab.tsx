@@ -175,7 +175,7 @@ export default function HumanApprovalCenterTab({ userRole }: { userRole: string 
             Approval Center
           </h1>
           <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mt-2 flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-indigo-900" /> Human-in-the-Loop Governance
+            <CheckCircle2 size={14} className="text-indigo-900" /> Human-in-the-Loop Governance (Demo Sandbox)
           </p>
         </div>
         <button 
@@ -183,7 +183,7 @@ export default function HumanApprovalCenterTab({ userRole }: { userRole: string 
           disabled={isInitializing}
           className="bg-indigo-900 text-white hover:bg-indigo-800 disabled:opacity-50 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-2 shadow-sm transition-colors"
         >
-          <Plus size={14} /> {isInitializing ? 'Initializing...' : 'Initialize Approvals'}
+          <Plus size={14} /> {isInitializing ? 'Initializing...' : 'Seed Demo Approvals'}
         </button>
       </div>
 
