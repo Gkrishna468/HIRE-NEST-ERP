@@ -1219,6 +1219,15 @@ SLA ACCELERATION:
               </button>
 
               <button 
+                onClick={() => setActiveSubTab('hie_health')}
+                className={cn("w-full px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-left transition-all flex items-center justify-between border", 
+                  activeSubTab === 'hie_health' ? "bg-indigo-600 border-indigo-500 text-white shadow" : "bg-[#0B0F19] border-slate-900/60 text-slate-400 hover:bg-[#0e1423] hover:text-white")}
+              >
+                <span className="flex items-center gap-2"><Cpu size={14} /> HIE Operational Health</span>
+                <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase">HIE v1.0</span>
+              </button>
+
+              <button 
                 onClick={() => setActiveSubTab('services')}
                 className={cn("w-full px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-left transition-all flex items-center justify-between border", 
                   activeSubTab === 'services' ? "bg-indigo-600 border-indigo-500 text-white shadow" : "bg-[#0B0F19] border-slate-900/60 text-slate-400 hover:bg-[#0e1423] hover:text-white")}

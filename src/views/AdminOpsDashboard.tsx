@@ -19,12 +19,14 @@ import SLAMonitor from "./ops/SLAMonitor";
 import EventExplorer from "./ops/EventExplorer";
 import ObservabilityDashboard from "./ops/ObservabilityDashboard";
 import CapabilitiesRegistryView from "./ops/CapabilitiesRegistryView";
+import HIEOperationalDashboard from "./ops/HIEOperationalDashboard";
 
 export default function AdminOpsDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const tabs = [
     { id: "overview", label: "Overview", icon: Activity },
+    { id: "hie", label: "HIE Operations", icon: Cpu },
     { id: "workflows", label: "Workflows", icon: Server },
     { id: "dlq", label: "DLQ", icon: AlertTriangle },
     { id: "replay", label: "Replay Engine", icon: RotateCcw },
@@ -75,6 +77,7 @@ export default function AdminOpsDashboard() {
 
       <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
         {activeTab === "overview" && <ObservabilityDashboard />}
+        {activeTab === "hie" && <HIEOperationalDashboard />}
         {activeTab === "workflows" && <WorkflowDashboard />}
         {activeTab === "dlq" && <DLQViewer />}
         {activeTab === "replay" && <ReplayUI />}

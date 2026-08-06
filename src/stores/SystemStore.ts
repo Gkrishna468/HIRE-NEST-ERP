@@ -40,7 +40,11 @@ export const useSystemStore = create<SystemState>((set, get) => ({
             data.onboardingCompleted = true;
 
             // One-time cleanup script
-            await ServiceProvider.identityService.executeAdminCleanup("roger1@mapoutinc.com");
+            try {
+              await ServiceProvider.identityService.executeAdminCleanup("roger1@mapoutinc.com");
+            } catch (cleanupErr) {
+              console.warn("Admin cleanup skipped/failed:", cleanupErr);
+            }
           }
 
           const hasSeenDemo = data.hasSeenDemo;

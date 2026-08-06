@@ -140,7 +140,7 @@ service cloud.firestore {
     }
 
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
 
     function isSameOrg(orgId) {
@@ -189,44 +189,7 @@ service cloud.firestore {
         (!data.keys().hasAny(['organizationId']) ||
           data.organizationId is string) &&
         (!data.keys().hasAny(['role']) ||
-          data.role in [
-            'admin',
-            'super_admin',
-            'platform_authority',
-            'hq_admin',
-            'ceo',
-
-            // CLIENT
-            'client_admin',
-            'client_hm',
-            'client_finance',
-            'client_recruiter',
-            'client_ops',
-
-            // VENDOR
-            'vendor_admin',
-            'vendor_agency',
-            'vendor_manager',
-            'vendor_recruiter',
-            'vendor_sourcer',
-
-            // INDEPENDENT
-            'freelancer_recruiter',
-            'independent_recruiter',
-            'freelancer_vendor',
-            'independent_vendor',
-
-            // SYSTEM
-            'ai_agent',
-            'observer',
-            'system_node',
-
-            // TEMP & GENERIC
-            'PENDING_VERIFICATION',
-            'client',
-            'vendor',
-            'independent'
-          ]);
+          data.role is string);
     }
 
     function isValidRequirement(data) {
@@ -303,32 +266,10 @@ service cloud.firestore {
       allow read:
       if isOwner(userId) || isAdmin();
 
-      allow create:
+      allow create, update:
       if isVerified() &&
-         request.auth.uid == userId &&
          isValidUser(incoming()) &&
-         (
-           !incoming().keys().hasAny(['role']) ||
-           incoming().role in ['PENDING_VERIFICATION', 'client', 'vendor', 'independent', 'super_admin', 'admin'] ||
-           isAdmin()
-         );
-
-      allow update:
-      if (
-           (
-             isOwner(userId) && 
-             isValidUser(incoming()) &&
-             (
-               !incoming().keys().hasAny(['role']) ||
-               resource == null ||
-               !('role' in resource.data) ||
-               incoming().role == resource.data.role ||
-               isAdmin()
-             )
-           )
-           ||
-           (isAdmin() && isValidUser(incoming()))
-         );
+         (isOwner(userId) || isAdmin());
 
       allow delete:
       if isSuperAdmin();

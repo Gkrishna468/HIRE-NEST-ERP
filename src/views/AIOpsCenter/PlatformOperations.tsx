@@ -26,6 +26,7 @@ import {
 import { cn } from "../../lib/utils";
 import { motion, AnimatePresence } from "motion/react";
 import { BusinessEvent, PlatformActivity } from "./AIOpsTypes";
+import HIEOperationalDashboard from "../ops/HIEOperationalDashboard";
 
 interface PlatformOperationsProps {
   activeSubTab: string;
@@ -273,6 +274,13 @@ export default function PlatformOperations({
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* HIE Health & Service Registry */}
+      {(activeSubTab === 'hie_health' || activeSubTab === 'services') && (
+        <div className="space-y-6 flex-1 flex flex-col">
+          <HIEOperationalDashboard />
         </div>
       )}
 
