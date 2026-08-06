@@ -515,7 +515,7 @@ hirenest_active_requests 0
     });
   }
 
-  const port = 3000;
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   
   // Global Error Handler to guarantee JSON for API errors
   app.use(async (err: any, req: any, res: any, next: any) => {

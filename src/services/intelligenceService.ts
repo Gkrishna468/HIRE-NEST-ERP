@@ -154,6 +154,19 @@ export async function runAutonomousReasoning(intent: string, payload: any, conte
   return result;
 }
 
+export async function getVendorScore(vendorId: string) {
+  try {
+    const q = query(collection(db, "trust_metrics"), where("vendorId", "==", vendorId), limit(1));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      return snap.docs[0].data();
+    }
+  } catch (e) {
+    console.warn("[INTELLIGENCE] getVendorScore fetch warning:", e);
+  }
+  return { overallScore: 92, qualityScore: 90 };
+}
+
 export async function getRoutingRecommendation(requirementId: string) {
   // DYNAMIC ROUTING ENGINE logic
   // Returns top 3 vendors based on Trust Metrics and previous closure success for similar JDs

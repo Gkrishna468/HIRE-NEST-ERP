@@ -74,9 +74,7 @@ export class HireNestIntelligenceEngineService implements IntelligenceEngine {
   async evaluateVendor(vendorId: string): Promise<VendorEvaluationResult> {
     let rawMetrics: any = {};
     try {
-      if (typeof (intelligenceService as any).getVendorScore === 'function') {
-        rawMetrics = await (intelligenceService as any).getVendorScore(vendorId);
-      }
+      rawMetrics = await intelligenceService.getVendorScore(vendorId);
     } catch {
       // Fallback
     }
