@@ -487,7 +487,7 @@ hirenest_active_requests 0
   });
 
   // Vite integration
-  const isProd = process.env.NODE_ENV === 'production' || !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')) || fs.existsSync(path.resolve(__dirname, 'dist', 'index.html'));
+  const isProd = process.env.NODE_ENV === 'production';
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
