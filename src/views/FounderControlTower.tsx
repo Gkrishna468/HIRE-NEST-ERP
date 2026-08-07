@@ -19,6 +19,8 @@ import {
   CheckCircle2,
   Bot,
   Zap,
+  PlayCircle,
+  PauseCircle,
   TrendingDown,
   BrainCircuit,
   Clock,
@@ -28,6 +30,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { FirebaseProjectionService, DashboardMetrics } from "../lib/services/firebase/FirebaseProjectionService";
+import { speakBriefing, stopBriefingSpeech } from "../lib/services/speechService";
 
 export default function FounderControlTower() {
   const [loading, setLoading] = useState(true);
@@ -79,8 +82,29 @@ export default function FounderControlTower() {
     return () => {
       unsub();
       unsubEff();
+      stopBriefingSpeech();
     };
   }, []);
+
+  const [isPlayingBriefingAudio, setIsPlayingBriefingAudio] = useState(false);
+
+  const handleAudioBriefing = () => {
+    if (isPlayingBriefingAudio) {
+      stopBriefingSpeech();
+      setIsPlayingBriefingAudio(false);
+      return;
+    }
+
+    const textToSpeak = `Good morning Gopal. Here is your AI CEO Briefing. Yesterday's performance: 43 active requirements, 214 candidates parsed, 81 AI matches, 17 interviews scheduled, 3 offers released, and 1 placement closed. Revenue pipeline stands at 24.8 Lakhs, with 5.4 recruiter hours saved by AI. Recommended actions: Follow up with ABC Client, escalate Vendor XYZ, and increase broadcast on REQ-881.`;
+
+    setIsPlayingBriefingAudio(true);
+
+    speakBriefing(
+      textToSpeak,
+      () => setIsPlayingBriefingAudio(false),
+      () => setIsPlayingBriefingAudio(false)
+    );
+  };
 
   if (loading) {
     return <div className="p-8 flex items-center justify-center font-bold text-slate-400 uppercase tracking-widest animate-pulse">Initializing Founder Mission Control...</div>;
@@ -115,7 +139,25 @@ export default function FounderControlTower() {
                     <h2 className="text-2xl font-black mb-1 flex items-center gap-2 text-white">
                         Good Morning, Gopal
                     </h2>
-                    <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest mb-6">Your AI CEO Briefing • Yesterday's Performance</p>
+                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                      <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">Your AI CEO Briefing • Yesterday's Performance</p>
+                      <button
+                        onClick={handleAudioBriefing}
+                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center gap-1.5"
+                      >
+                        {isPlayingBriefingAudio ? (
+                          <>
+                            <PauseCircle size={14} />
+                            <span>Pause Brief</span>
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle size={14} />
+                            <span>Listen to Brief</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-6 pb-6 border-b border-indigo-800/50">
                         <div>

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { getDynamicGreeting } from "../lib/greetings";
+import { speakBriefing, stopBriefingSpeech } from "../lib/services/speechService";
 import { 
   Zap, 
-  PlayCircle, 
+  PlayCircle,
+  PauseCircle, 
   Clock, 
   AlertTriangle, 
   CheckCircle2, 
@@ -400,6 +402,33 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
     return sum;
   })();
   const formattedRevenue = `₹${(calculatedRevenue / 100000).toFixed(1)}L`;
+
+  // AI COO Briefing Audio Handler
+  const [isPlayingBriefingAudio, setIsPlayingBriefingAudio] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      stopBriefingSpeech();
+    };
+  }, []);
+
+  const handleAudioBriefing = () => {
+    if (isPlayingBriefingAudio) {
+      stopBriefingSpeech();
+      setIsPlayingBriefingAudio(false);
+      return;
+    }
+
+    const textToSpeak = `${getDynamicGreeting()}, Operator. AI COO Morning Briefing update: ${reqCount} new requirements are active across pipelines. ${candCount} candidates processed in the candidate pool with 91 percent matching accuracy. Vendor SLA response alert triggered for 2 partner agencies. Estimated revenue projected at ${formattedRevenue}. Recommended action: broadcast open roles to Vendor Tier A Network.`;
+
+    setIsPlayingBriefingAudio(true);
+
+    speakBriefing(
+      textToSpeak,
+      () => setIsPlayingBriefingAudio(false),
+      () => setIsPlayingBriefingAudio(false)
+    );
+  };
 
   // Dynamic "Needs Attention" Actionable Panel Items
   const needsAttentionItems = (() => {
@@ -1433,6 +1462,22 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
                     
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-slate-400 font-mono">Last analysis: Just now</span>
+                      <button
+                        onClick={handleAudioBriefing}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center gap-1.5"
+                      >
+                        {isPlayingBriefingAudio ? (
+                          <>
+                            <PauseCircle size={13} />
+                            <span>Pause Brief</span>
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle size={13} />
+                            <span>Listen to Brief</span>
+                          </>
+                        )}
+                      </button>
                       <button 
                         onClick={() => {
                           addLog("AI Decisions", "AI COO initiated comprehensive morning briefing sweep.", "TR-COO-SWEEP");

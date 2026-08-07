@@ -1,0 +1,39 @@
+import { MCPTool, MCPToolManifest, ToolContext, ValidationResult, AuthorizationResult, ToolExecution } from '@hirenest/platform-sdk';
+import { RequirementService } from '@hirenest/core-services';
+
+export class RequirementMatchIndexTool implements MCPTool<any, any> {
+  readonly manifest: MCPToolManifest = {
+    id: 'requirement.match.index',
+    name: 'Requirement Match Index',
+    version: '1.0.0',
+    domain: 'Requirement',
+    owner: 'Platform',
+    description: 'Retrieve deterministic match index for a requirement.',
+    permissions: ['requirement:read', 'match:read'],
+    capabilities: ['index'],
+    auditLevel: 'HIGH',
+    timeout: '5s',
+    retryPolicy: 'default',
+    visibility: 'internal',
+    status: 'Production',
+    tags: ['requirement', 'match']
+  };
+
+  constructor(private requirementService: RequirementService) {}
+
+  async validate(input: any): Promise<ValidationResult> {
+    if (!input.requirementId) return { valid: false, errors: ['requirementId is required'] };
+    return { valid: true };
+  }
+
+  async authorize(context: ToolContext): Promise<AuthorizationResult> {
+    return { authorized: true };
+  }
+
+  async execute(input: any, context: ToolContext) {
+    return this.requirementService.matchIndex(input.requirementId);
+  }
+
+  async audit(execution: ToolExecution) {}
+  async telemetry(execution: ToolExecution) {}
+}

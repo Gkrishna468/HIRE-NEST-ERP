@@ -1,0 +1,17 @@
+{
+  "name": "@hirenest/reference-tools",
+  "version": "1.0.0",
+  "description": "Reference MCP Tool implementations",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"no tests\""
+  },
+  "dependencies": {
+    "@hirenest/platform-sdk": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

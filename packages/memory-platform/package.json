@@ -1,0 +1,9 @@
+{
+  "name": "@hirenest/memory-platform",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc", "test": "vitest run" },
+  "dependencies": { "@hirenest/platform-sdk": "*" },
+  "devDependencies": { "typescript": "^5.0.0", "vitest": "^1.0.0" }
+}

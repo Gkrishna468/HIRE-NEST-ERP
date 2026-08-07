@@ -1,0 +1,8 @@
+{
+  "name": "@hirenest/agent-definitions",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@hirenest/platform-sdk": "link:../platform-sdk"
+  }
+}

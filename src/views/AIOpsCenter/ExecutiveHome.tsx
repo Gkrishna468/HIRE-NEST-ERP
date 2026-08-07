@@ -1,5 +1,6 @@
 // src/views/AIOpsCenter/ExecutiveHome.tsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { speakBriefing, stopBriefingSpeech } from "../../lib/services/speechService";
 import { 
   Briefcase, 
   Users, 
@@ -89,9 +90,27 @@ REVENUE PIPELINE FORECAST:
 Current Weekly Revenue Target: $150,000. Pipeline influence stands at $425,000, tracking 15% above forecast with 8 active placements nearing final sign-off.`;
   }, []);
 
+  useEffect(() => {
+    return () => {
+      stopBriefingSpeech();
+    };
+  }, []);
+
   const handleAudioPlayback = () => {
-    setIsPlayingAudio(!isPlayingAudio);
+    if (isPlayingAudio) {
+      stopBriefingSpeech();
+      setIsPlayingAudio(false);
+      return;
+    }
+
+    setIsPlayingAudio(true);
     setBriefRead(true);
+
+    speakBriefing(
+      simulatedBrief,
+      () => setIsPlayingAudio(false),
+      () => setIsPlayingAudio(false)
+    );
   };
 
   return (
