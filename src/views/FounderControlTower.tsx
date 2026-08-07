@@ -30,7 +30,6 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { FirebaseProjectionService, DashboardMetrics } from "../lib/services/firebase/FirebaseProjectionService";
-import { speakBriefing, stopBriefingSpeech } from "../lib/services/speechService";
 
 export default function FounderControlTower() {
   const [loading, setLoading] = useState(true);
@@ -82,28 +81,55 @@ export default function FounderControlTower() {
     return () => {
       unsub();
       unsubEff();
-      stopBriefingSpeech();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const [isPlayingBriefingAudio, setIsPlayingBriefingAudio] = useState(false);
 
   const handleAudioBriefing = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Web Speech synthesis is not supported in this browser.");
+      return;
+    }
+
     if (isPlayingBriefingAudio) {
-      stopBriefingSpeech();
+      window.speechSynthesis.cancel();
       setIsPlayingBriefingAudio(false);
       return;
     }
 
+    window.speechSynthesis.cancel();
+
     const textToSpeak = `Good morning Gopal. Here is your AI CEO Briefing. Yesterday's performance: 43 active requirements, 214 candidates parsed, 81 AI matches, 17 interviews scheduled, 3 offers released, and 1 placement closed. Revenue pipeline stands at 24.8 Lakhs, with 5.4 recruiter hours saved by AI. Recommended actions: Follow up with ABC Client, escalate Vendor XYZ, and increase broadcast on REQ-881.`;
 
-    setIsPlayingBriefingAudio(true);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
-    speakBriefing(
-      textToSpeak,
-      () => setIsPlayingBriefingAudio(false),
-      () => setIsPlayingBriefingAudio(false)
-    );
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => {
+      setIsPlayingBriefingAudio(false);
+    };
+
+    utterance.onerror = (e) => {
+      console.warn("[CEO Briefing] Speech synthesis notice:", e);
+      setIsPlayingBriefingAudio(false);
+    };
+
+    setIsPlayingBriefingAudio(true);
+    window.speechSynthesis.speak(utterance);
   };
 
   if (loading) {

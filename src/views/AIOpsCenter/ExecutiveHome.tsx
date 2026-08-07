@@ -1,6 +1,5 @@
 // src/views/AIOpsCenter/ExecutiveHome.tsx
 import React, { useState, useMemo, useEffect } from "react";
-import { speakBriefing, stopBriefingSpeech } from "../../lib/services/speechService";
 import { 
   Briefcase, 
   Users, 
@@ -92,25 +91,59 @@ Current Weekly Revenue Target: $150,000. Pipeline influence stands at $425,000, 
 
   useEffect(() => {
     return () => {
-      stopBriefingSpeech();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const handleAudioPlayback = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Web Speech synthesis is not supported in this browser.");
+      return;
+    }
+
     if (isPlayingAudio) {
-      stopBriefingSpeech();
+      window.speechSynthesis.cancel();
       setIsPlayingAudio(false);
       return;
     }
 
+    // Cancel any existing speech
+    window.speechSynthesis.cancel();
+
+    // Prepare clear spoken text without raw ASCII formatting dividers
+    const spokenText = simulatedBrief
+      .replace(/[-=]{3,}/g, " ")
+      .replace(/•/g, " ")
+      .replace(/\s+/g, " ");
+
+    const utterance = new SpeechSynthesisUtterance(spokenText);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => {
+      setIsPlayingAudio(false);
+    };
+
+    utterance.onerror = (e) => {
+      console.warn("[Executive Briefing] Speech synthesis notice:", e);
+      setIsPlayingAudio(false);
+    };
+
     setIsPlayingAudio(true);
     setBriefRead(true);
-
-    speakBriefing(
-      simulatedBrief,
-      () => setIsPlayingAudio(false),
-      () => setIsPlayingAudio(false)
-    );
+    window.speechSynthesis.speak(utterance);
   };
 
   return (

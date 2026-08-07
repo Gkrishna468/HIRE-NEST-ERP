@@ -48,7 +48,7 @@ This workspace implements Google Agent Skills from `github.com/google/skills`. T
 
 Effective immediately, **Runtime v1.0 is FROZEN**. The primary focus of development shifts from platform/infrastructure engineering to **Product Engineering (Business Outcomes)**.
 
-**Platform v2.2 Components:**
+**Runtime v1.0 Frozen Components:**
 
 - Event Bus, Workflow Engine, AI COO Runtime, Capability Broker, Decision Engine, Model Gateway, Prompt Registry, Budget Manager, Circuit Breakers.
 - _Allowed Changes:_ Bug fixes, Security, Performance, Telemetry, Documentation.
@@ -244,9 +244,9 @@ To maximize efficiency, maintain high velocity, and prevent codebase bloat in Hi
 - **Error Handling**: Gracefully recover and display meaningful error states to prevent UI freezing.
 - **Deep Understanding**: Thoroughly inspect target files and context before proposing or writing code.
 
-## Platform Governance & CTO Execution Policy (Platform v2.2)
+## Platform Governance & CTO Execution Policy (Runtime v1.0 Frozen)
 
-The platform architecture is formally **Frozen** at Runtime v1.0 and we are transitioning into **Platform Engineering (v2.2)**. Future changes must strictly focus on capability-based routing, declarative agent definitions, reusable workflows, versioned contracts, and comprehensive observability.
+The platform architecture is formally **Frozen** at Runtime v1.0. Future changes must strictly focus on operational execution, sequential live integration delivery, and continuous hardening.
 
 ### 1. Platform-Before-Product Architecture Layering
 Every new feature or service integration must route through established platform layers rather than direct feature-to-infrastructure coupling:

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore } from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -15,17 +15,9 @@ const config = {
 
 const app = initializeApp(config);
 console.log("[Firebase Init] Initializing for Project:", config.projectId);
-
-let dbInstance;
-try {
-  dbInstance = initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-  });
-} catch (e) {
-  dbInstance = getFirestore(app);
-}
-
-export const db = dbInstance;
+console.log("PROJECT", config.projectId);
+console.log("STORAGE", config.storageBucket);
+export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { getDynamicGreeting } from "../lib/greetings";
-import { speakBriefing, stopBriefingSpeech } from "../lib/services/speechService";
 import { 
   Zap, 
   PlayCircle,
@@ -408,26 +407,53 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
 
   useEffect(() => {
     return () => {
-      stopBriefingSpeech();
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const handleAudioBriefing = () => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      alert("Web Speech synthesis is not supported in this browser.");
+      return;
+    }
+
     if (isPlayingBriefingAudio) {
-      stopBriefingSpeech();
+      window.speechSynthesis.cancel();
       setIsPlayingBriefingAudio(false);
       return;
     }
 
+    window.speechSynthesis.cancel();
+
     const textToSpeak = `${getDynamicGreeting()}, Operator. AI COO Morning Briefing update: ${reqCount} new requirements are active across pipelines. ${candCount} candidates processed in the candidate pool with 91 percent matching accuracy. Vendor SLA response alert triggered for 2 partner agencies. Estimated revenue projected at ${formattedRevenue}. Recommended action: broadcast open roles to Vendor Tier A Network.`;
 
-    setIsPlayingBriefingAudio(true);
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
 
-    speakBriefing(
-      textToSpeak,
-      () => setIsPlayingBriefingAudio(false),
-      () => setIsPlayingBriefingAudio(false)
-    );
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(
+      (v) => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha"))
+    ) || voices.find((v) => v.lang.startsWith("en"));
+
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onend = () => {
+      setIsPlayingBriefingAudio(false);
+    };
+
+    utterance.onerror = (e) => {
+      console.warn("[Autonomous Briefing] Speech synthesis notice:", e);
+      setIsPlayingBriefingAudio(false);
+    };
+
+    setIsPlayingBriefingAudio(true);
+    window.speechSynthesis.speak(utterance);
   };
 
   // Dynamic "Needs Attention" Actionable Panel Items

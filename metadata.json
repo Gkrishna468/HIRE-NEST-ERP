@@ -1,5 +1,12 @@
 {
-  "name": "HireNest OS",
-  "description": "Enterprise AI Operating System for Staffing",
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "HireNestOS",
+  "description": "Enterprise Recruitment Intelligence OS - A layered AI-native workforce platform.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API",
+    "MAJOR_CAPABILITY_FIREBASE"
+  ]
 }
