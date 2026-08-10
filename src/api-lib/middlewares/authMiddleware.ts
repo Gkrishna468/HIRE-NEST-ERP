@@ -7,6 +7,10 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       req.method === 'OPTIONS' ||
       req.path === '/audit' || 
       req.originalUrl === '/api/audit' || 
+      cleanUrl === '/health' ||
+      cleanUrl === '/api/health' ||
+      cleanUrl === '/ready' ||
+      cleanUrl === '/live' ||
       req.originalUrl.includes('/oauth/callback') || 
       req.originalUrl.includes('/api/oauth/url') ||
       req.originalUrl.startsWith('/api/public') || 
@@ -14,6 +18,8 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       req.originalUrl.includes('/api/whatsapp/webhook') ||
       req.originalUrl.includes('/api/automation/events') ||
       req.originalUrl.includes('/api/automation-events') ||
+      req.originalUrl.includes('/api/communication') ||
+      req.originalUrl.includes('/api/kill-switch') ||
       Boolean(req.headers['x-hirenest-signature']) ||
       (req.method === 'GET' && (
         cleanUrl === '/v1' || 

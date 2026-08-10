@@ -109,34 +109,57 @@ export default function RecruiterWorkspace({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const executeAction = (actionId: string, successMsg: string) => {
+  const executeAction = async (actionId: string, actionType: string, payload: any, successMsg: string) => {
     setProcessingAction(actionId);
-    setTimeout(() => {
-      setProcessingAction(null);
+    try {
+      const idToken = await (window as any).firebase?.auth().currentUser?.getIdToken();
+      
+      const res = await fetch("/api/recruiter-os/action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(idToken ? { "Authorization": `Bearer ${idToken}` } : {})
+        },
+        body: JSON.stringify({ action: actionType, payload })
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Action failed");
+      }
+      
       triggerToast(successMsg);
-    }, 800);
+    } catch (err: any) {
+      triggerToast(`Error: ${err.message}`);
+    } finally {
+      setProcessingAction(null);
+    }
   };
 
   const handleBriefingAction = (type: string) => {
-    executeAction(`brief-${type}`, `AI Dispatcher: Dispatched daily recruitment plan via mail to candidates & client coordinators!`);
+    executeAction(`brief-${type}`, 'EXECUTE_BRIEFING_PLAN', { category: type }, `AI Dispatcher: Dispatched daily recruitment plan via mail to candidates & client coordinators!`);
   };
 
-  const handleSendPrepBriefing = (candName: string) => {
-    executeAction(`prep-${candName}`, `Sent candidate preparation briefing to ${candName} for their interview.`);
+  const handleSendPrepBriefing = (candName: string, candId: string = "cand-001") => {
+    executeAction(`prep-${candName}`, 'SEND_PREP_BRIEFING', { candidateId: candId }, `Sent candidate preparation briefing to ${candName} for their interview.`);
   };
 
-  const handleSendHMBriefing = (candName: string) => {
-    executeAction(`hm-${candName}`, `Dispatched Hiring Manager Briefing containing AI feedback sentiment analysis.`);
+  const handleSendHMBriefing = (candName: string, candId: string = "cand-001") => {
+    executeAction(`hm-${candName}`, 'SEND_HM_BRIEFING', { candidateId: candId }, `Dispatched Hiring Manager Briefing containing AI feedback sentiment analysis.`);
   };
 
-  const handleScheduleReminder = (candName: string) => {
-    executeAction(`rem-${candName}`, `Automated reminder schedule triggered. SMS, WhatsApp and Calendar events refreshed.`);
+  const handleScheduleReminder = (candName: string, candId: string = "cand-001", intId: string = "int-001") => {
+    executeAction(`rem-${candName}`, 'SCHEDULE_REMINDER', { candidateId: candId, interviewId: intId }, `Automated reminder schedule triggered. SMS, WhatsApp and Calendar events refreshed.`);
   };
 
   const handleRemoveFollowup = (id: string, name: string) => {
+    executeAction(`resolve-${id}`, 'RESOLVE_FOLLOWUP', { followupId: id }, `Follow-up resolved with ${name}. Updated Recruiter KPI Score!`);
     setFollowups(prev => prev.filter(f => f.id !== id));
-    triggerToast(`Follow-up resolved with ${name}. Updated Recruiter KPI Score!`);
     setRecruiterScore(prev => Math.min(prev + 1, 100));
+  };
+  
+  const handleSubmitToClient = (candName: string, candId: string = "cand-001", reqId: string = "req-001") => {
+    executeAction(`submit-${candId}`, 'SUBMIT_CANDIDATE', { candidateId: candId, requirementId: reqId }, `${candName} has been submitted directly to Client Board.`);
   };
 
   return (
@@ -406,7 +429,7 @@ export default function RecruiterWorkspace({
                 <div className="flex gap-2">
                   <Button 
                     variant="outline" 
-                    onClick={() => executeAction("re-evaluate", "AI analyzed client feedback sentiment: Recommended shortlisting 2 candidates on hold.")}
+                    onClick={() => executeAction("re-evaluate", "EXECUTE_BRIEFING_PLAN", { category: "OPTIMIZE_MATCHES" }, "AI analyzed client feedback sentiment: Recommended shortlisting 2 candidates on hold.")}
                     className="w-full justify-between group border-rose-500/20 text-rose-400 hover:bg-rose-500/10 text-[10px] font-mono uppercase tracking-widest h-9"
                   >
                     Optimize Matches <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
@@ -536,7 +559,7 @@ export default function RecruiterWorkspace({
                 </div>
 
                 <Button 
-                  onClick={() => executeAction("submit-sarah", "Sarah Jenkins has been submitted directly to Reliance Digital Client Board.")}
+                  onClick={() => handleSubmitToClient("Sarah Jenkins", "cand-sarah-123", "req-001")}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-mono uppercase font-black text-[10px] tracking-widest h-10 shadow-lg shadow-indigo-500/10"
                 >
                   Submit to Client

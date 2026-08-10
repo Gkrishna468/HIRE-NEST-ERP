@@ -225,12 +225,44 @@ export class BusinessGraphService {
         await EnterpriseRuntimeKernel.event.publish('STATE_CHANGED', { nodeId, newState, type: node.type });
     }
 
-    static async addRelationship(sourceId: string, targetId: string, type: string, metadata?: any): Promise<void> {
-        const source = await this.getNode(sourceId);
-        if (!source) throw new Error('Source node not found');
+    private static async upsertBaselineNode(id: string, type: NodeType, tenantId: string = 'GLOBAL'): Promise<GraphNode> {
+        const now = new Date().toISOString();
+        const node: GraphNode = {
+            id,
+            type,
+            tenantId,
+            orgId: tenantId,
+            state: 'NEW',
+            metadata: { autoProvisioned: true },
+            metrics: {},
+            timeline: [],
+            history: [],
+            policies: {},
+            permissions: {},
+            experience: {},
+            derivedIntelligence: {},
+            version: 1,
+            relationships: [],
+            createdAt: now,
+            updatedAt: now
+        };
+        await db.collection(this.COLLECTION_NODES).doc(id).set(node, { merge: true });
+        GraphCache.setNode(id, node);
+        return node;
+    }
 
-        const target = await this.getNode(targetId);
-        if (!target) throw new Error('Target node not found');
+    static async addRelationship(sourceId: string, targetId: string, type: string, metadata?: any): Promise<void> {
+        let source = await this.getNode(sourceId);
+        if (!source) {
+            const sourceType: NodeType = sourceId.toLowerCase().includes('cand') ? 'CANDIDATE' : (sourceId.toLowerCase().includes('req') ? 'REQUIREMENT' : 'CANDIDATE');
+            source = await this.upsertBaselineNode(sourceId, sourceType, metadata?.tenantId || 'GLOBAL');
+        }
+
+        let target = await this.getNode(targetId);
+        if (!target) {
+            const targetType: NodeType = targetId.toLowerCase().includes('req') ? 'REQUIREMENT' : (targetId.toLowerCase().includes('cand') ? 'CANDIDATE' : 'REQUIREMENT');
+            target = await this.upsertBaselineNode(targetId, targetType, metadata?.tenantId || 'GLOBAL');
+        }
 
         const now = new Date().toISOString();
 

@@ -46,6 +46,7 @@ import { useNavigate } from "react-router-dom";
 import VendorPartnerWorkspace from "./workspaces/VendorPartnerWorkspace";
 import HiringManagerWorkspace from "./workspaces/HiringManagerWorkspace";
 import RecruiterWorkspace from "./workspaces/RecruiterWorkspace";
+import ExecutiveDashboardWorkspace from "./workspaces/ExecutiveDashboardWorkspace";
 import CandidatePortalWorkspace from "./workspaces/CandidatePortalWorkspace";
 import { subscribeToEvents } from "../services/eventBus";
 import { EnterpriseViewModelService } from "../services/EnterpriseViewModelService";
@@ -717,6 +718,10 @@ export default function DashboardTab() {
   };
 
   if (!metrics) return <div className="p-4 flex items-center justify-center text-slate-400 text-xs font-mono animate-pulse h-screen bg-slate-900 text-indigo-400">Initializing Governance Layer...</div>;
+
+  if (isAdmin) {
+    return <ExecutiveDashboardWorkspace userName={session?.user?.name || "Executive"} orgId={session?.user?.organizationId} />;
+  }
 
   if (isVendor) {
     return <VendorPartnerWorkspace vendorName={session?.user?.name || "Vendor Partner"} orgId={session?.user?.organizationId} metrics={metrics} />;

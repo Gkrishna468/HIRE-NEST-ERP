@@ -8,6 +8,11 @@ export interface N8NWorkflowTriggerPayload {
   eventType: string;
   candidateId?: string;
   requirementId?: string;
+  traceId?: string;
+  tenantId?: string;
+  source?: string;
+  actorId?: string;
+  timestamp?: string;
   payload?: any;
 }
 
@@ -49,7 +54,7 @@ export class n8nService {
     if (process.env.N8N_BASE_URL) {
       const baseUrl = process.env.N8N_BASE_URL.replace(/\/$/, '');
       const endpoint = normWorkflow.replace(/[^a-z0-9]/g, '-');
-      return `${baseUrl}/webhook-test/hirenest/${endpoint}`;
+      return `${baseUrl}/webhook/hirenest/${endpoint}`;
     }
 
     if (process.env.N8N_WEBHOOK_URL) {
@@ -96,7 +101,8 @@ export class n8nService {
       const response = await fetch(targetUrl, {
         method: "POST",
         headers,
-        body: bodyString
+        body: bodyString,
+        signal: AbortSignal.timeout(2000)
       });
 
       const responseText = await response.text();

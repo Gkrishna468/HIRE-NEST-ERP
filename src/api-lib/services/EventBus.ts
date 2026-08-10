@@ -33,6 +33,10 @@ export class EventBus {
             { id: 'sub-cand-matching-created', eventType: 'CANDIDATE_CREATED', subscriber: 'matching-office', priority: 10, enabled: true },
             { id: 'sub-cand-matching-updated', eventType: 'CANDIDATE_UPDATED', subscriber: 'matching-office', priority: 10, enabled: true },
             { id: 'sub-cand-matching-withdrawn', eventType: 'CANDIDATE_WITHDRAWN', subscriber: 'matching-office', priority: 10, enabled: true },
+            { id: 'sub-resume-uploaded', eventType: 'RESUME_UPLOADED', subscriber: 'ResumeScreeningService', priority: 10, enabled: true },
+            { id: 'sub-cand-matched', eventType: 'CANDIDATE_MATCHED', subscriber: 'ClientOffice', priority: 10, enabled: true },
+            { id: 'sub-cand-shortlisted', eventType: 'CANDIDATE_SHORTLISTED', subscriber: 'RecruitmentOffice', priority: 10, enabled: true },
+            { id: 'sub-cand-submitted', eventType: 'CANDIDATE_SUBMITTED', subscriber: 'SubmissionOrchestrator', priority: 10, enabled: true },
             { id: 'sub-interview-scheduling', eventType: 'INTERVIEW_REQUESTED', subscriber: 'scheduling-office', priority: 10, enabled: true }
         ];
         
@@ -134,6 +138,25 @@ export class EventBus {
             // Ensure default subscriptions are registered
             await this.ensureDefaultSubscriptions();
 
+            // Evaluate Automation Kill Switch
+            try {
+                const { AutomationKillSwitchService } = await import('./AutomationKillSwitchService.js');
+                const ksCheck = await AutomationKillSwitchService.evaluateKillSwitch({
+                    workflowId: event.eventType,
+                    tenantId: event.tenantId || 'GLOBAL',
+                    agentId: event.payload?.agentId || event.source,
+                    actorId: event.payload?.actorId,
+                    eventId: event.eventId
+                });
+                if (ksCheck.blocked) {
+                    console.warn(`[EventBus] Dispatch for event ${event.eventId} (${event.eventType}) BLOCKED by Kill Switch: ${ksCheck.reason}`);
+                    return;
+                }
+            } catch (ksErr: any) {
+                console.warn('[EventBus] Fail-Closed Kill Switch check triggered:', ksErr.message);
+                return;
+            }
+
             // Fetch all active event subscriptions
             const subSnap = await db.collection('event_subscriptions')
                 .where('enabled', '==', true)
@@ -173,6 +196,30 @@ export class EventBus {
                 } catch (err) {
                     console.error(`[EventBus] Failed to dispatch event to subscriber ${sub.subscriber}:`, err);
                 }
+            }
+
+            // Safe, failure-isolated dispatch to n8n Orchestration Layer
+            try {
+                const { n8nService } = await import('./n8nService.js');
+                n8nService.triggerWorkflow({
+                    workflowName: event.eventType,
+                    eventId: event.eventId,
+                    eventType: event.eventType,
+                    traceId: event.traceId,
+                    tenantId: event.tenantId || 'GLOBAL',
+                    source: event.source || 'EVENT_BUS',
+                    actorId: event.payload?.actorId || 'SYSTEM',
+                    timestamp: event.publishedAt || new Date().toISOString(),
+                    candidateId: event.payload?.candidateId || event.payload?.id,
+                    requirementId: event.payload?.requirementId,
+                    payload: event.payload
+                }).then(res => {
+                    console.log(`[EventBus] n8n trigger for ${event.eventType} completed with status: ${res.status}`);
+                }).catch(err => {
+                    console.warn(`[EventBus] n8n trigger isolated error warning: ${err.message}`);
+                });
+            } catch (n8nErr: any) {
+                console.warn('[EventBus] Failed to invoke n8nService trigger (isolated):', n8nErr.message);
             }
         } catch (error) {
             console.error('[EventBus] Error in publishInternal router:', error);

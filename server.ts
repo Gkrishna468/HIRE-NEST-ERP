@@ -48,10 +48,14 @@ import integrationsHandler from './src/api-lib/handlers/integrations';
 import copilotHandler from './src/api-lib/handlers/copilot';
 import automationEventsHandler from './src/api-lib/handlers/automation-events';
 import candidateScreenHandler from './src/api-lib/handlers/candidate-screen';
+import communicationHandler from './src/api-lib/handlers/communication';
+import killSwitchHandler from './src/api-lib/handlers/kill-switch';
 
 import analyticsHandler from './src/api-lib/handlers/analytics';
 import opsHandler from './src/api-lib/handlers/ops';
+import recruiterOsHandler from './src/api-lib/handlers/recruiter-os';
 import searchCandidatesHandler from './src/api-lib/handlers/search-candidates';
+import executiveMetricsHandler from './src/api-lib/handlers/executive-metrics';
 import billingHandler from './src/api-lib/handlers/billing';
 import aiGatewayHandler from './src/api-lib/handlers/ai-gateway';
 import agentsExecuteHandler from './src/api-lib/handlers/agents-execute';
@@ -82,6 +86,7 @@ async function createServer() {
 
   // --- Health Endpoints ---
   app.get('/health', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
+  app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
   app.get('/health/ai', async (req, res) => {
       const aiHealthHandler = (await import('./src/api-lib/handlers/ai-health')).default;
       return await aiHealthHandler(req, res);
@@ -316,6 +321,10 @@ hirenest_active_requests 0
   app.use('/api/events', eventsHandler);
   app.use('/api/google', googleProxyHandler);
   app.use('/api/ruflo', rufloHandler);
+  app.use('/api/communication', communicationHandler);
+  app.use('/api/kill-switch', killSwitchHandler);
+  app.use('/api/recruiter-os', recruiterOsHandler);
+  app.use('/api/executive-metrics', executiveMetricsHandler);
 
   // OpenAI-Compatible API Gateway routes
   app.use('/v1', aiLimiter, openAIRouter);
@@ -452,6 +461,22 @@ hirenest_active_requests 0
         case 'candidates/screen':
         case 'candidate-screen':
           return await candidateScreenHandler(req, res);
+
+        case 'communication':
+        case 'communication/evaluate':
+        case 'communication/send':
+        case 'communication/consent':
+        case 'communication/audit':
+          return await communicationHandler(req, res);
+
+        case 'kill-switch':
+        case 'kill-switch/activate':
+        case 'kill-switch/deactivate':
+        case 'kill-switch/clear-all':
+        case 'kill-switch/evaluate':
+        case 'kill-switch/list':
+        case 'kill-switch/audit':
+          return await killSwitchHandler(req, res);
           
         case 'copilot':
           return await copilotHandler(req, res);

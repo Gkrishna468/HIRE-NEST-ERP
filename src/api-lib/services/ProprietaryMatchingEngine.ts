@@ -43,7 +43,9 @@ export class ProprietaryMatchingEngine {
 
     // 2. Layer 2: Semantic Scoring (AI-powered alignment)
     const semScoreResult = await this.calculateSemanticScore(candidate, requirement);
-    const semScore = semScoreResult.score;
+    const semScore = (semScoreResult && typeof semScoreResult.score === 'number' && !isNaN(semScoreResult.score))
+      ? semScoreResult.score
+      : 70;
 
     // 3. Layer 3: Business Rule Scoring (Contextual parameters)
     const bizScore = await this.calculateBusinessScore(candidate, requirement, orgId);
@@ -173,8 +175,8 @@ export class ProprietaryMatchingEngine {
       schema: true
     });
 
-    if (response.outcome === 'failed') {
-      return { score: 70, reasoning: "Fallback semantic match applied." };
+    if (response.outcome === 'failed' || !response.data || typeof response.data.score !== 'number') {
+      return { score: 70, reasoning: response.data?.summary || "Fallback semantic match applied." };
     }
 
     return response.data;
