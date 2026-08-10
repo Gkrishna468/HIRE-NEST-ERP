@@ -8,8 +8,14 @@ export interface MatchResult {
   deterministicScore: number;
   semanticScore: number;
   businessScore: number;
+  tier: "STRONG_MATCH" | "GOOD_MATCH" | "PARTIAL_MATCH" | "WEAK_MATCH";
   reasoning: string;
   suggestedAction: string;
+  matchedSkills?: string[];
+  missingMandatorySkills?: string[];
+  missingPreferredSkills?: string[];
+  experienceGaps?: string[];
+  riskFlags?: string[];
 }
 
 export class ProprietaryMatchingEngine {
@@ -42,9 +48,40 @@ export class ProprietaryMatchingEngine {
     // 3. Layer 3: Business Rule Scoring (Contextual parameters)
     const bizScore = await this.calculateBusinessScore(candidate, requirement, orgId);
 
+    // Hard Gate Evaluation: Mandatory Skills & Experience Gaps
+    const mustHaveSkills: string[] = requirement.mustHaveSkills || requirement.mandatorySkills || [];
+    const goodToHaveSkills: string[] = requirement.goodToHaveSkills || requirement.preferredSkills || [];
+    const candSkillsLower = (candidate.skills || []).map((s: string) => s.toLowerCase());
+
+    const matchedSkills = (requirement.skills || mustHaveSkills).filter((s: string) => candSkillsLower.includes(s.toLowerCase()));
+    const missingMandatorySkills = mustHaveSkills.filter((s: string) => !candSkillsLower.includes(s.toLowerCase()));
+    const missingPreferredSkills = goodToHaveSkills.filter((s: string) => !candSkillsLower.includes(s.toLowerCase()));
+
+    const reqExp = requirement.experienceYears || requirement.minExp || 0;
+    const candExp = candidate.experienceYears || candidate.totalExperienceYears || 0;
+    const experienceGaps: string[] = [];
+    if (reqExp > 0 && candExp < reqExp) {
+      experienceGaps.push(`Requires ${reqExp} yrs, candidate has ${candExp} yrs`);
+    }
+
+    const riskFlags: string[] = [];
+    if (missingMandatorySkills.length > 0) {
+      riskFlags.push(`Missing mandatory skills: ${missingMandatorySkills.join(', ')}`);
+    }
+
     // 4. Layer 4: Composite Calculation (Proprietary weighting)
     // Weighting: 40% Semantic, 40% Deterministic, 20% Business
-    const compositeScore = Math.round((semScore * 0.4) + (detScore * 0.4) + (bizScore * 0.2));
+    let compositeScore = Math.round((semScore * 0.4) + (detScore * 0.4) + (bizScore * 0.2));
+
+    // HARD GATE: Missing mandatory skills block STRONG_MATCH (capped to max 69)
+    if (missingMandatorySkills.length > 0) {
+      compositeScore = Math.min(69, compositeScore);
+    }
+
+    let tier: "STRONG_MATCH" | "GOOD_MATCH" | "PARTIAL_MATCH" | "WEAK_MATCH" = "WEAK_MATCH";
+    if (compositeScore >= 85) tier = "STRONG_MATCH";
+    else if (compositeScore >= 70) tier = "GOOD_MATCH";
+    else if (compositeScore >= 50) tier = "PARTIAL_MATCH";
 
     return {
       candidateId,
@@ -53,8 +90,14 @@ export class ProprietaryMatchingEngine {
       deterministicScore: detScore,
       semanticScore: semScore,
       businessScore: bizScore,
-      reasoning: semScoreResult.reasoning,
-      suggestedAction: compositeScore >= 85 ? "SUBMIT_IMMEDIATELY" : compositeScore >= 70 ? "RECRUITER_REVIEW" : "AUTO_ARCHIVE"
+      tier,
+      reasoning: semScoreResult.reasoning || "Evaluated via 3-Layer Matching Engine with Hard Gates",
+      suggestedAction: compositeScore >= 85 ? "SUBMIT_IMMEDIATELY" : compositeScore >= 70 ? "RECRUITER_REVIEW" : "AUTO_ARCHIVE",
+      matchedSkills,
+      missingMandatorySkills,
+      missingPreferredSkills,
+      experienceGaps,
+      riskFlags
     };
   }
 

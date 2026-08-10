@@ -1,6 +1,5 @@
 import { adminDb } from "../../lib/firebase-admin.js";
-import { AIRuntime } from "../services/AIRuntime.js";
-import { getScopedCandidateUniverse } from "../utils/governance.js";
+import { MatchingOffice } from "../services/MatchingOffice.js";
 
 export async function runMatchIntelligenceEngine(
   reqId?: string,
@@ -9,220 +8,39 @@ export async function runMatchIntelligenceEngine(
 ) {
   if (!adminDb) return 0;
 
-  // We fetch requirements. If reqId is provided, we fetch only that one.
-  let requirements: any[] = [];
   if (reqId) {
-    const docRef = await adminDb
-      .collection("requirements_public")
-      .doc(reqId)
-      .get();
-    if (docRef.exists) {
-      requirements = [{ id: docRef.id, ...docRef.data() }];
-
-      // Delete old matches for this requirement since we are refreshing
-      const oldMatches = await adminDb
-        .collection("candidate_matches")
-        .where("requirementId", "==", reqId)
-        .get();
-      for (const doc of oldMatches.docs) {
-        await doc.ref.delete();
-      }
-    } else {
-      throw new Error("Requirement not found");
-    }
-  } else {
-    // Global rescan (currently discouraged but supported)
-    const reqsSnapshot = await adminDb.collection("requirements_public").get();
-    requirements = reqsSnapshot.docs.map((d: any) => ({
-      id: d.id,
-      ...d.data(),
-    }));
-  }
-
-  // Fetch all candidates (System Task context requires global fetch to generate all opportunities)
-  const activeCandidates = await adminDb.collection("candidatePool").get();
-
-  const candidates = activeCandidates.docs.map((d: any) => ({
-    id: d.id,
-    ...d.data(),
-  }));
-
-  // Fetch all submissions to know who is already submitted
-  const subsSnapshot = await adminDb.collection("submissions").get();
-  const submissions = subsSnapshot.docs.map((d: any) => d.data());
-
-  let matchUpdatesCount = 0;
-
-  for (const cand of candidates) {
-    // 3. Auto-remove/exclude archived, deleted, or blacklisted candidates
-    const isArchived = cand.status === "archived" || cand.isArchived;
-    const isDeleted =
-      cand.status === "deleted" ||
-      cand.status === "DELETED" ||
-      cand.isDeleted ||
-      cand.isActive === false ||
-      cand.active === false;
-    const isBlacklisted = cand.status === "blacklisted" || cand.isBlacklisted;
-
-    if (isArchived || isDeleted || isBlacklisted) {
-      continue;
-    }
-
-    for (const reqObj of requirements) {
-      // Exclude if already submitted
-      const alreadySubmitted = submissions.find(
-        (s: any) => s.requirementId === reqObj.id && s.candidateId === cand.id,
-      );
-      if (alreadySubmitted) continue;
-
-      // Create Summaries for AI
-      const jdSummary = `Title: ${reqObj.title}
-Role: ${reqObj.role || "N/A"}
-Org: ${reqObj.clientId || reqObj.orgId || "N/A"}
-Must Have Skills: ${(reqObj.mustHaveSkills || []).join(", ")}
-Good To Have Skills: ${(reqObj.goodToHaveSkills || []).join(", ")}
-Description: ${reqObj.description || "N/A"}
-Experience: ${reqObj.experience || reqObj.yearsOfExperience || "N/A"}`;
-
-      const candidateSummary = `Name: ${cand.name || "N/A"}
-Title: ${cand.title || cand.role || "N/A"}
-Vendor: ${cand.vendorId || cand.orgId || "N/A"}
-Skills: ${(cand.skills || []).join(", ")}
-Experience: ${reqObj.experience || reqObj.yearsOfExperience || "N/A"}`;
-
-      const { calculateMatchScore } = await import('../../lib/workflows/match-engine.js');
-      const mScore = calculateMatchScore(cand, reqObj);
-
-      try {
-        if (mScore > 0) {
-          const matchResult = {
-            canonicalRequirementId: reqObj.id,
-            requirementId: reqObj.id,
-            tenantId: reqObj.tenantId || cand.tenantId || "TENANT-HQ",
-            matchScore: mScore,
-            summary: "AI Rescan Completed",
-            strengths: [],
-            missingSkills: [],
-            breakdown: {
-              skillsScore: mScore,
-              experienceScore: mScore,
-              domainScore: mScore,
-              locationScore: mScore,
-            },
-          };
-
-          const matchId = `${cand.id}_${reqObj.id}`;
-          const vendorId = cand.vendorId || cand.orgId || "UNKNOWN";
-          // Save to core collection "candidate_matches"
-          await adminDb
-            .collection("candidate_matches")
-            .doc(matchId)
-            .set({
-              ...matchResult,
-              candidateId: cand.id,
-              vendorId: vendorId,
-              orgId: cand.orgId || vendorId || "SYSTEM",
-              source: "MATCH_ENGINE_V1",
-              generatedAt: new Date().toISOString(),
-            });
-
-          // Create match opportunity
-          const vendorPerformanceScore = 85;
-          let reqAgeDays = 2;
-          if (reqObj.createdAt) {
-            const created = new Date(reqObj.createdAt);
-            reqAgeDays = Math.max(
-              1,
-              Math.floor(
-                (new Date().getTime() - created.getTime()) / (1000 * 3600 * 24),
-              ),
-            );
-          }
-          const prob = Math.round(
-            mScore * 0.5 + vendorPerformanceScore * 0.3 - reqAgeDays * 0.5,
-          );
-          const placementProbability = Math.max(5, Math.min(95, prob));
-
-          let forecastRevenue = 0;
-          if (
-            reqObj.financials &&
-            reqObj.financials.clientBilling &&
-            reqObj.financials.commissionPercent
-          ) {
-            forecastRevenue =
-              reqObj.financials.clientBilling *
-              (reqObj.financials.commissionPercent / 100);
-          }
-          const expectedRevenue = Math.round(
-            forecastRevenue * (placementProbability / 100),
-          );
-
-          const oppId = `MO-${matchId}`;
-          await adminDb
-            .collection("match_opportunities")
-            .doc(oppId)
-            .set({
-              opportunityId: oppId,
-              candidateId: cand.id,
-              requirementId: reqObj.id,
-              clientId: reqObj.clientId || "CLI-001",
-              vendorId: vendorId,
-              orgId: cand.orgId || vendorId || "SYSTEM",
-              tenantId: reqObj.tenantId || cand.tenantId || "TENANT-HQ",
-              matchScore: mScore,
-              status: "DISCOVERED",
-              forecastRevenue,
-              placementProbability,
-              expectedRevenue,
-              createdAt: new Date().toISOString(),
-            });
-
-          await adminDb
-            .collection("revenue_pipeline")
-            .doc(oppId)
-            .set({
-              opportunityId: oppId,
-              clientId: reqObj.clientId || "CLI-001",
-              requirementId: reqObj.id,
-              vendorId: vendorId,
-              orgId: cand.orgId || vendorId || "SYSTEM",
-              forecastRevenue,
-              expectedRevenue,
-              probability: placementProbability,
-              stage: "DISCOVERED",
-              owner: "SYSTEM",
-            });
-
-          matchUpdatesCount++;
-        }
-      } catch (genErr) {
-        console.error("AI Gen Error for candidate:", cand.id, genErr);
-      }
-    }
-  }
-
-  // 4. Generate requirement_match_index
-  for (const reqObj of requirements) {
-    const matchesSnap = await adminDb
+    // Delete old matches for this requirement since we are refreshing
+    const oldMatches = await adminDb
       .collection("candidate_matches")
-      .where("requirementId", "==", reqObj.id)
+      .where("requirementId", "==", reqId)
       .get();
-    let topScore = 0;
-    let totalMatches = matchesSnap.size;
-    matchesSnap.docs.forEach((doc: any) => {
-      const data = doc.data();
-      if (data.matchScore > topScore) topScore = data.matchScore;
-    });
+    for (const doc of oldMatches.docs) {
+      await doc.ref.delete();
+    }
+    
+    await MatchingOffice.matchRequirement(reqId, orgId);
 
-    await adminDb.collection("requirement_match_index").doc(reqObj.id).set({
-      requirementId: reqObj.id,
-      totalMatches: totalMatches,
-      topMatchScore: topScore,
-      lastCalculated: new Date().toISOString(),
-    });
+    const countSnap = await adminDb
+      .collection("candidate_matches")
+      .where("requirementId", "==", reqId)
+      .get();
+    return countSnap.size;
+  } else {
+    // Global rescan across open requirements
+    const reqsSnapshot = await adminDb.collection("requirements_public").get();
+    let matchUpdatesCount = 0;
+
+    for (const d of reqsSnapshot.docs) {
+      await MatchingOffice.matchRequirement(d.id, orgId);
+      const countSnap = await adminDb
+        .collection("candidate_matches")
+        .where("requirementId", "==", d.id)
+        .get();
+      matchUpdatesCount += countSnap.size;
+    }
+
+    return matchUpdatesCount;
   }
-
-  return matchUpdatesCount;
 }
 
 export default async function handler(req: any, res: any) {

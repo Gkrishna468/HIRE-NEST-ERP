@@ -46,6 +46,8 @@ import interviewsHandler from './src/api-lib/handlers/interviews';
 import submissionsHandler from './src/api-lib/handlers/submissions';
 import integrationsHandler from './src/api-lib/handlers/integrations';
 import copilotHandler from './src/api-lib/handlers/copilot';
+import automationEventsHandler from './src/api-lib/handlers/automation-events';
+import candidateScreenHandler from './src/api-lib/handlers/candidate-screen';
 
 import analyticsHandler from './src/api-lib/handlers/analytics';
 import opsHandler from './src/api-lib/handlers/ops';
@@ -442,6 +444,14 @@ hirenest_active_requests 0
 
         case 'workflows':
           return await workflowsHandler(req, res);
+
+        case 'automation/events':
+        case 'automation-events':
+          return await automationEventsHandler(req, res);
+
+        case 'candidates/screen':
+        case 'candidate-screen':
+          return await candidateScreenHandler(req, res);
           
         case 'copilot':
           return await copilotHandler(req, res);
@@ -487,7 +497,11 @@ hirenest_active_requests 0
   });
 
   // Vite integration
-  const isProd = process.env.NODE_ENV === 'production';
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  const hasDistIndex = fs.existsSync(distIndexPath);
+  const isRunningFromCjs = process.argv[1]?.endsWith('server.cjs');
+  const isProd = (isRunningFromCjs || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')))) && hasDistIndex;
+
   if (!isProd) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -511,11 +525,15 @@ hirenest_active_requests 0
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+      } else {
+        res.status(404).send('Application build not found. Please build the project.');
+      }
     });
   }
 
-  const port = 3000;
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   
   // Global Error Handler to guarantee JSON for API errors
   app.use(async (err: any, req: any, res: any, next: any) => {

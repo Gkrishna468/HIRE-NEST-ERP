@@ -1,5 +1,6 @@
 import { db } from "../firebase";
 import { collection, doc, setDoc, getDoc, query, where, getDocs, serverTimestamp, addDoc } from "firebase/firestore";
+import { adminDb } from "../firebase-admin";
 
 export interface OwnershipRecord {
   candidateId: string;
@@ -30,28 +31,33 @@ export class CandidateOwnershipEngine {
         ownerType,
         ownerId,
         ownedFrom: now.toISOString(),
-        lockUntil: lockUntil.toISOString(),
-        timestamp: serverTimestamp()
+        lockUntil: lockUntil.toISOString()
       };
 
-      // Fetch vendorName if applicable
       let vendorName = ownerId === "HQ" || ownerId === "ORG-GLOBAL-HQ" ? "HQ" : ownerId;
-      try {
-        if (ownerId && ownerId !== "HQ" && ownerId !== "ORG-GLOBAL-HQ") {
-           const { getDoc, doc } = await import("firebase/firestore");
-           const vendorSnap = await getDoc(doc(db, "organizations", ownerId));
-           if (vendorSnap.exists()) {
-             vendorName = vendorSnap.data().name || ownerId;
-           }
-        }
-      } catch (e) {
-        console.error("Failed to fetch owner name", e);
+
+      if (adminDb) {
+        await adminDb.collection("candidateOwnership").doc(`${candidateId}_${ownerId}`).set(record);
+        await adminDb.collection("operationalEvents").add({
+          entityId: candidateId,
+          type: "Ownership Established",
+          actorRole: ownerType,
+          metadata: {
+            ownerId,
+            vendorName,
+            lockUntil: record.lockUntil
+          },
+          timestamp: new Date().toISOString()
+        });
+        return { success: true, record };
       }
 
-      // Add to candidateOwnership collection
-      await setDoc(doc(db, "candidateOwnership", `${candidateId}_${ownerId}`), record);
+      // Client SDK fallback
+      await setDoc(doc(db, "candidateOwnership", `${candidateId}_${ownerId}`), {
+        ...record,
+        timestamp: serverTimestamp()
+      });
       
-      // Also write an operational event
       await addDoc(collection(db, "operationalEvents"), {
         entityId: candidateId,
         type: "Ownership Established",
@@ -72,6 +78,33 @@ export class CandidateOwnershipEngine {
   }
 
   /**
+   * Verifies if a vendor/org has valid ownership rights for a candidate
+   */
+  static async verifyOwnership(
+    candidateId: string,
+    vendorId: string
+  ): Promise<boolean> {
+    try {
+      if (adminDb) {
+        const snap = await adminDb.collection("candidateOwnership").doc(`${candidateId}_${vendorId}`).get();
+        if (!snap.exists) return false;
+        const data = snap.data();
+        if (!data?.lockUntil) return false;
+        return new Date(data.lockUntil) > new Date();
+      }
+
+      const snap = await getDoc(doc(db, "candidateOwnership", `${candidateId}_${vendorId}`));
+      if (!snap.exists()) return false;
+      const data = snap.data();
+      if (!data?.lockUntil) return false;
+      return new Date(data.lockUntil) > new Date();
+    } catch (e) {
+      console.error("Failed to verify ownership:", e);
+      return false;
+    }
+  }
+
+  /**
    * Checks if a candidate is currently locked by any OTHER vendor
    */
   static async verifyOwnershipAndCheckConflicts(
@@ -79,15 +112,43 @@ export class CandidateOwnershipEngine {
     requestingOrgId: string
   ): Promise<{ canProceed: boolean; lockedBy?: string; lockUntil?: string }> {
     try {
+      const now = new Date();
+
+      if (adminDb) {
+        const snap = await adminDb.collection("candidateOwnership")
+          .where("candidateId", "==", candidateId)
+          .get();
+
+        let lockedByOther: any = null;
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.ownerId !== requestingOrgId) {
+            const lockEnd = new Date(data.lockUntil);
+            if (lockEnd > now) {
+              lockedByOther = data;
+              break;
+            }
+          }
+        }
+
+        if (lockedByOther) {
+          return {
+            canProceed: false,
+            lockedBy: lockedByOther.ownerId,
+            lockUntil: lockedByOther.lockUntil
+          };
+        }
+        return { canProceed: true };
+      }
+
       const q = query(
         collection(db, "candidateOwnership"), 
         where("candidateId", "==", candidateId)
       );
       
       const snap = await getDocs(q);
-      const now = new Date();
       
-      let lockedByOther = null;
+      let lockedByOther: any = null;
       
       for (const d of snap.docs) {
         const data = d.data();

@@ -50,10 +50,63 @@ export default function Candidate360Modal({
   const [isMapping, setIsMapping] = useState(false);
   const [mappingResult, setMappingResult] = useState<any | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isScreening, setIsScreening] = useState(false);
+  const [geminiQuery, setGeminiQuery] = useState("");
+  const [geminiAnswer, setGeminiAnswer] = useState<string | null>(null);
+  const [isAskingGemini, setIsAskingGemini] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [fullCandidateData, setFullCandidateData] = useState<any>(null);
+
+  const handleRefreshAIAnalysis = async () => {
+    const candId = candidate.candidateId || candidate.id;
+    const resumeTxt = displayCandidate.parsedResumeText || displayCandidate.resumeText || displayCandidate.extractedText || "No resume text available";
+    setIsScreening(true);
+    try {
+      const res = await fetch('/api/candidates/screen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId: candId, resumeText: resumeTxt })
+      });
+      const data = await res.json();
+      if (data.success && data.aiIntelligence) {
+        setFullCandidateData((prev: any) => ({
+          ...(prev || {}),
+          aiIntelligence: data.aiIntelligence
+        }));
+        alert("AI Recruitment Intelligence refreshed successfully!");
+      } else {
+        alert("Screening completed: " + (data.error || "Refreshed"));
+      }
+    } catch (err: any) {
+      console.error("Refresh AI error:", err);
+      alert("Failed to refresh AI analysis: " + err.message);
+    } finally {
+      setIsScreening(false);
+    }
+  };
+
+  const handleAskGemini360 = async () => {
+    if (!geminiQuery.trim()) return;
+    setIsAskingGemini(true);
+    setGeminiAnswer(null);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `You are an AI Recruitment Copilot reviewing candidate "${nameStr}". Candidate Skills: ${(skillsArr || []).join(', ')}. Candidate Experience: ${displayCandidate.experience || 'N/A'}. Resume Text: ${(displayCandidate.parsedResumeText || displayCandidate.resumeText || '').substring(0, 1500)}. User Question: ${geminiQuery}`
+        })
+      });
+      const data = await res.json();
+      setGeminiAnswer(data.response || data.text || data.message || "Query completed.");
+    } catch (e: any) {
+      setGeminiAnswer("Error querying Gemini AI: " + e.message);
+    } finally {
+      setIsAskingGemini(false);
+    }
+  };
 
   // Merge full data so that we have resume, skills, etc.
   const displayCandidate = fullCandidateData ? { ...candidate, ...fullCandidateData } : candidate;
@@ -329,6 +382,48 @@ export default function Candidate360Modal({
              {/* AI ANALYSIS TAB (Candidate Intelligence) */}
              {activeTab === 'AI_ANALYSIS' && (
                 <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-300">
+                    {/* Action Controls Bar */}
+                    <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                       <div className="flex items-center gap-2">
+                          <Sparkles size={16} className="text-indigo-600 animate-pulse" />
+                          <span className="text-xs font-bold uppercase tracking-wider text-slate-700">AI Recruitment Intelligence Status</span>
+                          <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px]">
+                             {displayCandidate.aiIntelligence ? 'SCREENED & ENRICHED' : 'STANDARD PARSED'}
+                          </Badge>
+                       </div>
+                       <Button
+                         onClick={handleRefreshAIAnalysis}
+                         disabled={isScreening}
+                         size="sm"
+                         className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs gap-2"
+                       >
+                         {isScreening ? (
+                           <>
+                             <Activity size={14} className="animate-spin" />
+                             Screening Resume...
+                           </>
+                         ) : (
+                           <>
+                             <RotateCcw size={14} />
+                             Refresh AI Analysis
+                           </>
+                         )}
+                       </Button>
+                    </div>
+
+                    {/* AI Summary Card */}
+                    <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white p-6 rounded-xl border border-indigo-800 shadow-md relative overflow-hidden">
+                       <div className="absolute top-0 right-0 p-6 opacity-10">
+                          <Bot size={120} />
+                       </div>
+                       <h3 className="font-bold uppercase tracking-widest text-xs mb-3 text-indigo-300 flex items-center gap-2">
+                         <Bot size={16} /> AI Executive Summary
+                       </h3>
+                       <p className="text-sm text-slate-200 leading-relaxed font-normal relative z-10">
+                         {displayCandidate.aiIntelligence?.aiSummary || displayCandidate.distillationSummary || displayCandidate.aiSummary || displayCandidate.summary || "No AI profile summary generated yet. Click 'Refresh AI Analysis' above to screen this candidate's resume with Gemini AI."}
+                       </p>
+                    </div>
+
                     <div className="bg-indigo-50/50 p-8 rounded-xl border border-indigo-100/50 shadow-sm">
                        <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] mb-6 text-indigo-500 border-b border-indigo-100 pb-2 flex items-center gap-2"><Activity size={14} /> HireNest Intelligence Engine</h3>
                        
@@ -378,6 +473,72 @@ export default function Candidate360Modal({
                            <p className="text-sm text-slate-600 leading-relaxed font-medium">{displayCandidate.distillationSummary}</p>
                        </div>
                     )}
+
+                    {/* Strengths and Concerns */}
+                    {displayCandidate.aiIntelligence && (
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="bg-emerald-50/60 p-5 rounded-xl border border-emerald-100 shadow-sm">
+                               <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-2">
+                                 <CheckCircle2 size={16} /> Key Candidate Strengths
+                               </h4>
+                               <ul className="space-y-1.5 text-xs text-slate-700">
+                                   {(displayCandidate.aiIntelligence.strengths || []).map((st: string, idx: number) => (
+                                       <li key={idx} className="flex items-start gap-2">
+                                           <span className="text-emerald-500 font-bold">•</span>
+                                           <span>{st}</span>
+                                       </li>
+                                   ))}
+                               </ul>
+                           </div>
+
+                           <div className="bg-amber-50/60 p-5 rounded-xl border border-amber-100 shadow-sm">
+                               <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 mb-3 flex items-center gap-2">
+                                 <AlertTriangle size={16} /> Potential Risk / Screening Notes
+                               </h4>
+                               <ul className="space-y-1.5 text-xs text-slate-700">
+                                   {(displayCandidate.aiIntelligence.potentialConcerns || []).map((pc: string, idx: number) => (
+                                       <li key={idx} className="flex items-start gap-2">
+                                           <span className="text-amber-500 font-bold">•</span>
+                                           <span>{pc}</span>
+                                       </li>
+                                   ))}
+                               </ul>
+                           </div>
+                       </div>
+                    )}
+
+                    {/* Interactive Ask Gemini 360 Box */}
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+                       <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] text-indigo-600 flex items-center gap-2">
+                          <Bot size={14} /> Ask Gemini AI 360
+                       </h3>
+                       <p className="text-xs text-slate-500">Query Gemini AI directly regarding this candidate's career trajectory, fit for technical roles, or interview questions.</p>
+                       <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={geminiQuery}
+                            onChange={(e) => setGeminiQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAskGemini360()}
+                            placeholder="e.g. Is this candidate suitable for a Principal Systems Architect role?"
+                            className="flex-1 text-xs border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                          <Button
+                            onClick={handleAskGemini360}
+                            disabled={isAskingGemini || !geminiQuery.trim()}
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs gap-2"
+                          >
+                            {isAskingGemini ? <Activity size={14} className="animate-spin" /> : <Send size={14} />}
+                            Ask Gemini
+                          </Button>
+                       </div>
+                       {geminiAnswer && (
+                          <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 leading-relaxed font-medium">
+                             <span className="font-bold text-indigo-600 block mb-1">Gemini AI Copilot:</span>
+                             {geminiAnswer}
+                          </div>
+                       )}
+                    </div>
                 </div>
              )}
 
