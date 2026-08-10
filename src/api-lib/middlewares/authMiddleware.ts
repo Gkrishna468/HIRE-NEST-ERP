@@ -12,6 +12,9 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       req.originalUrl.startsWith('/api/public') || 
       req.originalUrl.includes('/api/workspace/gmail/webhook') || 
       req.originalUrl.includes('/api/whatsapp/webhook') ||
+      req.originalUrl.includes('/api/automation/events') ||
+      req.originalUrl.includes('/api/automation-events') ||
+      Boolean(req.headers['x-hirenest-signature']) ||
       (req.method === 'GET' && (
         cleanUrl === '/v1' || 
         cleanUrl === '/v1/models' || 

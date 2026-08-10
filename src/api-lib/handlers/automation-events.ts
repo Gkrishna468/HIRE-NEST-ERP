@@ -1,9 +1,36 @@
+import crypto from "crypto";
 import { adminDb } from "../../lib/firebase-admin.js";
 import { EventBus } from "../services/EventBus.js";
+import { MatchingOffice } from "../services/MatchingOffice.js";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method Not Allowed" });
+  }
+
+  // --- HMAC SHA256 Signature Security Check ---
+  const webhookSecret = process.env.N8N_WEBHOOK_SECRET || "IsxD4vM3BTAAphK3xlv/PWHikuARJwoc/vnTUtKpj90/iP4+tIvG229Ky4lwJtO4";
+  if (webhookSecret) {
+    const signature = req.headers["x-hirenest-signature"] || req.headers["X-HireNest-Signature"];
+    if (!signature) {
+      return res.status(401).json({
+        success: false,
+        error: "Missing required signature header: X-HireNest-Signature"
+      });
+    }
+
+    const rawPayload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const expectedSignature = crypto
+      .createHmac("sha256", webhookSecret)
+      .update(rawPayload)
+      .digest("hex");
+
+    if (signature !== expectedSignature) {
+      return res.status(403).json({
+        success: false,
+        error: "Invalid signature checksum."
+      });
+    }
   }
 
   if (!adminDb) {
@@ -12,6 +39,7 @@ export default async function handler(req: any, res: any) {
       error: "Firebase Admin Database not initialized."
     });
   }
+
 
   try {
     const {
@@ -98,6 +126,46 @@ export default async function handler(req: any, res: any) {
       source,
       tenantId
     );
+
+    // Delegate matching operations to canonical MatchingOffice
+    if (["CANDIDATE_MATCH", "MATCH_REQUESTED", "REQUIREMENT_CREATED", "REQUIREMENT_UPDATED", "CANDIDATE_CREATED", "CANDIDATE_UPDATED"].includes(eventType)) {
+      try {
+        await MatchingOffice.handleEvent(eventType, cleanedPayload, tenantId);
+      } catch (matchErr) {
+        console.warn("[AutomationEventAPI] MatchingOffice event execution warning:", matchErr);
+      }
+    }
+
+    // Business-level writeback to candidatePool if candidate ID is present in payload
+    const targetCandidateId = candidateId || payload.candidateId;
+    if (targetCandidateId && adminDb) {
+      try {
+        const candRef = adminDb.collection("candidatePool").doc(targetCandidateId);
+        const candSnap = await candRef.get();
+        if (candSnap.exists) {
+          const existingData = candSnap.data() || {};
+          const screeningData = payload.screeningResult || payload.aiSummary || payload.summary || payload.analysis;
+          const score = payload.matchScore || payload.score || payload.rating;
+          const skills = payload.skills || payload.skillsExtracted || [];
+
+          await candRef.set({
+            aiIntelligence: {
+              ...(existingData.aiIntelligence || {}),
+              summary: screeningData || existingData.aiIntelligence?.summary || "Screened via n8n AI workflow",
+              score: score ?? existingData.aiIntelligence?.score ?? 85,
+              skillsExtracted: Array.isArray(skills) && skills.length > 0 ? skills : (existingData.aiIntelligence?.skillsExtracted || []),
+              screenedAt: new Date().toISOString(),
+              screeningSource: "n8n_resume_screening",
+              status: "SCREENED"
+            },
+            status: "SCREENED",
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        }
+      } catch (writebackErr) {
+        console.warn("[AutomationEventAPI] Writeback to candidatePool warning:", writebackErr);
+      }
+    }
 
     // Update execution status to COMPLETED
     await executionRef.update({

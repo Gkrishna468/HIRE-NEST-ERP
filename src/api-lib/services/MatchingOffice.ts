@@ -19,7 +19,15 @@ export class MatchingOffice {
                 case 'REQUIREMENT_CREATED':
                 case 'REQUIREMENT_UPDATED': {
                     const reqId = payload.requirementId || payload.id;
-                    if (reqId) {
+                    const candId = payload.candidateId;
+                    if (reqId && candId) {
+                        const reqDoc = await db.collection("requirements_public").doc(reqId).get();
+                        const candDoc = await db.collection("candidatePool").doc(candId).get();
+                        if (reqDoc.exists && candDoc.exists) {
+                            await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
+                            await this.updateRequirementMatchIndex(reqId);
+                        }
+                    } else if (reqId) {
                         await this.matchRequirement(reqId, orgId);
                     }
                     break;
@@ -29,6 +37,25 @@ export class MatchingOffice {
                 case 'CANDIDATE_UPDATED': {
                     const candId = payload.candidateId || payload.id;
                     if (candId) {
+                        await this.matchCandidate(candId, orgId);
+                    }
+                    break;
+                }
+
+                case 'CANDIDATE_MATCH':
+                case 'MATCH_REQUESTED': {
+                    const reqId = payload.requirementId || payload.id;
+                    const candId = payload.candidateId;
+                    if (reqId && candId) {
+                        const reqDoc = await db.collection("requirements_public").doc(reqId).get();
+                        const candDoc = await db.collection("candidatePool").doc(candId).get();
+                        if (reqDoc.exists && candDoc.exists) {
+                            await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
+                            await this.updateRequirementMatchIndex(reqId);
+                        }
+                    } else if (reqId) {
+                        await this.matchRequirement(reqId, orgId);
+                    } else if (candId) {
                         await this.matchCandidate(candId, orgId);
                     }
                     break;
