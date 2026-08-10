@@ -557,21 +557,8 @@ export default function JobsTab() {
 
           if (userDoc.exists()) {
             const data = userDoc.data();
-            role = data.role;
-            userOrgId = data.organizationId;
-          }
-
-          // Apply super admin logic
-          const superAdmins = [
-            "gopal@hirenestworkforce.com",
-            "gopalkrishna0046@gmail.com",
-          ];
-          if (
-            auth.currentUser.email &&
-            superAdmins.includes(auth.currentUser.email.toLowerCase())
-          ) {
-            role = "super_admin";
-            userOrgId = "ORG-GLOBAL-HQ";
+            role = data.role || "user";
+            userOrgId = data.organizationId || "";
           }
 
           if (!userDoc.exists() && role === "user") {

@@ -28,24 +28,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
       if (u) {
         try {
           let data = await ServiceProvider.identityService.getUserProfile(u.uid) || {};
-          
-          const superAdmins = [
-            "gopal@hirenestworkforce.com",
-            "gopalkrishna0046@gmail.com",
-          ];
-          if (u.email && superAdmins.includes(u.email.toLowerCase())) {
-            data.role = "super_admin";
-            data.organizationId = "ORG-GLOBAL-HQ";
-            data.status = "ACTIVE";
-            data.onboardingCompleted = true;
-
-            // One-time cleanup script
-            try {
-              await ServiceProvider.identityService.executeAdminCleanup("roger1@mapoutinc.com");
-            } catch (cleanupErr) {
-              console.warn("Admin cleanup skipped/failed:", cleanupErr);
-            }
-          }
 
           const hasSeenDemo = data.hasSeenDemo;
           const pilotMode = data.pilotMode || false;

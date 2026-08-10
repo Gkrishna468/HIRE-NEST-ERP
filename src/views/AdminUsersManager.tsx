@@ -49,9 +49,9 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
     return roles.find(ro => ro.value === r)?.label || r;
   };
 
-  const VerificationBadge = ({ verification, email }: { verification: any, role: string, email: string }) => {
+  const VerificationBadge = ({ verification, role, email }: { verification: any, role: string, email: string }) => {
     const trustScore = verification?.trustScore || 0;
-    const isGlobalHQ = ['gopal@hirenestworkforce.com', 'gopalkrishna0046@gmail.com'].includes(email?.toLowerCase());
+    const isGlobalHQ = role === 'super_admin' || role === 'hq_admin';
 
     if (isGlobalHQ) {
       return (

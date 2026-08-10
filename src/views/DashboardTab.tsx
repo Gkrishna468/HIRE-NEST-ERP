@@ -449,14 +449,6 @@ export default function DashboardTab() {
             const data = d.data();
             let finalRole = data.role || "PENDING_VERIFICATION";
             let finalOrgId = data.organizationId || "";
-            const superAdmins = [
-              "gopal@hirenestworkforce.com",
-              "gopalkrishna0046@gmail.com",
-            ];
-            if (u.email && superAdmins.includes(u.email.toLowerCase())) {
-              finalRole = "super_admin";
-              finalOrgId = "ORG-GLOBAL-HQ";
-            }
             setSession({
               user: {
                 uid: u.uid,

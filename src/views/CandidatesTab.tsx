@@ -463,21 +463,8 @@ export default function CandidatesTab() {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          orgId = userData.organizationId || "ORG-GLOBAL-HQ";
+          orgId = userData.organizationId || "";
           role = userData.role || "guest";
-        }
-
-        // Apply super admin logic
-        const superAdmins = [
-          "gopal@hirenestworkforce.com",
-          "gopalkrishna0046@gmail.com",
-        ];
-        if (
-          auth.currentUser.email &&
-          superAdmins.includes(auth.currentUser.email.toLowerCase())
-        ) {
-          role = "super_admin";
-          orgId = "ORG-GLOBAL-HQ";
         }
 
         setUserOrgId(orgId);

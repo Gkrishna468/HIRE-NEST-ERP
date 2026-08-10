@@ -1,5 +1,13 @@
-export const checkIsAdmin = (role: string, orgId?: string) => {
-  return role === "admin" || role === "super_admin" || role === "ops_admin" || role === "hq_admin" || orgId === "ORG-GLOBAL-HQ";
+export const checkIsAdmin = (role?: string | null, orgId?: string | null) => {
+  if (!role) return false;
+  const normalizedRole = role.toLowerCase().trim();
+  return (
+    normalizedRole === "admin" ||
+    normalizedRole === "super_admin" ||
+    normalizedRole === "ops_admin" ||
+    normalizedRole === "hq_admin" ||
+    orgId === "ORG-GLOBAL-HQ"
+  );
 };
 
 export const checkIsClient = (role: string) => {

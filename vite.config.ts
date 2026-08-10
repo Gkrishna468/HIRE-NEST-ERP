@@ -9,9 +9,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
-  server: { hmr: false }, resolve: {
+  server: { hmr: false }, 
+  resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'node-domexception': path.resolve(__dirname, './src/lib/domexception-shim.ts'),
     },
   },
 });

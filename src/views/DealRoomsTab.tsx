@@ -87,20 +87,8 @@ export default function DealRoomsTab() {
 
             if (userDoc.exists()) {
               const data = userDoc.data();
-              role = data.role;
-              userOrgId = data.organizationId;
-            }
-
-            const superAdmins = [
-              "gopal@hirenestworkforce.com",
-              "gopalkrishna0046@gmail.com",
-            ];
-            if (
-              user.email &&
-              superAdmins.includes(user.email.toLowerCase())
-            ) {
-              role = "super_admin";
-              userOrgId = "ORG-GLOBAL-HQ";
+              role = data.role || "user";
+              userOrgId = data.organizationId || "";
             }
 
             if (!userDoc.exists() && role === "user") {
