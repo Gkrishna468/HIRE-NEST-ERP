@@ -78,12 +78,24 @@ Attachments: ${envelope.attachments?.map((a) => a.filename).join(", ") || "None"
 
 Return strictly a JSON object: { "type": "...", "confidence": <number 0-100>, "evidence": ["..."] }`;
 
+      const fallbackRuleEngine = (text: string) => {
+          const t = text.toLowerCase();
+          if (t.includes('resume') || t.includes('candidate') || t.includes('cv attached')) {
+              return { type: "Candidate", confidence: 60, evidence: ["Rule-based: found resume/candidate keywords"] };
+          }
+          if (t.includes('requirement') || t.includes('need') || t.includes('hiring') || t.includes('budget')) {
+              return { type: "Requirement", confidence: 60, evidence: ["Rule-based: found requirement keywords"] };
+          }
+          return { type: "Unknown", confidence: 20, evidence: ["Rule-based: no match"] };
+      };
+
       const aiRes = await AIRuntime.analyze({
         prompt,
         capability: "intake.classify" as any,
         modelPreference: "fast",
         schema: true,
         compressContext: true,
+        fallbackRuleEngine,
       });
 
       if (aiRes.outcome === "success" && aiRes.data) {

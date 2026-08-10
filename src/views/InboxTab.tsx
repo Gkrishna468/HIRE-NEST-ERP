@@ -74,6 +74,42 @@ export default function InboxTab() {
       }
   };
 
+  const reprocess = async (messageId: string, forceIntent?: string) => {
+      setLoading(true);
+      setError('');
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const res = await fetch(`/api/workspace/mailos/message/${messageId}/analyze`, { 
+            method: 'POST',
+            headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: forceIntent ? JSON.stringify({ forceIntent }) : undefined
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Failed to reprocess message');
+        }
+        
+        if (selectedMessage && selectedMessage.id === messageId) {
+            // Update selected message classification
+            setSelectedMessage({
+                ...selectedMessage,
+                classification: data.result?.classification,
+                status: data.result?.status || 'PROCESSED'
+            });
+        }
+        
+        await fetchInbox();
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+  };
+
   useEffect(() => {
     fetchInbox();
   }, []);
@@ -257,8 +293,8 @@ export default function InboxTab() {
                                 </div>
                             </div>
                             <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="font-bold">
-                                    <Play size={14} className="mr-2" /> Re-Process
+                                <Button onClick={() => reprocess(selectedMessage.id)} disabled={loading} variant="outline" size="sm" className="font-bold">
+                                    <Play size={14} className="mr-2" /> {loading ? "Processing..." : "Re-Process"}
                                 </Button>
                             </div>
                         </div>
@@ -329,10 +365,10 @@ export default function InboxTab() {
                                                 ))
                                             ) : (
                                                 <>
-                                                    <Button variant="outline" size="sm" className="w-full justify-start text-xs font-bold">
+                                                    <Button onClick={() => reprocess(selectedMessage.id, 'Requirement')} disabled={loading} variant="outline" size="sm" className="w-full justify-start text-xs font-bold">
                                                         <Plus size={14} className="mr-2 text-emerald-600" /> Create Requirement
                                                     </Button>
-                                                    <Button variant="outline" size="sm" className="w-full justify-start text-xs font-bold">
+                                                    <Button onClick={() => reprocess(selectedMessage.id, 'Candidate')} disabled={loading} variant="outline" size="sm" className="w-full justify-start text-xs font-bold">
                                                         <Plus size={14} className="mr-2 text-blue-600" /> Create Candidate
                                                     </Button>
                                                 </>

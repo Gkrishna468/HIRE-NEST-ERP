@@ -134,6 +134,7 @@ export class MailOSService {
                 // 2. Publish EMAIL_RECEIVED event to EventBus to trigger AI Workforce IntakeOffice
                 EventBus.publish("EMAIL_RECEIVED", {
                     messageId: msg.id,
+                    uid,
                     subject,
                     from,
                     to,
@@ -548,7 +549,7 @@ export class MailOSService {
         return node.id;
     }
 
-    static async analyzeMessage(uid: string, orgId: string, messageId: string) {
+    static async analyzeMessage(uid: string, orgId: string, messageId: string, forceIntent?: string) {
         if (!db) throw new Error("Database not initialized");
 
         const messageDoc = await db.collection('mail_messages').doc(messageId).get();
@@ -561,8 +562,8 @@ export class MailOSService {
         let status = data.status || 'RECEIVED';
         const gmailThreadId = data.gmailThreadId || '';
 
-        // Perform on-demand classification if not yet processed
-        if (status === 'RECEIVED' || status === 'FAILED' || !classification || !classification.type) {
+        // Perform on-demand classification if not yet processed or if forced
+        if (forceIntent || status === 'RECEIVED' || status === 'PENDING_INTAKE' || status === 'FAILED' || !classification || !classification.type) {
             console.log(`[MailOS] On-demand classification triggered for message ${messageId}`);
             
             const raw = data.rawPayload || {};
@@ -581,7 +582,21 @@ export class MailOSService {
             const identity = await this.resolveIdentity(orgId, senderEmail, senderName);
 
             // 2. Classify via AIRuntime with Expanded Business Rules (Refinement 5 & 11)
-            const aiClass = await this.classifyEmail(subject, body, from, attachments);
+            let aiClass: any;
+            if (forceIntent) {
+                aiClass = {
+                    intent: forceIntent === 'Requirement' ? 'Requirement' : 'Candidate Submission',
+                    confidence: 100,
+                    confidenceReason: "Manual override by user",
+                    summary: "Forced classification by user.",
+                    data: {},
+                    detectedDocuments: [],
+                    suggestedActions: ["Process Immediately"],
+                    memory: {}
+                };
+            } else {
+                aiClass = await this.classifyEmail(subject, body, from, attachments);
+            }
             classification = aiClass;
             entityType = aiClass.intent;
 
@@ -735,12 +750,29 @@ export class MailOSService {
 
             entityId = primaryEntityId;
             status = 'PROCESSED';
+            
+            if (entityType === 'Unknown') {
+                status = 'FAILED';
+                try {
+                    await EventBus.publish('CLASSIFICATION_FAILED', {
+                        messageId,
+                        workspaceId: orgId,
+                        source: 'MAILOS_AUTO_INTAKE',
+                        reason: 'AI returned Unknown entity type'
+                    }, 'MAILOS_SERVICE', orgId);
+                } catch (e) {
+                    console.error("[MailOS] Failed to publish CLASSIFICATION_FAILED", e);
+                }
+            }
 
             // Publish high-level business event for AI Workforce
             if (primaryEntityId) {
                 try {
                     await EventBus.publish(entityType === 'Requirement' ? 'REQUIREMENT_CREATED' : 'CANDIDATE_CREATED', {
+                        id: primaryEntityId,
                         entityId: primaryEntityId,
+                        candidateId: entityType === 'Candidate Submission' ? primaryEntityId : undefined,
+                        requirementId: entityType === 'Requirement' ? primaryEntityId : undefined,
                         type: entityType,
                         workspaceId: orgId,
                         source: 'MAILOS_AUTO_INTAKE',
@@ -929,7 +961,7 @@ export class MailOSService {
 
             // 6. Update Mail Message payload
             const updatePayload = {
-                status: 'PROCESSED',
+                status: status,
                 processingState: currentStage,
                 entityId: primaryEntityId,
                 entityType,

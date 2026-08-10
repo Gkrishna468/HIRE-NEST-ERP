@@ -34,10 +34,34 @@ export class IntakeOffice extends BaseAIOffice {
     memory: any,
   ): Promise<OfficeExecutionResult> {
     try {
+      if (event.eventType === "EMAIL_RECEIVED" && event.payload.messageId) {
+        const { MailOSService } = await import("../../services/MailOSService.js");
+        const uid = event.payload.uid || 'system';
+        const orgId = event.tenantId || event.payload.workspaceId || 'GLOBAL';
+        const result = await MailOSService.analyzeMessage(uid, orgId, event.payload.messageId);
+        
+        return {
+          success: true,
+          actionTaken: `Processed EMAIL_RECEIVED via MailOSService: ${result.id}`,
+          tokensUsed: 0,
+          model: "N/A",
+        };
+      }
+
       const source = event.eventType === "EMAIL_RECEIVED" ? "gmail" : "whatsapp";
       const result = await IntakeEngine.process(event.payload, source);
 
       // IntakeEngine currently logs internally. Let's emit the proper domain event based on classification
+      if (event.eventType === "EMAIL_RECEIVED" && event.payload.messageId) {
+        const { db } = await import("../../lib/firebase-admin.js");
+        if (db) {
+            await db.collection("mail_messages").doc(event.payload.messageId).set({
+                status: result.status === "success" ? "PROCESSED_BY_INTAKE" : "FAILED",
+                classification: result.classification || { type: "Unknown", confidence: 0 }
+            }, { merge: true });
+        }
+      }
+
       if (result.status === "success" && result.classification) {
         if (result.classification.type === "Requirement") {
            await EventBus.publishInternal({

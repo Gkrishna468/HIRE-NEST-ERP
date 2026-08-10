@@ -23,6 +23,18 @@ workspaceHandler.post("/mailos/sync", async (req, res) => {
   }
 });
 
+workspaceHandler.post("/mailos/message/:id/analyze", async (req, res) => {
+  try {
+    const workspace = await WorkspaceResolver.resolve(req);
+    const forceIntent = req.body?.forceIntent;
+    const result = await MailOSService.analyzeMessage(workspace.uid, workspace.orgId, req.params.id, forceIntent);
+    res.json({ success: true, result });
+  } catch (e: any) {
+    console.error("Analyze Message Error:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 
 workspaceHandler.get("/intake/metrics", async (req, res) => {
   try {
