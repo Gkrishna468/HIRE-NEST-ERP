@@ -35,9 +35,9 @@ export class AIRuntime {
     static async analyze(request: AIRuntimeRequest): Promise<AIRuntimeResponse> {
         const startTime = Date.now();
         try {
-            let preferredModel = "gemini-2.5-flash";
+            let preferredModel = "gemini-1.5-flash";
             if (request.modelPreference === "accurate" || request.modelPreference === "large_context") {
-                preferredModel = "gemini-2.5-pro";
+                preferredModel = "gemini-3.1-pro-preview";
             }
 
             const gatewayRes = await AIGateway.processChat({

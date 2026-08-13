@@ -12,6 +12,12 @@ import '../agents/MatchingAgent/index';
 import '../agents/VendorManagerAgent/index';
 import '../agents/BDMAgent/index';
 import '../agents/ExecutiveDashboardAgent/index';
+import '../agents/RecruitmentAgentTeam';
+import '../agents/AccountIntelligenceAgent';
+import '../agents/AICOOExceptionEngine';
+
+import { GovernanceExecutionGate } from './GovernanceExecutionGate';
+import { AgentExecutionLedger } from './AgentExecutionLedger';
 
 export class AgentOrchestrator {
   /**
@@ -162,24 +168,101 @@ export class AgentOrchestrator {
     try {
       console.log(`[Orchestrator] Selected Agent: ${agent.metadata.name} (${agent.metadata.id})`);
       
-      // 2. Build Context: Load and inject memory
+      // 2. Evaluate Governance Execution Gate
+      const governanceDecision = await GovernanceExecutionGate.evaluateAction(
+        agent.metadata,
+        agent.metadata.tools[0] || 'default_tool',
+        `EXECUTE_${agent.metadata.domain || 'SYSTEM'}`,
+        { prompt },
+        {
+          userId: context.userId,
+          role: context.role,
+          permissions: context.permissions
+        }
+      );
+
+      if (!governanceDecision.allowed && governanceDecision.decision === 'BLOCKED') {
+        const failureResult = AgentResultHelper.failure(
+          targetAgentId,
+          `Governance Execution Gate Blocked: ${governanceDecision.reason}`,
+          Date.now() - startTime
+        );
+
+        await AgentExecutionLedger.recordExecution({
+          agentId: agent.metadata.id,
+          agentVersion: agent.metadata.version || '1.0.0',
+          trigger: 'USER_PROMPT',
+          actor: context.userId || 'anonymous',
+          inputContext: { promptPreview: prompt.substring(0, 100) },
+          toolsCalled: agent.metadata.tools || [],
+          governanceDecision: 'BLOCKED',
+          governanceReason: governanceDecision.reason,
+          approvalRequired: governanceDecision.approvalRequired,
+          approvalStatus: 'NOT_APPLICABLE',
+          error: governanceDecision.reason,
+          latencyMs: Date.now() - startTime
+        });
+
+        return failureResult;
+      }
+
+      // 3. Build Context: Load and inject memory
       const memory = await AgentExecutionContextHelper.loadMemory(agent.metadata.id);
       const executionContext: AgentExecutionContext = {
         ...context,
         memory
       };
 
-      // 3. Execute Agent Loop
+      // 4. Execute Agent Loop
       const result = await agent.execute(prompt, executionContext);
-      
+      const durationMs = Date.now() - startTime;
+
+      // 5. Log Auditable Record to Agent Execution Ledger
+      await AgentExecutionLedger.recordExecution({
+        agentId: agent.metadata.id,
+        agentVersion: agent.metadata.version || '1.0.0',
+        trigger: 'USER_PROMPT',
+        actor: context.userId || 'anonymous',
+        inputContext: { promptPreview: prompt.substring(0, 100) },
+        toolsCalled: agent.metadata.tools || [],
+        recommendation: typeof result.parsedData === 'string' ? result.parsedData : JSON.stringify(result.parsedData || {}),
+        confidence: 0.95,
+        governanceDecision: governanceDecision.decision,
+        governanceReason: governanceDecision.reason,
+        approvalRequired: governanceDecision.approvalRequired,
+        approvalStatus: governanceDecision.approvalRequired ? 'PENDING' : 'APPROVED',
+        action: `EXECUTE_${agent.metadata.domain || 'SYSTEM'}`,
+        result: result.success ? 'SUCCESS' : 'FAILURE',
+        error: result.error,
+        model: result.metrics?.model || agent.metadata.modelPolicy?.primary || 'gemini-3.6-flash',
+        latencyMs: durationMs,
+        tokenUsage: result.metrics?.tokensUsed || 0
+      });
+
       return result;
     } catch (e: any) {
       const durationMs = Date.now() - startTime;
-      return AgentResultHelper.failure(
+      const failureResult = AgentResultHelper.failure(
         targetAgentId,
         `Orchestrator execution error: ${e.message || String(e)}`,
         durationMs
       );
+
+      await AgentExecutionLedger.recordExecution({
+        agentId: targetAgentId,
+        agentVersion: '1.0.0',
+        trigger: 'USER_PROMPT',
+        actor: context.userId || 'anonymous',
+        inputContext: { promptPreview: prompt.substring(0, 100) },
+        toolsCalled: [],
+        governanceDecision: 'BLOCKED',
+        approvalRequired: false,
+        approvalStatus: 'NOT_APPLICABLE',
+        error: e.message || String(e),
+        latencyMs: durationMs
+      });
+
+      return failureResult;
     }
   }
 }

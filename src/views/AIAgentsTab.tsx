@@ -1348,7 +1348,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
                                           const priority = agent.metadata?.priority || (agent.id.includes('founder') || agent.id.includes('sec') ? 'Critical' : agent.id.includes('recruitment') || agent.id.includes('client') ? 'High' : 'Medium');
                                           const status = agent.metadata?.status || 'Production';
                                           const temperature = agent.metadata?.runtimeConfig?.temperature ?? 0.2;
-                                          const modelRouter = agent.metadata?.runtimeConfig?.modelRouter || agent.metadata?.preferredCapability || 'gemini-1.5-pro';
+                                          const modelRouter = agent.metadata?.runtimeConfig?.modelRouter || agent.metadata?.preferredCapability || 'gemini-3.1-pro-preview';
 
                                           return (
                                               <div key={agent.id} className="bg-slate-950 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4 hover:border-slate-700 transition-colors">

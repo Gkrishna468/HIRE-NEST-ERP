@@ -13,10 +13,12 @@ import {
   BarChart2,
   Clock,
   ShieldAlert,
-  ArrowRight
+  ArrowRight,
+  Bot
 } from "lucide-react";
 import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
+import { useDailyBriefing } from "../../hooks/useDailyBriefing";
 
 interface MetricsData {
   revenue: {
@@ -54,6 +56,7 @@ export default function ExecutiveDashboardWorkspace({
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { briefing, loading: briefingLoading } = useDailyBriefing(orgId);
 
   useEffect(() => {
     const fetchMetrics = async () => {
@@ -66,13 +69,19 @@ export default function ExecutiveDashboardWorkspace({
           }
         });
         
-        if (!res.ok) throw new Error("Failed to load executive intelligence");
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch (e) {
+          throw new Error(`Invalid server response (${res.status})`);
+        }
         
-        const json = await res.json();
-        if (json.success && json.data) {
+        if (!res.ok) throw new Error(json?.error || `Failed to load executive intelligence (${res.status})`);
+        
+        if (json && json.success && json.data) {
           setMetrics(json.data);
         } else {
-          throw new Error(json.error || "Invalid response format");
+          throw new Error(json?.error || "Invalid response format from metrics API");
         }
       } catch (err: any) {
         console.error("Dashboard fetch error:", err);
@@ -145,6 +154,49 @@ export default function ExecutiveDashboardWorkspace({
 
       <div className="flex-1 p-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-6">
+
+          {/* AI Executive Briefing */}
+          <div className="bg-slate-900/50 border border-slate-800/50 rounded-xl p-6 relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+             <div className="flex items-center gap-3 mb-4">
+                <div className="bg-indigo-500/10 p-2 rounded-lg border border-indigo-500/20">
+                   <Bot size={20} className="text-indigo-400" />
+                </div>
+                <div>
+                   <h3 className="text-white font-semibold flex items-center gap-2">AI COO Morning Briefing</h3>
+                   <p className="text-slate-400 text-xs font-mono">Generated from {metrics.pipeline.totalCandidates} unified records</p>
+                </div>
+             </div>
+             <div className="relative z-10 text-sm text-slate-300">
+                {briefingLoading ? (
+                   <div className="animate-pulse space-y-2">
+                      <div className="h-4 bg-slate-800 rounded w-full"></div>
+                      <div className="h-4 bg-slate-800 rounded w-2/3"></div>
+                   </div>
+                ) : briefing ? (
+                   <>
+                      <p className="leading-relaxed mb-4 text-[13px]">{briefing.briefing}</p>
+                      {briefing.actionItems && briefing.actionItems.length > 0 && (
+                         <div className="bg-slate-950/50 rounded-lg p-4 border border-slate-800/80">
+                            <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest block mb-3">Priority Action Items</span>
+                            <div className="space-y-2">
+                               {briefing.actionItems.map((item: any) => (
+                                  <div key={item.id} className="flex items-start gap-2 text-xs">
+                                     <ArrowRight size={14} className="text-indigo-400 shrink-0 mt-0.5" />
+                                     <span className="text-slate-300">{item.title}</span>
+                                  </div>
+                               ))}
+                            </div>
+                         </div>
+                      )}
+                   </>
+                ) : (
+                   <p className="leading-relaxed text-[13px]">
+                      The AI COO is analyzing system-wide logs to generate your morning briefing. Operations are running normally.
+                   </p>
+                )}
+             </div>
+          </div>
           
           {/* KPI Strip - Revenue & High Level */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

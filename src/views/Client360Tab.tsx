@@ -478,7 +478,7 @@ export default function Client360Tab({ userRole }: { userRole: string }) {
                   </div>
                   <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
                     <span className="text-slate-500 font-medium">Active LLM Model</span>
-                    <span className="text-slate-900 font-bold font-mono text-xs">gemini-2.5-flash</span>
+                    <span className="text-slate-900 font-bold font-mono text-xs">gemini-1.5-flash</span>
                   </div>
                   <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-2">
                     <span className="text-slate-500 font-medium">Model Fallback Channel</span>

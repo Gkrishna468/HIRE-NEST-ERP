@@ -54,7 +54,7 @@ export class MatchingOffice extends BaseAIOffice {
       success: true,
       actionTaken: "Processed Match",
       tokensUsed: 1500,
-      model: "gemini-1.5-flash",
+      model: "gemini-3.6-flash",
     };
   }
 }

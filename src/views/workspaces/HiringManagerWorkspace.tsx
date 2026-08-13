@@ -29,6 +29,7 @@ import { ProgressTracker } from "../../components/ProgressTracker";
 import { ActivityFeed } from "../../components/ActivityFeed";
 import { auth, db } from "../../lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { useDailyBriefing } from "../../hooks/useDailyBriefing";
 
 export default function HiringManagerWorkspace({
   userName,
@@ -40,6 +41,7 @@ export default function HiringManagerWorkspace({
   metrics?: any;
 }) {
   const [interviews, setInterviews] = useState<any[]>([]);
+  const { briefing, loading: briefingLoading } = useDailyBriefing(orgId);
 
   useEffect(() => {
     let active = true;
@@ -360,12 +362,35 @@ export default function HiringManagerWorkspace({
                       <Zap size={14} /> AI Daily Briefing
                     </h3>
                     <div className="space-y-3 relative z-10 text-sm text-slate-200">
-                       <p className="leading-relaxed">
-                          Welcome! Today, we verified <strong className="text-white">12 new submissions</strong>. 
-                       </p>
-                       <p className="leading-relaxed">
-                          Your active pipelines are running extremely healthy, with an average time-to-hire of <strong className="text-emerald-400">12 Days</strong>. No SLA blocks are active.
-                       </p>
+                       {briefingLoading ? (
+                         <div className="animate-pulse flex flex-col gap-2">
+                           <div className="h-4 bg-slate-700 rounded w-full"></div>
+                           <div className="h-4 bg-slate-700 rounded w-5/6"></div>
+                         </div>
+                       ) : briefing ? (
+                         <>
+                           <p className="leading-relaxed">
+                              {briefing.briefing}
+                           </p>
+                           {briefing.actionItems && briefing.actionItems.length > 0 && (
+                             <div className="mt-4 pt-4 border-t border-slate-700/50">
+                               <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mb-2 block">Action Items</span>
+                               <ul className="space-y-2">
+                                 {briefing.actionItems.map((item: any) => (
+                                   <li key={item.id} className="flex items-start gap-2 text-xs">
+                                     <ArrowRight size={14} className="text-emerald-400 shrink-0 mt-0.5" />
+                                     <span>{item.title}</span>
+                                   </li>
+                                 ))}
+                               </ul>
+                             </div>
+                           )}
+                         </>
+                       ) : (
+                         <p className="leading-relaxed">
+                            Welcome! Today, we verified <strong className="text-white">12 new submissions</strong>. 
+                         </p>
+                       )}
                     </div>
                  </div>
               </div>

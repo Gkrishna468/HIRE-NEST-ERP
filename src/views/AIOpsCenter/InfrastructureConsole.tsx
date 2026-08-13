@@ -182,8 +182,8 @@ interface WebUIModel {
 }
 
 const CONNECTED_MODELS: WebUIModel[] = [
-  { id: "gemini-15-pro", name: "Gemini 1.5 Pro", provider: "Google AI", status: "CONNECTED", latencyMs: 850, costPerMillion: 1.25 },
-  { id: "gemini-15-flash", name: "Gemini 1.5 Flash", provider: "Google AI", status: "CONNECTED", latencyMs: 320, costPerMillion: 0.15 },
+  { id: "gemini-31-pro", name: "Gemini 3.1 Pro Preview", provider: "Google AI", status: "CONNECTED", latencyMs: 850, costPerMillion: 1.25 },
+  { id: "gemini-36-flash", name: "Gemini 3.6 Flash", provider: "Google AI", status: "CONNECTED", latencyMs: 320, costPerMillion: 0.15 },
   { id: "claude-35-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic", status: "CONNECTED", latencyMs: 950, costPerMillion: 3.00 },
   { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", status: "CONNECTED", latencyMs: 780, costPerMillion: 5.00 },
   { id: "llama-3-8b", name: "Llama3:8b (Ollama Local)", provider: "Local Ollama GPU", status: "CONNECTED", latencyMs: 420, costPerMillion: 0.00 },
@@ -235,7 +235,7 @@ const LANGFLOW_PIPELINES = [
     desc: "Analyzes incoming requirements, detects ownership SLA overlaps, executes semantic matching, and assigns to the optimal hybrid agent.",
     nodes: [
       { id: "node-1", label: "New Requirement Signal", type: "trigger", config: { checkPeriod: "Realtime", collection: "requirements" } },
-      { id: "node-2", label: "Requirement Intel Analyzer", type: "agent", config: { cognitivePower: "gemini-1.5-pro", extractSkills: true } },
+      { id: "node-2", label: "Requirement Intel Analyzer", type: "agent", config: { cognitivePower: "gemini-3.1-pro-preview", extractSkills: true } },
       { id: "node-3", label: "Active Bench Match Query", type: "db", config: { vectorLimit: 100, scoreThreshold: 0.82 } },
       { id: "node-4", label: "Strategic BDM Routing Rules", type: "action", config: { fallbackOwner: "Diana Prince", ruleSLA: "12 Hours" } }
     ]
@@ -321,7 +321,7 @@ export default function InfrastructureConsole() {
   // Open WebUI state
   const [models, setModels] = useState<WebUIModel[]>(CONNECTED_MODELS);
   const [testingModelId, setTestingModelId] = useState<string | null>(null);
-  const [selectedModelId, setSelectedModelId] = useState<string>("gemini-15-pro");
+  const [selectedModelId, setSelectedModelId] = useState<string>("gemini-31-pro");
   const [chatPrompt, setChatPrompt] = useState<string>("");
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string; metrics?: string }[]>([

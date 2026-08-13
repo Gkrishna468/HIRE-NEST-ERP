@@ -14,6 +14,22 @@ export type AgentRole =
   | 'compliance_officer'
   | 'executive_brief';
 
+export type AgentDomain =
+  | 'RECRUITMENT'
+  | 'CRM'
+  | 'OPERATIONS'
+  | 'COMMUNICATION'
+  | 'COMPLIANCE';
+
+export type AgentPermissionLevel = 'READ' | 'PROPOSE' | 'EXECUTE';
+
+export type AgentRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface AgentModelPolicy {
+  primary: string;
+  fallback?: string;
+}
+
 export interface AgentMetadata {
   id: string;
   name: string;
@@ -29,6 +45,16 @@ export interface AgentMetadata {
   executionMode: 'interactive' | 'background' | 'scheduled';
   preferredCapability: 'fast-chat' | 'reasoning' | 'vision' | 'long-context' | string;
   maxExecutionTimeMs: number;
+
+  // Agent Governance Control Plane Extensions
+  domain?: AgentDomain;
+  allowedTools?: string[];
+  permissionLevel?: AgentPermissionLevel;
+  requiresHumanApproval?: boolean;
+  allowedRoles?: string[];
+  maxExecutionRisk?: AgentRiskLevel;
+  modelPolicy?: AgentModelPolicy;
+  auditRequired?: boolean;
 }
 
 export interface AgentMemory {

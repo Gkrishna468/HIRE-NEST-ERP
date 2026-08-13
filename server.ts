@@ -56,6 +56,7 @@ import opsHandler from './src/api-lib/handlers/ops';
 import recruiterOsHandler from './src/api-lib/handlers/recruiter-os';
 import searchCandidatesHandler from './src/api-lib/handlers/search-candidates';
 import executiveMetricsHandler from './src/api-lib/handlers/executive-metrics';
+import dailyBriefingHandler from './src/api-lib/handlers/daily-briefing';
 import billingHandler from './src/api-lib/handlers/billing';
 import aiGatewayHandler from './src/api-lib/handlers/ai-gateway';
 import agentsExecuteHandler from './src/api-lib/handlers/agents-execute';
@@ -325,6 +326,7 @@ hirenest_active_requests 0
   app.use('/api/kill-switch', killSwitchHandler);
   app.use('/api/recruiter-os', recruiterOsHandler);
   app.use('/api/executive-metrics', executiveMetricsHandler);
+  app.use('/api/daily-briefing', dailyBriefingHandler);
 
   // OpenAI-Compatible API Gateway routes
   app.use('/v1', aiLimiter, openAIRouter);
@@ -521,45 +523,6 @@ hirenest_active_requests 0
     }
   });
 
-  // Vite integration
-  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
-  const hasDistIndex = fs.existsSync(distIndexPath);
-  const isRunningFromCjs = process.argv[1]?.endsWith('server.cjs');
-  const isProd = (isRunningFromCjs || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')))) && hasDistIndex;
-
-  if (!isProd) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'custom',
-    });
-    app.use(vite.middlewares);
-    
-    app.use('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      try {
-        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e) {
-        vite.ssrFixStacktrace(e);
-        next(e);
-      }
-    });
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      if (fs.existsSync(distIndexPath)) {
-        res.sendFile(distIndexPath);
-      } else {
-        res.status(404).send('Application build not found. Please build the project.');
-      }
-    });
-  }
-
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-  
   // Global Error Handler to guarantee JSON for API errors
   app.use(async (err: any, req: any, res: any, next: any) => {
     console.error("[Global Error Handler]", err);
@@ -580,12 +543,58 @@ hirenest_active_requests 0
     }
 
     if (!res.headersSent) {
-      if (req.path.startsWith('/api/')) {
+      if (req.originalUrl?.startsWith('/api') || req.path?.startsWith('/api')) {
          return res.status(err.status || 500).json({ success: false, error: err.message || "A server error occurred", requestId: req.requestId });
       }
       next(err);
     }
   });
+
+  // Vite integration
+  const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
+  const hasDistIndex = fs.existsSync(distIndexPath);
+  const isRunningFromCjs = process.argv[1]?.endsWith('server.cjs');
+  const isProd = (isRunningFromCjs || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')))) && hasDistIndex;
+
+  if (!isProd) {
+    const { createServer: createViteServer } = await import("vite");
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'custom',
+    });
+    app.use(vite.middlewares);
+    
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api') || req.path.startsWith('/api')) {
+        return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
+      }
+      try {
+        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api') || req.path.startsWith('/api')) {
+        return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
+      }
+      if (fs.existsSync(distIndexPath)) {
+        res.sendFile(distIndexPath);
+      } else {
+        res.status(404).send('Application build not found. Please build the project.');
+      }
+    });
+  }
+
+  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.listen(port, "0.0.0.0", () => {
     console.log(`Server running at http://localhost:${port}`);

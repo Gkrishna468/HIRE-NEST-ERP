@@ -77,7 +77,7 @@ export default function AIWorkforce({
         ...override.healthMetrics
       };
       const runtimeConfig = {
-        modelRouter: agt.model || "gemini-1.5-pro",
+        modelRouter: agt.model || "gemini-3.1-pro-preview",
         temperature: 0.2,
         maxTokens: 4096,
         ...agt.runtimeConfig,

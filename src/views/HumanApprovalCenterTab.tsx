@@ -63,7 +63,7 @@ export default function HumanApprovalCenterTab({ userRole }: { userRole: string 
             graphNodes: ['Candidate-Jane-Doe', 'Requirement-SDE-II', 'Budget-2026-Q3'],
             experiences: ['Matched candidate salary expectations', 'Background check cleared', 'Interview scorecard: 4.5/5'],
             decisionFactors: ['Market rate parity verified', 'Budget allocation confirmed', 'Team capacity bottleneck identified'],
-            telemetrySnapshot: ['LATENCY: 12ms', 'COST: $0.05', 'MODEL: gemini-2.0-flash'],
+            telemetrySnapshot: ['LATENCY: 12ms', 'COST: $0.05', 'MODEL: gemini-3.6-flash'],
             version: '2.1.0'
         }
       },

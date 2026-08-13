@@ -36,6 +36,7 @@ import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
 import { db } from "../../lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { useDailyBriefing } from "../../hooks/useDailyBriefing";
 
 type AIBriefingCategory = 'TODAY' | 'PLACEMENTS' | 'JOIN_LIKELIHOOD' | 'ATTENTION_NEEDED';
 
@@ -52,6 +53,7 @@ export default function RecruiterWorkspace({
   const [aiBriefCategory, setAiBriefCategory] = useState<AIBriefingCategory>('TODAY');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+  const { briefing, loading: briefingLoading } = useDailyBriefing(orgId);
 
   // Score stats state
   const [recruiterScore, setRecruiterScore] = useState(91);
@@ -273,14 +275,39 @@ export default function RecruiterWorkspace({
                     {aiBriefCategory === 'TODAY' && (
                       <div className="space-y-3">
                         <span className="text-[9px] font-mono font-black text-slate-500 uppercase tracking-widest block">Action Plan Overview</span>
-                        <p className="text-xs text-slate-300 leading-relaxed">
-                          Your priority today is closing the loop on <strong className="text-white">Rajesh Kumar</strong>'s technical round. 
-                        </p>
-                        <div className="space-y-1 text-[10px] text-slate-400 font-mono">
-                          <p className="flex items-center gap-1.5"><Check size={10} className="text-emerald-400" /> Prepare Vikram Malhotra for Staff DevOps round</p>
-                          <p className="flex items-center gap-1.5"><Check size={10} className="text-emerald-400" /> Trigger offer accepted engagement workflow</p>
-                          <p className="flex items-center gap-1.5"><Check size={10} className="text-indigo-400" /> Follow up with Suresh Mehra (Hiring Manager)</p>
-                        </div>
+                        {briefingLoading ? (
+                          <div className="animate-pulse flex flex-col gap-2">
+                            <div className="h-3 bg-slate-800 rounded w-full"></div>
+                            <div className="h-3 bg-slate-800 rounded w-5/6"></div>
+                          </div>
+                        ) : briefing ? (
+                          <>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                              {briefing.briefing}
+                            </p>
+                            {briefing.actionItems && briefing.actionItems.length > 0 && (
+                              <div className="space-y-1 text-[10px] text-slate-400 font-mono mt-3">
+                                {briefing.actionItems.map((item: any) => (
+                                  <p key={item.id} className="flex items-start gap-1.5">
+                                    <Check size={10} className="text-emerald-400 shrink-0 mt-0.5" /> 
+                                    <span>{item.title}</span>
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                              Your priority today is closing the loop on <strong className="text-white">Rajesh Kumar</strong>'s technical round. 
+                            </p>
+                            <div className="space-y-1 text-[10px] text-slate-400 font-mono">
+                              <p className="flex items-center gap-1.5"><Check size={10} className="text-emerald-400" /> Prepare Vikram Malhotra for Staff DevOps round</p>
+                              <p className="flex items-center gap-1.5"><Check size={10} className="text-emerald-400" /> Trigger offer accepted engagement workflow</p>
+                              <p className="flex items-center gap-1.5"><Check size={10} className="text-indigo-400" /> Follow up with Suresh Mehra (Hiring Manager)</p>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
 

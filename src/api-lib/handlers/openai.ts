@@ -9,13 +9,13 @@ router.get('/models', (req: any, res: any) => {
         object: 'list',
         data: [
             {
-                id: 'gemini-3.5-flash',
+                id: 'gemini-1.5-flash',
                 object: 'model',
                 created: 1700000000,
                 owned_by: 'google'
             },
             {
-                id: 'gemini-2.5-pro',
+                id: 'gemini-3.1-pro-preview',
                 object: 'model',
                 created: 1700000000,
                 owned_by: 'google'
@@ -97,7 +97,7 @@ router.post('/chat/completions', async (req: any, res: any) => {
         });
     }
 
-    const { model = 'gemini-3.5-flash', messages, temperature, max_tokens, stream = false } = req.body;
+    const { model = 'gemini-1.5-flash', messages, temperature, max_tokens, stream = false } = req.body;
 
     if (!messages || !Array.isArray(messages)) {
         return res.status(400).json({

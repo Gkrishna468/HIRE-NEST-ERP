@@ -1,12 +1,31 @@
 import { globalAgentRegistry } from '../../ai/orchestrator/AgentRegistry.js';
 import { aiOrchestrator } from '../../ai/orchestrator/AgentOrchestrator.js';
+import { AgentExecutionLedger } from '../../ai/orchestrator/AgentExecutionLedger.js';
+import { AgentCertificationGate } from '../../ai/orchestrator/AgentCertificationGate.js';
 
 export default async function agentsExecuteHandler(req: any, res: any) {
   const method = req.method;
 
   if (method === 'GET') {
-    // Return all declarative metadata in the registry
     try {
+      if (req.query?.ledger === 'true') {
+        const logs = await AgentExecutionLedger.getRecentExecutions({
+          agentId: req.query?.agentId as string,
+          limit: req.query?.limit ? parseInt(req.query.limit as string, 10) : 50
+        });
+        return res.json({ success: true, ledger: logs });
+      }
+
+      if (req.query?.certify) {
+        const agentId = req.query.certify as string;
+        const agent = globalAgentRegistry.getAgent(agentId);
+        if (!agent) {
+          return res.status(404).json({ success: false, error: `Agent '${agentId}' not found for certification.` });
+        }
+        const report = await AgentCertificationGate.certifyAgent(agent);
+        return res.json({ success: true, certificationReport: report });
+      }
+
       const allMetadata = globalAgentRegistry.getAllMetadata();
       return res.json({
         success: true,

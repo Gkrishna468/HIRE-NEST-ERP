@@ -30,6 +30,7 @@ import { auth, db } from "../../lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
+import { useDailyBriefing } from "../../hooks/useDailyBriefing";
 
 export default function VendorPartnerWorkspace({
   vendorName,
@@ -46,6 +47,7 @@ export default function VendorPartnerWorkspace({
   } | null>(null);
 
   const [interviews, setInterviews] = useState<any[]>([]);
+  const { briefing, loading: briefingLoading } = useDailyBriefing(orgId);
 
   useEffect(() => {
     let active = true;
@@ -393,12 +395,40 @@ export default function VendorPartnerWorkspace({
                     <span className="text-xs font-black uppercase text-indigo-300 tracking-wider">Strategic Brief</span>
                  </div>
                  <div className="space-y-3 text-xs text-slate-300">
-                    <p className="leading-relaxed">
-                       {getDynamicGreeting()}! Today you have <strong className="text-white">₹4.8L</strong> in active revenue opportunities. 
-                    </p>
-                    <p className="leading-relaxed font-mono text-[10px]">
-                       We recommend focusing on the Senior Java submissions. Response speed of enterprise client is extremely high (average 14 mins).
-                    </p>
+                    {briefingLoading ? (
+                      <div className="animate-pulse space-y-2">
+                        <div className="h-3 bg-slate-800 rounded w-full"></div>
+                        <div className="h-3 bg-slate-800 rounded w-4/5"></div>
+                      </div>
+                    ) : briefing ? (
+                      <>
+                        <p className="leading-relaxed">
+                           {briefing.briefing}
+                        </p>
+                        {briefing.actionItems && briefing.actionItems.length > 0 && (
+                          <div className="pt-2">
+                            <span className="text-[9px] font-mono uppercase tracking-widest text-indigo-400/80 mb-2 block">Focus Areas:</span>
+                            <ul className="space-y-1">
+                              {briefing.actionItems.map((item: any) => (
+                                <li key={item.id} className="flex items-start gap-1.5 text-[10px]">
+                                  <ArrowRight size={12} className="text-indigo-400 shrink-0 mt-0.5" />
+                                  <span className="text-slate-400">{item.title}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p className="leading-relaxed">
+                           {getDynamicGreeting()}! Today you have <strong className="text-white">₹4.8L</strong> in active revenue opportunities. 
+                        </p>
+                        <p className="leading-relaxed font-mono text-[10px]">
+                           We recommend focusing on the Senior Java submissions. Response speed of enterprise client is extremely high (average 14 mins).
+                        </p>
+                      </>
+                    )}
                  </div>
               </div>
 
