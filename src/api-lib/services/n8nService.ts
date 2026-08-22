@@ -102,7 +102,8 @@ export class n8nService {
         method: "POST",
         headers,
         body: bodyString,
-        signal: AbortSignal.timeout(2000)
+        // Increased timeout from 2000ms to 10000ms to prevent premature timeouts on slow/cold-starting n8n triggers
+        signal: AbortSignal.timeout(10000)
       });
 
       const responseText = await response.text();

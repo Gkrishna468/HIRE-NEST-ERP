@@ -478,6 +478,36 @@ hirenest_active_requests 0
         case 'candidate-screen':
           return await candidateScreenHandler(req, res);
 
+        case 'jobs/update-status': {
+          if (!adminDb) {
+            return res.status(503).json({ error: 'Firebase Admin Database not initialized.' });
+          }
+          try {
+            const { jobId, status } = req.body;
+            if (!jobId || !status) {
+              return res.status(400).json({ error: 'Missing required fields: jobId and status' });
+            }
+            await adminDb.collection('requirements_public').doc(jobId).set({
+              status,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            // Also update 'requirements' if it exists
+            const reqRef = adminDb.collection('requirements').doc(jobId);
+            const reqSnap = await reqRef.get();
+            if (reqSnap.exists) {
+              await reqRef.set({
+                status,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+            }
+
+            return res.status(200).json({ success: true });
+          } catch (err: any) {
+            return res.status(500).json({ error: err.message });
+          }
+        }
+
         case 'communication':
         case 'communication/evaluate':
         case 'communication/send':

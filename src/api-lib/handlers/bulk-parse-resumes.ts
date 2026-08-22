@@ -18,7 +18,9 @@ const generateAIPayload = async (
       compressContext: true // NEW: Use Headroom for Resume compression
     });
 
-    if (aiResponse.outcome === "failed") throw new Error("AIRuntime failed");
+    if (aiResponse.outcome === "failed") {
+      throw new Error(aiResponse.errorMessage || "AIRuntime failed");
+    }
     return JSON.stringify(aiResponse.data);
   } catch (err: any) {
     console.error("[AI GATEWAY] Gemini generation error:", err);

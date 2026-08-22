@@ -49,37 +49,92 @@ function cleanBufferText(buffer: Buffer): string {
   return printable.slice(0, 15000);
 }
 
-function generateSyntheticProfile(filename: string): string {
-  const cleanName =
-    filename.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ") || "Candidate";
-  return `PARSING_PENDING
-Filename: ${filename}
-Candidate Name: ${cleanName}
+import fs from "fs";
 
-This resume has been securely stored.
-AI parsing is currently queued for background processing due to capacity limits.
-`;
+// Validate a local traineddata file
+function isValidTrainedData(filePath: string): boolean {
+  try {
+    if (!fs.existsSync(filePath)) {
+      return false;
+    }
+    const stats = fs.statSync(filePath);
+    // A valid traineddata or traineddata.gz should be at least 1MB
+    if (stats.size < 1024 * 1024) {
+      console.warn(`[OCR] File ${filePath} exists but is too small (${stats.size} bytes). Rejecting as invalid/corrupted.`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error(`[OCR] Error validating file ${filePath}:`, e);
+    return false;
+  }
 }
 
-// Perform Tesseract OCR using local traineddata
+// Perform Tesseract OCR using local traineddata (if valid) or CDN fallback with /tmp caching
 async function performOCR(imageBuffer: Buffer): Promise<string> {
   let worker = null;
+  let timeoutId: any = null;
+
   try {
     const { createWorker } = await import("tesseract.js");
-    worker = await createWorker("eng", 1, {
-      langPath: path.join(process.cwd(), "tessdata"),
-      cachePath: path.join(process.cwd(), "tessdata"),
+
+    // Check writability of /tmp and fallback to process.cwd() if not writable (Vercel compliance)
+    let resolvedCachePath = "/tmp";
+    try {
+      fs.accessSync("/tmp", fs.constants.W_OK);
+    } catch (e) {
+      resolvedCachePath = process.cwd();
+    }
+
+    // Identify and validate local traineddata
+    const localTessdataPath = path.join(process.cwd(), "tessdata");
+    const localFileGz = path.join(localTessdataPath, "eng.traineddata.gz");
+    const localFile = path.join(localTessdataPath, "eng.traineddata");
+
+    let langPathOption = "https://tessdata.projectnaptha.com/4.0.0_fast";
+    if (isValidTrainedData(localFileGz) || isValidTrainedData(localFile)) {
+      console.log("[OCR] Valid local traineddata found. Utilizing local path.");
+      langPathOption = localTessdataPath;
+    } else {
+      console.log("[OCR] No valid local traineddata found. Using fallback CDN: " + langPathOption);
+    }
+
+    // Initialize worker and recognize text within a strict timeout to prevent indefinite hangs
+    console.log("[OCR] Initializing Tesseract worker...");
+
+    const ocrPromise = (async () => {
+      worker = await createWorker("eng", 1, {
+        langPath: langPathOption,
+        cachePath: resolvedCachePath,
+      });
+
+      console.log("[OCR] Running text recognition...");
+      const { data: { text } } = await worker.recognize(imageBuffer);
+      return text || "";
+    })();
+
+    const timeoutPromise = new Promise<string>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(new Error("OCR_TIMEOUT"));
+      }, 15000); // Strict 15-second timeout for serverless environments
     });
-    
-    console.log("[OCR] Initialized Tesseract worker with local langPath");
-    const { data: { text } } = await worker.recognize(imageBuffer);
-    return text || "";
-  } catch (err) {
-    console.error("[OCR] Tesseract OCR failed:", err);
+
+    const resultText = await Promise.race([ocrPromise, timeoutPromise]);
+    return resultText;
+
+  } catch (err: any) {
+    console.error("[OCR] performOCR caught error safely:", err.message || err);
     return "";
   } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
     if (worker) {
-      await worker.terminate();
+      try {
+        await worker.terminate();
+      } catch (termErr) {
+        console.error("[OCR] Error terminating Tesseract worker:", termErr);
+      }
     }
   }
 }

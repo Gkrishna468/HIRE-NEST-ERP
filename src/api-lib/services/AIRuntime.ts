@@ -25,6 +25,7 @@ export interface AIRuntimeResponse {
     tokensSaved?: number;
     compressionRatio?: number;
     originalTokens?: number;
+    errorMessage?: string;
 }
 
 export class AIRuntime {
@@ -95,7 +96,8 @@ export class AIRuntime {
                 latency: Date.now() - startTime,
                 cacheHit: false,
                 outcome: "failed",
-                retryCount: 0
+                retryCount: 0,
+                errorMessage: error?.message || String(error)
             };
         }
     }

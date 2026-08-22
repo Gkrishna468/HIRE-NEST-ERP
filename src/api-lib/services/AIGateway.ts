@@ -209,36 +209,55 @@ export class GoogleProvider implements AIProvider {
 
         let lastError: any = null;
         for (const targetModel of candidateModels) {
-            try {
-                const apiCall = client.models.generateContent({
-                    model: targetModel,
-                    contents: contentParts,
-                    config,
-                });
+            const maxAttempts = 3;
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    const apiCall = client.models.generateContent({
+                        model: targetModel,
+                        contents: contentParts,
+                        config,
+                    });
 
-                const timeoutPromise = new Promise<never>((_, reject) => {
-                    setTimeout(() => {
-                        reject(new Error(`Google GenAI request timeout after ${timeoutMs}ms`));
-                    }, timeoutMs);
-                });
+                    const timeoutPromise = new Promise<never>((_, reject) => {
+                        setTimeout(() => {
+                            reject(new Error(`Google GenAI request timeout after ${timeoutMs}ms`));
+                        }, timeoutMs);
+                    });
 
-                const response = await Promise.race([apiCall, timeoutPromise]);
-                const text = response.text || "";
-                const usage = response.usageMetadata;
-                const totalTokens = usage?.totalTokenCount || Math.ceil((prompt.length + text.length) / 4);
+                    const response = await Promise.race([apiCall, timeoutPromise]);
+                    const text = response.text || "";
+                    const usage = response.usageMetadata;
+                    const totalTokens = usage?.totalTokenCount || Math.ceil((prompt.length + text.length) / 4);
 
-                return { text, tokens: totalTokens };
-            } catch (err: any) {
-                lastError = err;
-                const msg = err?.message || String(err);
-                if (msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("depleted") || msg.includes("quota")) {
-                    console.warn(`[GoogleProvider] Model ${targetModel} quota/credits exhausted.`);
-                    throw new Error(`Google API Quota/Credits Exhausted (429)`);
+                    return { text, tokens: totalTokens };
+                } catch (err: any) {
+                    lastError = err;
+                    const msg = err?.message || String(err);
+                    const isQuotaError = msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("depleted") || msg.includes("quota");
+                    
+                    if (isQuotaError && attempt < maxAttempts) {
+                        const backoffDelay = attempt === 1 ? 1000 : 2500;
+                        console.warn(`[GoogleProvider] Model ${targetModel} rate limited/quota (429). Retrying in ${backoffDelay}ms (attempt ${attempt}/${maxAttempts})...`);
+                        await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+                        continue;
+                    }
+
+                    if (isQuotaError) {
+                        console.warn(`[GoogleProvider] Model ${targetModel} rate limited/quota exhausted after all attempts. Trying next model...`);
+                        break;
+                    }
+
+                    console.warn(`[GoogleProvider] Model ${targetModel} failed: ${msg}. Trying next model...`);
+                    break;
                 }
-                console.warn(`[GoogleProvider] Model ${targetModel} failed: ${msg}`);
             }
         }
-        throw lastError;
+        
+        const lastMsg = lastError?.message || String(lastError);
+        if (lastMsg.includes("429") || lastMsg.includes("RESOURCE_EXHAUSTED") || lastMsg.includes("depleted") || lastMsg.includes("quota")) {
+            throw new Error(`Google API Quota/Credits Exhausted (429)`);
+        }
+        throw lastError || new Error("All Google candidate models failed");
     }
 
     async health(): Promise<boolean> {
@@ -955,11 +974,24 @@ export class AIGateway {
 
             const m = reqModel.toLowerCase();
             if (m.includes("gemini") || m.includes("google")) {
-                routes = [{ provider: "google", model: reqModel }];
+                routes = [
+                    { provider: "google", model: reqModel },
+                    { provider: "omniroute", model: "meta-llama/llama-3-70b-instruct" },
+                    { provider: "litellm", model: "mistral/mistral-small" },
+                    { provider: "openai", model: "gpt-4o-mini" }
+                ];
             } else if (m.includes("gpt") || m.includes("openai") || m.includes("o1")) {
-                routes = [{ provider: "openai", model: reqModel }];
+                routes = [
+                    { provider: "openai", model: reqModel },
+                    { provider: "google", model: "gemini-3.6-flash" },
+                    { provider: "omniroute", model: "meta-llama/llama-3-70b-instruct" }
+                ];
             } else {
-                routes = [{ provider: "ollama", model: reqModel }];
+                routes = [
+                    { provider: "ollama", model: reqModel },
+                    { provider: "google", model: "gemini-3.6-flash" },
+                    { provider: "openai", model: "gpt-4o-mini" }
+                ];
             }
         } else {
             routes = await this.getModelRoutingAsync(feature, request.strategy);
