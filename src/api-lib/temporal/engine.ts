@@ -1,5 +1,5 @@
 import { adminDb } from '../../lib/firebase-admin.js';
-import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export type WorkflowStatus = 'RUNNING' | 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'PAUSED';
 
@@ -10,8 +10,8 @@ export interface WorkflowInstance {
     input: any;
     state: any;
     history: any[];
-    createdAt: admin.firestore.Timestamp;
-    updatedAt: admin.firestore.Timestamp;
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
     currentStep?: string;
     retryCount?: number;
 }
@@ -34,11 +34,11 @@ export class TemporalEngine {
             state: {},
             history: [{
                 type: 'WorkflowExecutionStarted',
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: FieldValue.serverTimestamp(),
                 details: 'Workflow initiated.'
             }],
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             currentStep: 'INITIALIZE',
             retryCount: 0
         });
@@ -72,10 +72,10 @@ export class TemporalEngine {
                 await docRef.update({
                     status: 'COMPLETED',
                     state: result.state || wf.state,
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    history: admin.firestore.FieldValue.arrayUnion({
+                    updatedAt: FieldValue.serverTimestamp(),
+                    history: FieldValue.arrayUnion({
                         type: 'WorkflowExecutionCompleted',
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: FieldValue.serverTimestamp(),
                         details: 'Workflow ran to completion.'
                     })
                 });
@@ -83,11 +83,11 @@ export class TemporalEngine {
                 await docRef.update({
                     currentStep: result.nextStep,
                     state: result.state || wf.state,
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: FieldValue.serverTimestamp(),
                     retryCount: 0,
-                    history: admin.firestore.FieldValue.arrayUnion({
+                    history: FieldValue.arrayUnion({
                         type: 'ActivityTaskCompleted',
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: FieldValue.serverTimestamp(),
                         step: wf.currentStep,
                         details: `Advanced to ${result.nextStep}`
                     })
@@ -99,10 +99,10 @@ export class TemporalEngine {
                     status: 'PAUSED', // Waits for an external event to wake it up
                     currentStep: result.nextStep,
                     state: result.state || wf.state,
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    history: admin.firestore.FieldValue.arrayUnion({
+                    updatedAt: FieldValue.serverTimestamp(),
+                    history: FieldValue.arrayUnion({
                         type: 'TimerStarted',
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: FieldValue.serverTimestamp(),
                         details: `Awaiting external signal for step ${result.nextStep}`
                     })
                 });
@@ -112,11 +112,11 @@ export class TemporalEngine {
             
             if ((wf.retryCount || 0) < 3) { // Durable retries
                 await docRef.update({
-                    retryCount: admin.firestore.FieldValue.increment(1),
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    history: admin.firestore.FieldValue.arrayUnion({
+                    retryCount: FieldValue.increment(1),
+                    updatedAt: FieldValue.serverTimestamp(),
+                    history: FieldValue.arrayUnion({
                         type: 'ActivityTaskFailed',
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: FieldValue.serverTimestamp(),
                         details: `Step ${wf.currentStep} failed: ${error.message}. Retrying...`
                     })
                 });
@@ -126,10 +126,10 @@ export class TemporalEngine {
             } else {
                 await docRef.update({
                     status: 'FAILED',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    history: admin.firestore.FieldValue.arrayUnion({
+                    updatedAt: FieldValue.serverTimestamp(),
+                    history: FieldValue.arrayUnion({
                         type: 'WorkflowExecutionFailed',
-                        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                        timestamp: FieldValue.serverTimestamp(),
                         details: `Max retries reached. Error: ${error.message}`
                     })
                 });
@@ -140,7 +140,7 @@ export class TemporalEngine {
                     targetType: 'workflow',
                     targetId: workflowId,
                     metadata: { type: wf.type, step: wf.currentStep, error: error.message },
-                    timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                    timestamp: FieldValue.serverTimestamp(),
                     actorId: 'temporal-system',
                     actorType: 'system'
                 });
@@ -155,11 +155,11 @@ export class TemporalEngine {
         const docRef = adminDb.collection('workflows').doc(workflowId);
         await docRef.update({
             status: 'RUNNING',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             [`state.signals.${signalName}`]: signalData,
-            history: admin.firestore.FieldValue.arrayUnion({
+            history: FieldValue.arrayUnion({
                 type: 'WorkflowExecutionSignaled',
-                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                timestamp: FieldValue.serverTimestamp(),
                 details: `Received signal: ${signalName}`
             })
         });

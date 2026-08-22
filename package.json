@@ -51,7 +51,6 @@
     "react-router-dom": "latest",
     "recharts": "latest",
     "redis": "^6.1.0",
-    "ruflo": "^3.32.9",
     "stripe": "^22.3.0",
     "tailwind-merge": "latest",
     "zod": "latest",

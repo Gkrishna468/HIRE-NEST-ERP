@@ -53,7 +53,7 @@ export class IntakeOffice extends BaseAIOffice {
 
       // IntakeEngine currently logs internally. Let's emit the proper domain event based on classification
       if (event.eventType === "EMAIL_RECEIVED" && event.payload.messageId) {
-        const { db } = await import("../../lib/firebase-admin.js");
+        const { db } = await import("../../../lib/firebase-admin.js");
         if (db) {
             await db.collection("mail_messages").doc(event.payload.messageId).set({
                 status: result.status === "success" ? "PROCESSED_BY_INTAKE" : "FAILED",

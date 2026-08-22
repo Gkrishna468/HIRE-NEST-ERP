@@ -281,7 +281,7 @@ export async function triggerAutonomousSequence(event: any) {
     await new Promise(r => setTimeout(r, 1500));
 
     // Stage 4: Call Gemini
-    await writeSystemLog("Matching Office", `Invoking Gemini API (Model: gemini-3.1-pro-preview) for cognitive profile alignment...`, trace);
+    await writeSystemLog("Matching Office", `Invoking Gemini API (Model: gemini-2.5-pro) for cognitive profile alignment...`, trace);
     
     const runtimeDoc2 = await db.collection("system_runtime").doc("state").get();
     if (runtimeDoc2.exists) {

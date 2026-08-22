@@ -6,6 +6,15 @@ import { ProprietaryMatchingEngine } from './ProprietaryMatchingEngine.js';
 
 export class MatchingOffice {
     
+    private static withTimeout<T>(promise: Promise<T>, timeoutMs: number = 60000, context: string = "Matching Task"): Promise<T> {
+        return Promise.race([
+            promise,
+            new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error(`[MatchingOffice Timeout] ${context} exceeded safety timeout of ${timeoutMs}ms`)), timeoutMs)
+            )
+        ]);
+    }
+
     /**
      * Entry point for handling business events.
      */
@@ -21,14 +30,16 @@ export class MatchingOffice {
                     const reqId = payload.requirementId || payload.id;
                     const candId = payload.candidateId;
                     if (reqId && candId) {
-                        const reqDoc = await db.collection("requirements_public").doc(reqId).get();
-                        const candDoc = await db.collection("candidatePool").doc(candId).get();
-                        if (reqDoc.exists && candDoc.exists) {
-                            await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
-                            await this.updateRequirementMatchIndex(reqId);
-                        }
+                        await this.withTimeout((async () => {
+                            const reqDoc = await db.collection("requirements_public").doc(reqId).get();
+                            const candDoc = await db.collection("candidatePool").doc(candId).get();
+                            if (reqDoc.exists && candDoc.exists) {
+                                await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
+                                await this.updateRequirementMatchIndex(reqId);
+                            }
+                        })(), 60000, `Singular match run for req ${reqId} and cand ${candId}`);
                     } else if (reqId) {
-                        await this.matchRequirement(reqId, orgId);
+                        await this.withTimeout(this.matchRequirement(reqId, orgId), 60000, `Requirement matching for ${reqId}`);
                     }
                     break;
                 }
@@ -37,7 +48,7 @@ export class MatchingOffice {
                 case 'CANDIDATE_UPDATED': {
                     const candId = payload.candidateId || payload.id;
                     if (candId) {
-                        await this.matchCandidate(candId, orgId);
+                        await this.withTimeout(this.matchCandidate(candId, orgId), 60000, `Candidate matching for ${candId}`);
                     }
                     break;
                 }
@@ -47,16 +58,18 @@ export class MatchingOffice {
                     const reqId = payload.requirementId || payload.id;
                     const candId = payload.candidateId;
                     if (reqId && candId) {
-                        const reqDoc = await db.collection("requirements_public").doc(reqId).get();
-                        const candDoc = await db.collection("candidatePool").doc(candId).get();
-                        if (reqDoc.exists && candDoc.exists) {
-                            await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
-                            await this.updateRequirementMatchIndex(reqId);
-                        }
+                        await this.withTimeout((async () => {
+                            const reqDoc = await db.collection("requirements_public").doc(reqId).get();
+                            const candDoc = await db.collection("candidatePool").doc(candId).get();
+                            if (reqDoc.exists && candDoc.exists) {
+                                await this.computeAndSaveMatch({ id: candDoc.id, ...candDoc.data() }, { id: reqDoc.id, ...reqDoc.data() });
+                                await this.updateRequirementMatchIndex(reqId);
+                            }
+                        })(), 60000, `Singular match run for req ${reqId} and cand ${candId}`);
                     } else if (reqId) {
-                        await this.matchRequirement(reqId, orgId);
+                        await this.withTimeout(this.matchRequirement(reqId, orgId), 60000, `Requirement matching for ${reqId}`);
                     } else if (candId) {
-                        await this.matchCandidate(candId, orgId);
+                        await this.withTimeout(this.matchCandidate(candId, orgId), 60000, `Candidate matching for ${candId}`);
                     }
                     break;
                 }
@@ -139,7 +152,8 @@ export class MatchingOffice {
                         semanticScore: engineResult.semanticScore,
                         businessScore: engineResult.businessScore,
                     },
-                    suggestedAction: engineResult.suggestedAction
+                    suggestedAction: engineResult.suggestedAction,
+                    aiScreeningStatus: engineResult.aiScreeningStatus
                 };
 
                 const matchId = `${cand.id}_${reqObj.id}`;

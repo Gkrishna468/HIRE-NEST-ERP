@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs, where } from "firebase/firestore";
+import { collection, query, getDocs, where, limit } from "firebase/firestore";
 
 export default function RecruiterPerformanceTab({
   userRole,

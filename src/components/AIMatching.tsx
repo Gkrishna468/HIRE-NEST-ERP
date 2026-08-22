@@ -47,11 +47,16 @@ export const AIMatching: React.FC<AIMatchingProps> = ({ result, candidateName, o
           </div>
           <div>
             <h4 className="text-sm font-bold text-slate-800">{candidateName}</h4>
-            <div className="flex gap-2 mt-1">
+            <div className="flex gap-2 mt-1 flex-wrap">
               {getBadge()}
               <Badge variant="outline" className="text-[10px] uppercase font-mono">
                 {result.breakdown?.totalScore || (result as any).matchScore || 0} pts
               </Badge>
+              {(result.aiScreeningStatus === 'AI_SCREENING_UNAVAILABLE' || result.breakdown?.semanticScore === -1) && (
+                <Badge className="bg-rose-100 text-rose-800 border-rose-200 text-[9px] uppercase font-mono font-bold">
+                  PENDING RE-SCORE
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -134,7 +139,11 @@ export const AIMatching: React.FC<AIMatchingProps> = ({ result, candidateName, o
                   <div className="text-center">
                     <Cpu size={14} className="mx-auto text-indigo-500 mb-1" />
                     <div className="text-[9px] text-slate-400 font-bold">Semantic</div>
-                    <div className="text-xs font-black">{result.breakdown?.semanticScore || result.breakdown?.skillsScore || 0}%</div>
+                    <div className="text-xs font-black">
+                      {result.breakdown?.semanticScore === -1 || result.breakdown?.semanticScore === null || result.aiScreeningStatus === 'AI_SCREENING_UNAVAILABLE'
+                        ? 'N/A' 
+                        : `${result.breakdown?.semanticScore || result.breakdown?.skillsScore || 0}%`}
+                    </div>
                   </div>
                   <div className="text-center">
                     <Target size={14} className="mx-auto text-emerald-500 mb-1" />

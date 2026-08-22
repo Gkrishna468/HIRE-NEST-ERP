@@ -16,6 +16,7 @@ export interface MatchResult {
   missingPreferredSkills?: string[];
   experienceGaps?: string[];
   riskFlags?: string[];
+  aiScreeningStatus?: "COMPLETED" | "AI_SCREENING_UNAVAILABLE" | "PENDING_RE-SCORE";
 }
 
 export class ProprietaryMatchingEngine {
@@ -43,9 +44,18 @@ export class ProprietaryMatchingEngine {
 
     // 2. Layer 2: Semantic Scoring (AI-powered alignment)
     const semScoreResult = await this.calculateSemanticScore(candidate, requirement);
-    const semScore = (semScoreResult && typeof semScoreResult.score === 'number' && !isNaN(semScoreResult.score))
-      ? semScoreResult.score
-      : 70;
+    
+    let semScore = -1;
+    let aiScreeningStatus: "COMPLETED" | "AI_SCREENING_UNAVAILABLE" | "PENDING_RE-SCORE" = "COMPLETED";
+    let reasoning = "";
+
+    if (semScoreResult && typeof semScoreResult.score === 'number' && !isNaN(semScoreResult.score) && semScoreResult.score >= 0) {
+      semScore = semScoreResult.score;
+      reasoning = semScoreResult.reasoning || "Evaluated via 3-Layer Matching Engine with Hard Gates";
+    } else {
+      aiScreeningStatus = "AI_SCREENING_UNAVAILABLE";
+      reasoning = "AI_SCREENING_UNAVAILABLE / PENDING_RE-SCORE: The AI semantic screening service is currently unavailable or returned an invalid result.";
+    }
 
     // 3. Layer 3: Business Rule Scoring (Contextual parameters)
     const bizScore = await this.calculateBusinessScore(candidate, requirement, orgId);
@@ -72,8 +82,14 @@ export class ProprietaryMatchingEngine {
     }
 
     // 4. Layer 4: Composite Calculation (Proprietary weighting)
-    // Weighting: 40% Semantic, 40% Deterministic, 20% Business
-    let compositeScore = Math.round((semScore * 0.4) + (detScore * 0.4) + (bizScore * 0.2));
+    let compositeScore = 0;
+    if (aiScreeningStatus === "AI_SCREENING_UNAVAILABLE") {
+      // Scale available signals: 2/3 deterministic (scaled 40%), 1/3 business (scaled 20%)
+      compositeScore = Math.round((detScore * 0.67) + (bizScore * 0.33));
+    } else {
+      // Standard Weighting: 40% Semantic, 40% Deterministic, 20% Business
+      compositeScore = Math.round((semScore * 0.4) + (detScore * 0.4) + (bizScore * 0.2));
+    }
 
     // HARD GATE: Missing mandatory skills block STRONG_MATCH (capped to max 69)
     if (missingMandatorySkills.length > 0) {
@@ -93,13 +109,14 @@ export class ProprietaryMatchingEngine {
       semanticScore: semScore,
       businessScore: bizScore,
       tier,
-      reasoning: semScoreResult.reasoning || "Evaluated via 3-Layer Matching Engine with Hard Gates",
+      reasoning,
       suggestedAction: compositeScore >= 85 ? "SUBMIT_IMMEDIATELY" : compositeScore >= 70 ? "RECRUITER_REVIEW" : "AUTO_ARCHIVE",
       matchedSkills,
       missingMandatorySkills,
       missingPreferredSkills,
       experienceGaps,
-      riskFlags
+      riskFlags,
+      aiScreeningStatus
     };
   }
 
@@ -176,7 +193,7 @@ export class ProprietaryMatchingEngine {
     });
 
     if (response.outcome === 'failed' || !response.data || typeof response.data.score !== 'number') {
-      return { score: 70, reasoning: response.data?.summary || "Fallback semantic match applied." };
+      return null;
     }
 
     return response.data;

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs, where, doc, setDoc } from "firebase/firestore";
+import { collection, query, getDocs, where, doc, setDoc, limit } from "firebase/firestore";
 import { GmailRecentMessages } from "../components/GmailRecentMessages";
 
 export default function Vendor360Tab({ userRole }: { userRole: string }) {

@@ -54,7 +54,7 @@ export class GovernanceExecutionGate {
     // EXECUTE tool allowed ONLY for EXECUTE agents
     if (actionType.startsWith('READ_') || agentLevel === 'EXECUTE') {
       checks.toolPermission = true;
-    } else if (actionType.startsWith('PROPOSE_') && (agentLevel === 'PROPOSE' || agentLevel === 'EXECUTE')) {
+    } else if (actionType.startsWith('PROPOSE_') && agentLevel === 'PROPOSE') {
       checks.toolPermission = true;
     } else if (agentMetadata.allowedTools?.includes(toolId)) {
       checks.toolPermission = true;

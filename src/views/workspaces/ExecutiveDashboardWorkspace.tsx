@@ -134,7 +134,7 @@ export default function ExecutiveDashboardWorkspace({
               )}
             </div>
             <h1 className="text-2xl font-semibold text-white tracking-tight">
-              {getDynamicGreeting(userName)}
+              {getDynamicGreeting()}, {userName} 👋
             </h1>
             <p className="text-sm text-slate-400 mt-1">
               Live intelligence aggregated from authoritative SSOT records.

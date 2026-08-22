@@ -1,6 +1,7 @@
 import express from "express";
 import { adminDb } from "../../lib/firebase-admin.js";
-import { EventBus, BusinessEvent } from "../services/EventBus.js";
+import { EventBus } from "../services/EventBus.js";
+import { BusinessEvent } from "../os/kernel/RuntimeTypes.js";
 
 const recruiterOsHandler = express.Router();
 
@@ -17,7 +18,7 @@ recruiterOsHandler.post("/action", async (req: any, res: any) => {
     const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const timestamp = new Date().toISOString();
 
-    let event: BusinessEvent;
+    let event: any;
 
     switch (action) {
       case "SUBMIT_CANDIDATE":

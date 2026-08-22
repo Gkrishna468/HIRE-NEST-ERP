@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db } from "../lib/firebase";
-import { collection, query, getDocs } from "firebase/firestore";
+import { collection, query, getDocs, limit } from "firebase/firestore";
 
 export default function RevenueIntelligenceTab({
   userRole,

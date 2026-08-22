@@ -102,14 +102,17 @@ export class RuntimeMetricsCollector {
     ]);
 
     // Feed seed data if database is empty to ensure a realistic live experience
-    if (invoicesSnap.empty) {
-      await this.seedInitialFinancials();
-    }
-    if (workItemsSnap.empty) {
-      await this.seedInitialWorkItems();
-    }
-    if (telemetrySnap.empty) {
-      await this.seedInitialTelemetry();
+    const isProduction = process.env.NODE_ENV === "production" || process.env.VITE_ENV === "production";
+    if (!isProduction) {
+      if (invoicesSnap.empty) {
+        await this.seedInitialFinancials();
+      }
+      if (workItemsSnap.empty) {
+        await this.seedInitialWorkItems();
+      }
+      if (telemetrySnap.empty) {
+        await this.seedInitialTelemetry();
+      }
     }
 
     // Recalculate snap counts after potential seeding
@@ -221,7 +224,7 @@ export class RuntimeMetricsCollector {
   // Seeding tools to ensure the dashboard functions instantly
   private static async seedInitialFinancials() {
     const demoInvoices = [
-      { id: "inv-1", amount: 145000, status: "PAID", clientName: "Acme Corp", createdAt: new Date(Date.now() - 1000*60*60*24*15).toISOString() },
+      { id: "inv-1", amount: 145000, status: "PAID", clientName: "Apex Enterprise Solutions", createdAt: new Date(Date.now() - 1000*60*60*24*15).toISOString() },
       { id: "inv-2", amount: 82000, status: "PAID", clientName: "Globex Inc", createdAt: new Date(Date.now() - 1000*60*60*24*5).toISOString() },
       { id: "inv-3", amount: 120000, status: "SENT", clientName: "Initech", createdAt: new Date(Date.now() - 1000*60*60*2).toISOString() },
       { id: "inv-4", amount: 125000, status: "PENDING", clientName: "Umbrella Corp", createdAt: new Date(Date.now() - 1000*60*45).toISOString() }

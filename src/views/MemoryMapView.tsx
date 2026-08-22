@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import { Building2, Users, Shield, Network, LayoutGrid, Info, Activity } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { db } from '../lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, limit } from 'firebase/firestore';
 
 export default function MemoryMapView() {
   const svgRef = useRef<SVGSVGElement>(null);

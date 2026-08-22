@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Activity, Clock, Cpu, CheckCircle2, ShieldCheck, Zap, Database, Globe } from "lucide-react";
 import { cn } from "../lib/utils";
-import { collection, getDocs, query, where, documentId } from "firebase/firestore";
+import { collection, getDocs, query, where, documentId, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export default function BenchmarkDashboard() {

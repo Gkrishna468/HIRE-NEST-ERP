@@ -23,7 +23,7 @@ export class ModelGateway {
    * All requests route through the unified AIGateway.
    */
   static async generate(request: ModelRequest): Promise<ModelResponse> {
-    const modelName = request.modelAlias === "pro" ? "gemini-3.1-pro-preview" : "gemini-1.5-flash";
+    const modelName = request.modelAlias === "pro" ? "gemini-2.5-pro" : "gemini-2.5-flash";
 
     const gatewayRes = await AIGateway.processChat({
         prompt: request.prompt,

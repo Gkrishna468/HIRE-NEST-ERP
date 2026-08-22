@@ -2,6 +2,7 @@ import { startTracing } from './src/api-lib/telemetry/tracer.js';
 // startTracing(); // Optionally start telemetry (disabled in dev to reduce console spam)
 import 'dotenv/config';
 import express from 'express';
+// express-async-errors is incompatible with Express 5 and unnecessary since Express 5 natively handles async errors.
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 
@@ -333,7 +334,7 @@ hirenest_active_requests 0
   app.use('/api/v1', aiLimiter, openAIRouter);
 
   // API Route Handler
-  app.use('/api', async (req: any, res: any) => {
+  app.use('/api', async (req: any, res: any, next: any) => {
     // req.path is relative to the mount point (e.g. '/client-matches')
     const apiRawPath = req.path.replace(/^\//, '');
     const apiPath = apiRawPath.split('?')[0];
@@ -469,7 +470,7 @@ hirenest_active_requests 0
         case 'communication/send':
         case 'communication/consent':
         case 'communication/audit':
-          return await communicationHandler(req, res);
+          return await communicationHandler(req, res, next);
 
         case 'kill-switch':
         case 'kill-switch/activate':
@@ -478,7 +479,7 @@ hirenest_active_requests 0
         case 'kill-switch/evaluate':
         case 'kill-switch/list':
         case 'kill-switch/audit':
-          return await killSwitchHandler(req, res);
+          return await killSwitchHandler(req, res, next);
           
         case 'copilot':
           return await copilotHandler(req, res);
@@ -564,7 +565,7 @@ hirenest_active_requests 0
     });
     app.use(vite.middlewares);
     
-    app.use('*', async (req, res, next) => {
+    app.use(async (req, res, next) => {
       const url = req.originalUrl;
       if (url.startsWith('/api') || req.path.startsWith('/api')) {
         return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
@@ -581,7 +582,7 @@ hirenest_active_requests 0
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       const url = req.originalUrl;
       if (url.startsWith('/api') || req.path.startsWith('/api')) {
         return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
@@ -594,10 +595,10 @@ hirenest_active_requests 0
     });
   }
 
-  const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+  const PORT = 3000;
 
-  app.listen(port, "0.0.0.0", () => {
-    console.log(`Server running at http://localhost:${port}`);
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running at http://localhost:${PORT}`);
   });
 }
 

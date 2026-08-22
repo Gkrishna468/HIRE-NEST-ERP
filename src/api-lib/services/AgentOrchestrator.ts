@@ -95,39 +95,39 @@ export class AgentOrchestrator {
         
         switch (agentId) {
             case 'resume-parser':
-                return { success: true, output: { status: 'parsed', name: 'Extracted Name' }, tokens: 1250, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: { status: 'parsed', name: 'Extracted Name' }, tokens: 1250, model: 'gemini-2.5-pro' };
             case 'AI_COO_QUEUE_REVIEW':
                 const reviewResult = await AICOO.reviewEnterpriseQueues(payload.workspaceId || 'default-workspace');
-                return { success: true, output: reviewResult, tokens: 350, model: 'gemini-3.6-flash' };
+                return { success: true, output: reviewResult, tokens: 350, model: 'gemini-2.5-flash' };
             case 'NETWORK_OPPORTUNITIES':
                 const oppResult = await NetworkOpportunityEngine.searchForOpportunities();
-                return { success: true, output: oppResult, tokens: 450, model: 'gemini-3.6-flash' };
+                return { success: true, output: oppResult, tokens: 450, model: 'gemini-2.5-flash' };
             case 'NETWORK_RECALIBRATION':
                 const recalibrationResult = await ContinuousMatchingEngine.executeNetworkMatchCycle();
-                return { success: true, output: recalibrationResult, tokens: 2500, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: recalibrationResult, tokens: 2500, model: 'gemini-2.5-pro' };
             case 'CONTINUOUS_IMPROVEMENT_ANALYSIS':
                 const improveResult = await ContinuousImprovementEngine.executeNightlyAnalysis(payload.workspaceId || 'default-workspace');
-                return { success: true, output: improveResult, tokens: 4000, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: improveResult, tokens: 4000, model: 'gemini-2.5-pro' };
             case 'RECRUITMENT_MORNING_PROCESSING':
                 const recResult = await OfficeRuntimeService.executeManagerRoutine(payload.workspaceId || 'default-workspace', 'RECRUITMENT');
-                return { success: true, output: recResult, tokens: 1500, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: recResult, tokens: 1500, model: 'gemini-2.5-pro' };
             case 'CANDIDATE_IMPROVEMENT_AGENT':
                 console.log(`[CANDIDATE_IMPROVEMENT] Processing candidate ${payload.candidateId}`);
-                return { success: true, output: { status: 'Candidate Improvement Loop Triggered', candidateId: payload.candidateId }, tokens: 3000, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: { status: 'Candidate Improvement Loop Triggered', candidateId: payload.candidateId }, tokens: 3000, model: 'gemini-2.5-pro' };
             case 'REQUIREMENT_IMPROVEMENT_AGENT':
                 console.log(`[REQUIREMENT_IMPROVEMENT] Processing requirement ${payload.requirementId}`);
-                return { success: true, output: { status: 'Requirement Improvement Loop Triggered', requirementId: payload.requirementId }, tokens: 2500, model: 'gemini-3.1-pro-preview' };
+                return { success: true, output: { status: 'Requirement Improvement Loop Triggered', requirementId: payload.requirementId }, tokens: 2500, model: 'gemini-2.5-pro' };
             case 'matching-office':
                 console.log(`[MATCHING_OFFICE] Running Event-Driven Match Routine for event type: ${payload.eventType || 'UNKNOWN'}`);
                 await MatchingOffice.handleEvent(payload.eventType, payload.payload, payload.orgId);
-                return { success: true, output: { status: 'Match Loop Completed Successfully' }, tokens: 3500, model: 'gemini-3.6-flash' };
+                return { success: true, output: { status: 'Match Loop Completed Successfully' }, tokens: 3500, model: 'gemini-2.5-flash' };
             case 'scheduling-office':
                 console.log(`[SCHEDULING_OFFICE] Running Event-Driven Scheduling Routine for event type: ${payload.eventType || 'UNKNOWN'}`);
                 const { SchedulingOffice } = await import('./SchedulingOffice.js');
                 await SchedulingOffice.handleEvent(payload.eventType, payload.payload, payload.orgId);
-                return { success: true, output: { status: 'Scheduling Loop Completed Successfully' }, tokens: 1200, model: 'gemini-3.6-flash' };
+                return { success: true, output: { status: 'Scheduling Loop Completed Successfully' }, tokens: 1200, model: 'gemini-2.5-flash' };
             default:
-                return { success: true, output: { status: 'processed' }, tokens: 450, model: 'gemini-3.6-flash' };
+                return { success: true, output: { status: 'processed' }, tokens: 450, model: 'gemini-2.5-flash' };
         }
     }
 

@@ -66,7 +66,7 @@ Provide 2-3 specific action items based on their role.`;
 
     let resultData;
     try {
-      resultData = JSON.parse(aiResponse.text);
+      resultData = JSON.parse(aiResponse.response);
     } catch (e) {
       // Fallback
       resultData = {

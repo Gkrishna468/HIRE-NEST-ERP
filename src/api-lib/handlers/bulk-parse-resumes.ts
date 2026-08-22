@@ -27,7 +27,7 @@ const generateAIPayload = async (
 };
 
 const generateEmbedding = async (orgId: string, text: string) => {
-  return new Array(1536).fill(0).map(() => Math.random() - 0.5);
+  return null;
 };
 
 export default async function handler(req: any, res: any) {
@@ -181,28 +181,12 @@ CRITICAL: If the resume content is missing, too short, or lacks a real human nam
             !profile.name.includes("Parsing Pending")
           ) {
             try {
-              // Background embedding task
-              generateEmbedding(orgId, text)
-                .then((embedding) => {
-                  if (embedding) {
-                    adminDb
-                      ?.collection("resume_cache")
-                      .doc(hash)
-                      .set({
-                        ...profile,
-                        embedding,
-                        cachedAt: new Date().toISOString(),
-                      })
-                      .catch((e) => console.error("[EMBEDDING_SET_ERR]", e));
-                  }
-                })
-                .catch((e) => console.error("[EMBEDDING_GEN_ERR]", e));
-
               await adminDb
                 .collection("resume_cache")
                 .doc(hash)
                 .set({
                   ...profile,
+                  embeddingStatus: "unavailable",
                   cachedAt: new Date().toISOString(),
                 });
             } catch (e) {

@@ -147,14 +147,14 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       }
 
       // 5. Fetch Core Firestore Analytics
-      const { collection, getDocs } = await import("firebase/firestore");
+      const { collection, getDocs, query, limit } = await import("firebase/firestore");
       const { db } = await import("../lib/firebase");
 
       const subsSnap = await getDocs(query(collection(db, "submissions"), limit(25)));
       const vendorMap = new Map<string, { name: string, submissions: number, interviews: number, placements: number }>();
       
       subsSnap.docs.forEach(doc => {
-        const s = doc.data();
+        const s = doc.data() as any;
         const vid = s.vendorId || "Unknown Vendor";
         if (!vendorMap.has(vid)) {
           vendorMap.set(vid, { name: vid, submissions: 0, interviews: 0, placements: 0 });
@@ -177,7 +177,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       let total = 0;
       let totalScore = 0;
       aiFeedbackSnap.docs.forEach(doc => {
-         const f = doc.data();
+         const f = doc.data() as any;
          total++;
          if (f.action === "ACCEPT") accepted++;
          if (f.score) totalScore += Number(f.score);
@@ -187,7 +187,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
       const candsSnap = await getDocs(query(collection(db, "candidatePool"), limit(25)));
       const skillCounts: Record<string, number> = {};
       candsSnap.docs.forEach(doc => {
-         const c = doc.data();
+         const c = doc.data() as any;
          if (c.skills && Array.isArray(c.skills)) {
             c.skills.forEach((sk: string) => {
                skillCounts[sk] = (skillCounts[sk] || 0) + 1;
@@ -211,7 +211,7 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
         claimsCount: claimsSnap.size || 308,
         duplicatesCount: Math.round((claimsSnap.size || 308) * 0.14),
         conflictsCount: conflictsSnap.size || 14,
-        disputesCount: conflictsSnap.docs.filter(d => d.data().status === "PENDING").length || 3
+        disputesCount: conflictsSnap.docs.filter(d => (d.data() as any).status === "PENDING").length || 3
       });
 
     } catch (err) {

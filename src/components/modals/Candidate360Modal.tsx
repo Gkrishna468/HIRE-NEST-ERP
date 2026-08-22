@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, User, FileText, Bot, Briefcase, Activity, 
   MessageSquare, ShieldAlert, CheckCircle, MapPin, 
-  UploadCloud, Search, Calendar, Target,
+  UploadCloud, Search, Calendar, Target, Sparkles, RotateCcw, AlertTriangle, Send,
 } from 'lucide-react';
 import { Badge } from '../../lib/Badge';
 import { Button } from '../../lib/Button';
@@ -479,7 +479,7 @@ export default function Candidate360Modal({
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                            <div className="bg-emerald-50/60 p-5 rounded-xl border border-emerald-100 shadow-sm">
                                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-2">
-                                 <CheckCircle2 size={16} /> Key Candidate Strengths
+                                 <CheckCircle size={16} /> Key Candidate Strengths
                                </h4>
                                <ul className="space-y-1.5 text-xs text-slate-700">
                                    {(displayCandidate.aiIntelligence.strengths || []).map((st: string, idx: number) => (

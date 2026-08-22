@@ -2165,7 +2165,7 @@ export default function JobsTab() {
                                   
                                   {sub.breakdown && Object.keys(sub.breakdown).length > 0 && (
                                     <div className="flex flex-wrap gap-4 mt-3 pt-3 border-t border-slate-100">
-                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Skills Map: <span className="text-indigo-600 font-black">{sub.breakdown.semanticScore}%</span></div>
+                                        <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Skills Map: <span className="text-indigo-600 font-black">{sub.breakdown.semanticScore === -1 || sub.breakdown.semanticScore === null ? "N/A" : `${sub.breakdown.semanticScore}%`}</span></div>
                                         <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Experience: <span className="text-indigo-600 font-black">{sub.breakdown.careerTrajectoryScore}%</span></div>
                                         <div className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Domain: <span className="text-indigo-600 font-black">{sub.breakdown.domainMatchScore}%</span></div>
                                     </div>

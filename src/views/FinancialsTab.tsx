@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { collection, query, onSnapshot, orderBy, getDocs, addDoc } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, getDocs, addDoc, limit } from "firebase/firestore";
 import { EmptyState } from "../components/EmptyState";
 import { Badge } from "../lib/Badge";
 import { Button } from "../lib/Button";

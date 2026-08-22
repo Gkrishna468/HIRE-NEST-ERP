@@ -189,9 +189,15 @@ export class EventBus {
                     } else if (sub.subscriber === 'GraphProjectionWorker') {
                         const { GraphProjectionWorker } = await import('../os/kernel/GraphProjectionWorker.js');
                         await GraphProjectionWorker.queueProjection(event);
+                    } else if (sub.subscriber === 'matching-office') {
+                        const { MatchingOffice } = await import('./MatchingOffice.js');
+                        await MatchingOffice.handleEvent(event.eventType, event.payload, event.tenantId);
+                    } else if (sub.subscriber === 'scheduling-office') {
+                        const { SchedulingOffice } = await import('./SchedulingOffice.js');
+                        await SchedulingOffice.handleEvent(event.eventType, event.payload, event.tenantId);
                     } else {
-                        // Document matching or custom subscriber trigger logs
-                        console.log(`[EventBus] Dynamically routed event ${event.eventId} to subscription handler: ${sub.subscriber}`);
+                        console.log(`[EventBus] Dynamically routing event ${event.eventId} to AgentOrchestrator queue for: ${sub.subscriber}`);
+                        await AgentOrchestrator.enqueueJob(sub.subscriber, { eventType: event.eventType, payload: event.payload, orgId: event.tenantId });
                     }
                 } catch (err) {
                     console.error(`[EventBus] Failed to dispatch event to subscriber ${sub.subscriber}:`, err);

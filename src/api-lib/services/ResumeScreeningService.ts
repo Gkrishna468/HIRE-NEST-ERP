@@ -79,7 +79,7 @@ export class ResumeScreeningService {
 
     const aiRes = await AIRuntime.analyze({
       prompt,
-      modelPreference: 'pro',
+      modelPreference: 'accurate',
       schema: true
     });
 

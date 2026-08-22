@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, limit } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { Button } from "../lib/Button";
 import { cn } from "../lib/utils";

@@ -352,7 +352,7 @@ private static async _compute_getDashboardViewModel(userOrgId?: string) {
    */
   
   static async getPredictiveSimulation() {
-    const cacheKey = "getPredictiveSimulation_" + ("" || "global");
+    const cacheKey = "getPredictiveSimulation_global";
     return this.withCache(cacheKey, () => this._compute_getPredictiveSimulation());
   }
 private static async _compute_getPredictiveSimulation(): Promise<PredictivePlacement[]> {
@@ -465,7 +465,7 @@ private static async _compute_getPredictiveSimulation(): Promise<PredictivePlace
    */
   
   static async getVendorIntelligence() {
-    const cacheKey = "getVendorIntelligence_" + ("" || "global");
+    const cacheKey = "getVendorIntelligence_global";
     return this.withCache(cacheKey, () => this._compute_getVendorIntelligence());
   }
 private static async _compute_getVendorIntelligence(): Promise<any[]> {
@@ -524,7 +524,7 @@ private static async _compute_getVendorIntelligence(): Promise<any[]> {
    */
   
   static async getSuccessDashboard() {
-    const cacheKey = "getSuccessDashboard_" + ("" || "global");
+    const cacheKey = "getSuccessDashboard_global";
     return this.withCache(cacheKey, () => this._compute_getSuccessDashboard());
   }
 private static async _compute_getSuccessDashboard(): Promise<any> {
@@ -566,7 +566,7 @@ private static async _compute_getSuccessDashboard(): Promise<any> {
    */
   
   static async getExecutiveMetrics() {
-    const cacheKey = "getExecutiveMetrics_" + ("" || "global");
+    const cacheKey = "getExecutiveMetrics_global";
     return this.withCache(cacheKey, () => this._compute_getExecutiveMetrics());
   }
 private static async _compute_getExecutiveMetrics(): Promise<any> {
@@ -621,7 +621,7 @@ private static async _compute_getExecutiveMetrics(): Promise<any> {
    */
   
   static async getIdentityResolution() {
-    const cacheKey = "getIdentityResolution_" + ("" || "global");
+    const cacheKey = "getIdentityResolution_global";
     return this.withCache(cacheKey, () => this._compute_getIdentityResolution());
   }
 private static async _compute_getIdentityResolution(): Promise<any[]> {
@@ -686,7 +686,7 @@ private static async _compute_getIdentityResolution(): Promise<any[]> {
    */
   
   static async getEnterpriseCommandCenterMetrics() {
-    const cacheKey = "getEnterpriseCommandCenterMetrics_" + ("" || "global");
+    const cacheKey = "getEnterpriseCommandCenterMetrics_global";
     return this.withCache(cacheKey, () => this._compute_getEnterpriseCommandCenterMetrics());
   }
 private static async _compute_getEnterpriseCommandCenterMetrics(): Promise<any> {

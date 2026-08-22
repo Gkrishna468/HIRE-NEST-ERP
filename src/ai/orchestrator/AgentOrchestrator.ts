@@ -234,7 +234,7 @@ export class AgentOrchestrator {
         action: `EXECUTE_${agent.metadata.domain || 'SYSTEM'}`,
         result: result.success ? 'SUCCESS' : 'FAILURE',
         error: result.error,
-        model: result.metrics?.model || agent.metadata.modelPolicy?.primary || 'gemini-3.6-flash',
+        model: result.metrics?.model || agent.metadata.modelPolicy?.primary || 'gemini-2.5-flash',
         latencyMs: durationMs,
         tokenUsage: result.metrics?.tokensUsed || 0
       });

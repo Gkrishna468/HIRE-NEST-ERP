@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrainCircuit, ThumbsUp, ThumbsDown, GitMerge, Sparkles, RefreshCcw, ArrowRight } from "lucide-react";
 import { cn } from "../lib/utils";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
 export default function AILearningLoopTab() {
