@@ -196,15 +196,15 @@ export class GoogleProvider implements AIProvider {
             }
         }
 
-        let requestedModel = model || "gemini-2.5-flash";
-        if (requestedModel === "gemini-3.6-flash" || requestedModel.includes("3.6")) {
-            requestedModel = "gemini-2.5-flash";
+        let requestedModel = model || "gemini-3.6-flash";
+        if (requestedModel === "gemini-2.5-flash" || requestedModel.includes("2.5-flash") || requestedModel.includes("1.5-flash") || requestedModel.includes("2.0-flash") || requestedModel.includes("3.5-flash")) {
+            requestedModel = "gemini-3.6-flash";
         }
-        if (requestedModel === "gemini-3.1-pro-preview" || requestedModel.includes("3.1-pro")) {
-            requestedModel = "gemini-2.5-pro";
+        if (requestedModel === "gemini-2.5-pro" || requestedModel.includes("2.5-pro") || requestedModel.includes("1.5-pro") || requestedModel.includes("2.0-pro")) {
+            requestedModel = "gemini-3.1-pro-preview";
         }
 
-        const candidateModels = Array.from(new Set([requestedModel, "gemini-2.5-flash", "gemini-2.5-pro"]));
+        const candidateModels = Array.from(new Set([requestedModel, "gemini-3.6-flash", "gemini-3.1-pro-preview", "gemini-3.7-flash"]));
         const timeoutMs = options.timeoutMs || 30000;
 
         let lastError: any = null;
@@ -646,10 +646,10 @@ export class AIGateway {
      * Strategy-based dynamic routing strategy config (CTO Req #5)
      */
     static getModelRoutingByStrategy(strategy: "speed" | "quality" | "cost", preferredProvider?: string): { provider: string, model: string }[] {
-        const googleFast = "gemini-2.5-flash";
-        const googleAccurate = "gemini-2.5-flash";
-        const litellmFast = process.env.LITELLM_MODEL_FAST || "gemini/gemini-2.5-flash";
-        const litellmAccurate = process.env.LITELLM_MODEL_ACCURATE || "gemini-2.5-flash";
+        const googleFast = "gemini-3.6-flash";
+        const googleAccurate = "gemini-3.6-flash";
+        const litellmFast = process.env.LITELLM_MODEL_FAST || "gemini/gemini-3.6-flash";
+        const litellmAccurate = process.env.LITELLM_MODEL_ACCURATE || "gemini-3.6-flash";
         
         const openaiFast = process.env.OPENAI_MODEL_FAST || "gpt-4o-mini";
         const openaiAccurate = process.env.OPENAI_MODEL_ACCURATE || "gpt-4o";
@@ -711,31 +711,31 @@ export class AIGateway {
         // AI Gateway Optimisation (Phase 2): Task-based Model Routing
         if (feature === "resume_parsing" || feature === "resume.extract") {
             return [
-                { provider: "google", model: "gemini-2.5-flash" },
+                { provider: "google", model: "gemini-3.6-flash" },
                 { provider: "litellm", model: "qwen/qwen3-8b" }
             ];
         }
         if (feature === "candidate_matching") {
             return [
-                { provider: "google", model: "gemini-2.5-flash" },
+                { provider: "google", model: "gemini-3.6-flash" },
                 { provider: "litellm", model: "deepseek/deepseek-r1-distill" }
             ];
         }
         if (feature === "email_drafting") {
             return [
-                { provider: "google", model: "gemini-2.5-flash" },
+                { provider: "google", model: "gemini-3.6-flash" },
                 { provider: "litellm", model: "mistral/mistral-small" }
             ];
         }
         if (feature === "chat" || feature.includes("chat")) {
             return [
-                { provider: "google", model: "gemini-2.5-flash" },
+                { provider: "google", model: "gemini-3.6-flash" },
                 { provider: "litellm", model: "qwen/qwen3-14b" }
             ];
         }
         if (feature === "code_generation" || feature === "sql_generation") {
             return [
-                { provider: "google", model: "gemini-2.5-flash" },
+                { provider: "google", model: "gemini-3.6-flash" },
                 { provider: "litellm", model: "qwen/qwen-coder" }
             ];
         }
@@ -947,10 +947,10 @@ export class AIGateway {
         if (request.model) {
             let reqModel = request.model;
             const lower = reqModel.toLowerCase();
-            if (lower.includes("2.5-pro") || lower.includes("1.5-pro") || lower.includes("2.0-pro")) {
-                reqModel = "gemini-2.5-pro";
-            } else if (lower.includes("2.5-flash") || lower.includes("1.5-flash") || lower.includes("2.0-flash") || lower.includes("3.5-flash")) {
-                reqModel = "gemini-2.5-flash";
+            if (lower.includes("2.5-pro") || lower.includes("1.5-pro") || lower.includes("2.0-pro") || lower.includes("3.1-pro")) {
+                reqModel = "gemini-3.1-pro-preview";
+            } else if (lower.includes("2.5-flash") || lower.includes("1.5-flash") || lower.includes("2.0-flash") || lower.includes("3.5-flash") || lower.includes("3.6-flash")) {
+                reqModel = "gemini-3.6-flash";
             }
 
             const m = reqModel.toLowerCase();

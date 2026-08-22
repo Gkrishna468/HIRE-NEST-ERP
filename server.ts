@@ -342,7 +342,20 @@ hirenest_active_requests 0
     // Detailed logging for debugging
     console.log(`[API_MAP] Path: ${apiPath} (Full: ${req.originalUrl || req.url})`);
     
-    req.query = { ...req.query, ...req.params };
+    const queryData = { ...req.query, ...req.params };
+    try {
+      Object.defineProperty(req, 'query', {
+        value: queryData,
+        writable: true,
+        configurable: true
+      });
+    } catch (e) {
+      try {
+        req.query = queryData;
+      } catch (err) {
+        // Fallback
+      }
+    }
 
     try {
       switch (apiPath) {

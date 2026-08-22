@@ -225,21 +225,22 @@ CRITICAL: If the resume content is missing, too short, or lacks a real human nam
 
           // Return a structured graceful fallback using Regex Layer 1 and Header Layer 2
           console.log(
-            "[BULK_PARSE] Extraction model failed. Returning PARSING_PENDING.",
+            "[BULK_PARSE] Extraction model failed. Returning PARSE_FAILED.",
           );
           profile = {
-            name: "Parsing Pending",
-            fullName: "Parsing Pending",
-            email: "pending@hirenest.os",
-            phone: "N/A",
-            skills: ["Unparsed"],
+            name: "Needs Manual Review",
+            fullName: "Needs Manual Review",
+            email: "",
+            phone: "",
+            skills: [],
             experience: "Unparsed",
-            currentRole: "Queued for Extraction",
-            summary: "Extraction model failed. Attempted fallback heuristics.",
-            riskScore: 0,
+            currentRole: "Needs Manual Review",
+            summary: "AI Parsing failed. Manual review required.",
+            riskScore: -1,
             isRisky: false,
             status: "PARSE_FAILED",
             pipelineStage: "Candidate Added",
+            requiresManualReview: true,
           };
 
           // Simple email regex
@@ -280,6 +281,10 @@ CRITICAL: If the resume content is missing, too short, or lacks a real human nam
               profile.name = ln;
               break;
             }
+          }
+
+          if (!profile.name || profile.name === "Needs Manual Review") {
+            profile.name = "Needs Manual Review";
           }
 
           success = true;

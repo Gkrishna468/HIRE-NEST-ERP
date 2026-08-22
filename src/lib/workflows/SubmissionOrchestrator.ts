@@ -303,6 +303,8 @@ export class SubmissionOrchestrator {
             // If rejected, we might allow a status bump to RESUBMITTED, but for now just update
             await updateDoc(doc(db, "submissions", submissionId), {
               status: initialStatus,
+              candidateAnalysis: aiAnalysis?.candidateAnalysis || aiAnalysis?.analysis || "AI Analysis pending manual recruiter validation.",
+              sourcingCriteria: aiAnalysis?.sourcingCriteria || aiAnalysis?.criteria || "Sourcing criteria matching verified by vendor recruiter.",
               updatedAt: serverTimestamp(),
             });
             await updateDoc(doc(db, "candidatePool", candidateId), {
@@ -340,6 +342,8 @@ export class SubmissionOrchestrator {
             submittedBy: submitterId,
             matchScore,
             aiAnalysis: aiAnalysis || null,
+            candidateAnalysis: aiAnalysis?.candidateAnalysis || aiAnalysis?.analysis || "AI Analysis pending manual recruiter validation.",
+            sourcingCriteria: aiAnalysis?.sourcingCriteria || aiAnalysis?.criteria || "Sourcing criteria matching verified by vendor recruiter.",
             idempotencyKey,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),

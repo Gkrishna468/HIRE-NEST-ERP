@@ -9,13 +9,13 @@ router.get('/models', (req: any, res: any) => {
         object: 'list',
         data: [
             {
-                id: 'gemini-2.5-flash',
+                id: 'gemini-3.6-flash',
                 object: 'model',
                 created: 1700000000,
                 owned_by: 'google'
             },
             {
-                id: 'gemini-2.5-pro',
+                id: 'gemini-3.1-pro-preview',
                 object: 'model',
                 created: 1700000000,
                 owned_by: 'google'

@@ -64,15 +64,26 @@ Provide 2-3 specific action items based on their role.`;
       temperature: 0.7
     });
 
-    let resultData;
+    let resultData: any;
     try {
       resultData = JSON.parse(aiResponse.response);
     } catch (e) {
-      // Fallback
+      resultData = null;
+    }
+
+    if (!resultData || typeof resultData !== "object") {
       resultData = {
         briefing: "Good morning! Your dashboard is active and ready.",
         actionItems: []
       };
+    }
+
+    if (!resultData.actionItems || !Array.isArray(resultData.actionItems)) {
+      resultData.actionItems = [];
+    }
+
+    if (!resultData.briefing) {
+      resultData.briefing = "Good morning! Your dashboard is active and ready.";
     }
 
     return res.status(200).json({

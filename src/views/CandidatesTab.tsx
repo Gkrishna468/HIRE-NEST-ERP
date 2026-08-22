@@ -319,6 +319,7 @@ export default function CandidatesTab() {
     total: number;
     processing: number;
     parsed: number;
+    failed: number;
     matched: number;
   } | null>(null);
   const [isAiSearching, setIsAiSearching] = useState(false);
@@ -989,6 +990,7 @@ export default function CandidatesTab() {
         total: count,
         processing: count,
         parsed: 0,
+        failed: 0,
         matched: 0,
       });
     } catch (e: any) {
@@ -1164,6 +1166,7 @@ ${extText}`;
               total: successCount,
               processing: successCount,
               parsed: 0,
+              failed: 0,
               matched: 0,
             }
           : null,
@@ -1175,14 +1178,45 @@ ${extText}`;
         total: successCount,
         processing: successCount,
         parsed: 0,
+        failed: 0,
         matched: 0,
       });
     }
   };
 
-  const enrichCandidate = async (candId: string, text: string) => {
+   const enrichCandidate = async (candId: string, text: string) => {
     try {
       console.log(`[OS INTELLIGENCE] Queueing profile for ${candId}...`);
+
+      const textIsEmpty = !text || text.trim() === "" || text.includes("[Parse Failure Fallback]") || text.includes("PARSING_PENDING") || text.trim().length < 5;
+
+      if (textIsEmpty) {
+        console.warn(`[OS INTELLIGENCE] Text extraction failed or is sparse for ${candId}. Skipping AI parser and marking as failed.`);
+        await updateDoc(doc(db, "candidatePool", candId), {
+          distillationStatus: "FAILED",
+          status: "FAILED",
+          requiresManualReview: true,
+          pipelineStage: "Added",
+          updatedAt: serverTimestamp(),
+        });
+        await emitEvent(
+          "CandidateEnriched",
+          "CANDIDATE",
+          candId,
+          "system",
+          "system",
+          { error: "Text extraction failed - original document contains no extractable text." }
+        );
+        setProcessingStats((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            processing: Math.max(0, prev.processing - 1),
+            failed: (prev.failed || 0) + 1,
+          };
+        });
+        return;
+      }
 
       await updateDoc(doc(db, "candidatePool", candId), {
         distillationStatus: "PROCESSING",
@@ -1355,13 +1389,15 @@ ${extText}`;
           );
         }
 
+        const isFailed = result.status === "PARSE_FAILED";
         // Update stats
         setProcessingStats((prev) => {
           if (!prev) return null;
           return {
             ...prev,
             processing: Math.max(0, prev.processing - 1),
-            parsed: prev.parsed + 1,
+            parsed: isFailed ? prev.parsed : prev.parsed + 1,
+            failed: isFailed ? (prev.failed || 0) + 1 : (prev.failed || 0),
           };
         });
 
@@ -1396,6 +1432,15 @@ ${extText}`;
           "system",
           { error: "Distillation Failed" }
         );
+        // Ensure stats are updated on failure
+        setProcessingStats((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            processing: Math.max(0, prev.processing - 1),
+            failed: (prev.failed || 0) + 1,
+          };
+        });
       }
     } catch (err: any) {
       console.error("Failed to queue enrichment:", err);
@@ -1411,6 +1456,15 @@ ${extText}`;
         "system",
         { error: err.message || "Extraction crashed" }
       );
+      // Ensure stats are updated on exception
+      setProcessingStats((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          processing: Math.max(0, prev.processing - 1),
+          failed: (prev.failed || 0) + 1,
+        };
+      });
     }
   };
 
@@ -1810,7 +1864,7 @@ ${extText}`;
              userOrgId={userOrgId || "HQ"}
              onImport={async (imported) => {
                  setShowBulkUpload(false);
-                 setProcessingStats({ show: true, processing: imported.length, total: imported.length, parsed: 0, matched: 0 });
+                 setProcessingStats({ show: true, processing: imported.length, total: imported.length, parsed: 0, failed: 0, matched: 0 });
                  
                  try {
                      const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
@@ -1865,7 +1919,24 @@ ${extText}`;
               <button onClick={() => setProcessingStats(null)} className="text-slate-500 hover:text-white"><X size={16}/></button>
             </div>
             {/* progress bars... */}
-            <div className="text-xs text-slate-400 mt-2">Processed: {processingStats.parsed}/{processingStats.total}</div>
+            <div className="text-xs text-slate-400 mt-2 flex flex-col gap-1.5">
+              <div className="flex justify-between">
+                <span>Total Uploaded:</span>
+                <span className="font-semibold text-slate-200">{processingStats.total}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-emerald-400">Successfully Parsed:</span>
+                <span className="font-semibold text-emerald-400">{processingStats.parsed}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-rose-400">Failed:</span>
+                <span className="font-semibold text-rose-400">{processingStats.failed}</span>
+              </div>
+              <div className="flex justify-between text-slate-500">
+                <span>Pending Processing:</span>
+                <span>{processingStats.processing}</span>
+              </div>
+            </div>
           </div>
         )}
       </div>

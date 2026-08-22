@@ -85,6 +85,8 @@ export default function CandidateSubmissionModal({
                 fitScore: 88,
                 skills: profile.skills || [],
                 analysis: profile.summary || "Parsed from document.",
+                candidateAnalysis: profile.summary || "Parsed from document.",
+                sourcingCriteria: "Extracted candidate qualifications matched to job requirements.",
                 authenticity: "Parsed from document",
               };
               setAiAnalysis(analysis);
@@ -341,7 +343,7 @@ export default function CandidateSubmissionModal({
               ref={fileInputRef}
               onChange={handleFileUpload}
               className="hidden"
-              accept=".pdf,.doc,.docx,.txt"
+              accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.webp"
             />
 
             {!parsed && !isParsing && (
@@ -357,7 +359,7 @@ export default function CandidateSubmissionModal({
                   Drag & drop or Click to attach Resume document
                 </p>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Supports PDF, DOC, DOCX, TXT. Parses metadata.
+                  Supports PDF, DOC, DOCX, TXT, Images. Parses metadata.
                 </p>
               </div>
             )}
