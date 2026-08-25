@@ -370,8 +370,50 @@ export default function Candidate360Modal({
              {activeTab === 'RESUME' && (
                 <div className="h-full flex flex-col max-w-5xl mx-auto space-y-4 animate-in fade-in duration-300">
                    <div className="flex justify-between items-center">
-                      <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] text-slate-400">Parsed Resume Text</h3>
-                      <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={() => { const url = displayCandidate.resumeUrl || displayCandidate.originalResumeUrl || displayCandidate.resumeFileUrl; if (url) { window.open(url, '_blank') } else { alert('Original resume file not found.') } }}><UploadCloud size={14} className="mr-2" /> Download Original</Button>
+                      <div>
+                         <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] text-slate-400">Parsed Resume Text</h3>
+                         {(displayCandidate.resumeLastParsedAt || displayCandidate.createdAt) && (
+                            <span className="text-[10px] text-indigo-600 font-semibold block mt-1">
+                              Parsed: {(() => {
+                                 const dateVal = displayCandidate.resumeLastParsedAt || displayCandidate.createdAt;
+                                 if (!dateVal) return "";
+                                 try {
+                                   const d = dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal);
+                                   return d.toLocaleDateString(undefined, {
+                                     month: "short",
+                                     day: "numeric",
+                                     year: "numeric",
+                                     hour: "2-digit",
+                                     minute: "2-digit"
+                                   });
+                                 } catch (e) {
+                                   return String(dateVal);
+                                 }
+                              })()}
+                            </span>
+                         )}
+                      </div>
+                      <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={async () => {
+                         const url = displayCandidate.resumeUrl || displayCandidate.originalResumeUrl || displayCandidate.resumeFileUrl;
+                         if (url) {
+                           window.open(url, '_blank');
+                           return;
+                         }
+                         if (displayCandidate.storagePath) {
+                           try {
+                             const { getStorage, ref, getDownloadURL } = await import("firebase/storage");
+                             const storageInstance = getStorage();
+                             const fileRef = ref(storageInstance, displayCandidate.storagePath);
+                             const downloadUrl = await getDownloadURL(fileRef);
+                             window.open(downloadUrl, '_blank');
+                           } catch (err: any) {
+                             console.error("Failed to fetch download URL from Storage:", err);
+                             alert("Failed to fetch download URL from Storage: " + err.message);
+                           }
+                         } else {
+                           alert('Original resume file not found.');
+                         }
+                      }}><UploadCloud size={14} className="mr-2" /> Download Original</Button>
                    </div>
                    <div className="flex-1 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-y-auto font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
                       {displayCandidate.parsedResumeText || displayCandidate.resumeText || displayCandidate.extractedText || "No parsed resume text available."}

@@ -10,7 +10,6 @@ export default async function aiHealthHandler(req: any, res: any) {
         gateway: "healthy",
         ollama: "unconfigured",
         gemini: "unconfigured",
-        openai: "unconfigured",
         cache: "healthy",
         ledger: "healthy"
     };
@@ -40,13 +39,6 @@ export default async function aiHealthHandler(req: any, res: any) {
         healthStatus.gemini = "healthy";
     } else {
         healthStatus.gemini = "unconfigured";
-    }
-
-    // 3. Check OpenAI Configuration Status
-    if (process.env.OPENAI_API_KEY) {
-        healthStatus.openai = "healthy";
-    } else {
-        healthStatus.openai = "unconfigured";
     }
 
     // 4. Check Firestore Ledger Status

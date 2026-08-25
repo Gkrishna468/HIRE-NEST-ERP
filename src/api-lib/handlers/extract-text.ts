@@ -39,6 +39,25 @@ const upload = multerFunc({
   },
 }).single("file");
 
+async function ensureCanvasPolyfills() {
+  try {
+    if (typeof globalThis.DOMMatrix === "undefined" || typeof globalThis.DOMPoint === "undefined" || typeof globalThis.DOMRect === "undefined") {
+      const canvas = await import("@napi-rs/canvas");
+      if (typeof globalThis.DOMMatrix === "undefined" && canvas.DOMMatrix) {
+        (globalThis as any).DOMMatrix = canvas.DOMMatrix;
+      }
+      if (typeof globalThis.DOMPoint === "undefined" && canvas.DOMPoint) {
+        (globalThis as any).DOMPoint = canvas.DOMPoint;
+      }
+      if (typeof globalThis.DOMRect === "undefined" && canvas.DOMRect) {
+        (globalThis as any).DOMRect = canvas.DOMRect;
+      }
+    }
+  } catch (e) {
+    console.error("[OCR] Failed to initialize canvas polyfills:", e);
+  }
+}
+
 function cleanBufferText(buffer: Buffer): string {
   // Gracefully converts buffer to UTF-8 and filters printable ASCII characters
   const raw = buffer.toString("utf-8");
@@ -142,6 +161,7 @@ async function performOCR(imageBuffer: Buffer): Promise<string> {
 // Render scanned PDF pages to PNG and run OCR
 async function extractTextFromScannedPDF(buffer: Buffer): Promise<string> {
   try {
+    await ensureCanvasPolyfills();
     const pdfjs = await import("pdfjs-dist");
     const { createCanvas } = await import("@napi-rs/canvas");
     
@@ -265,6 +285,7 @@ export default async function handler(req: any, res: any) {
         extractedText = await performOCR(buffer);
       } else if (mimetype === "application/pdf" || fileExtension === "pdf") {
         try {
+          await ensureCanvasPolyfills();
           // Dynamically import pdfjs-dist on-demand to prevent pre-load native module issues
           const pdfjs = await import("pdfjs-dist");
 

@@ -636,9 +636,6 @@ export class AIGateway {
     private static providers: Record<string, AIProvider> = {
         freellm: new FreeLLMProvider(),
         google: new GoogleProvider(),
-        openai: new OpenAIProvider(),
-        litellm: new LiteLLMProvider(),
-        omniroute: new OmniRouteProvider(),
         ollama: new OllamaProvider()
     };
 
@@ -667,19 +664,9 @@ export class AIGateway {
     static getModelRoutingByStrategy(strategy: "speed" | "quality" | "cost", preferredProvider?: string): { provider: string, model: string }[] {
         const googleFast = "gemini-3.6-flash";
         const googleAccurate = "gemini-3.6-flash";
-        const litellmFast = process.env.LITELLM_MODEL_FAST || "gemini/gemini-3.6-flash";
-        const litellmAccurate = process.env.LITELLM_MODEL_ACCURATE || "gemini-3.6-flash";
-        
-        const openaiFast = process.env.OPENAI_MODEL_FAST || "gpt-4o-mini";
-        const openaiAccurate = process.env.OPENAI_MODEL_ACCURATE || "gpt-4o";
         
         const ollamaFast = process.env.OLLAMA_MODEL_FAST || "qwen3:8b";
         const ollamaAccurate = process.env.OLLAMA_MODEL_ACCURATE || "deepseek-r1";
-
-        
-        const omnirouteFast = process.env.OMNIROUTE_MODEL_FAST || "auto/fast";
-        const omnirouteAccurate = process.env.OMNIROUTE_MODEL_ACCURATE || "auto/coding";
-        const omnirouteCost = process.env.OMNIROUTE_MODEL_COST || "auto/cheap";
 
         let defaultRoutes: { provider: string, model: string }[] = [];
 
@@ -687,25 +674,16 @@ export class AIGateway {
         if (strategy === "quality") {
             defaultRoutes = [
                 { provider: "google", model: googleAccurate },
-                { provider: "omniroute", model: omnirouteAccurate },
-                { provider: "litellm", model: litellmAccurate },
-                { provider: "openai", model: openaiAccurate },
                 { provider: "ollama", model: ollamaAccurate }
             ];
         } else if (strategy === "cost") {
             defaultRoutes = [
                 { provider: "google", model: googleFast },
-                { provider: "omniroute", model: omnirouteCost },
-                { provider: "ollama", model: ollamaFast },
-                { provider: "litellm", model: litellmFast },
-                { provider: "openai", model: openaiFast }
+                { provider: "ollama", model: ollamaFast }
             ];
         } else { // "speed" (default)
             defaultRoutes = [
                 { provider: "google", model: googleFast },
-                { provider: "omniroute", model: omnirouteFast },
-                { provider: "litellm", model: litellmFast },
-                { provider: "openai", model: openaiFast },
                 { provider: "ollama", model: ollamaFast }
             ];
         }
@@ -730,32 +708,27 @@ export class AIGateway {
         // AI Gateway Optimisation (Phase 2): Task-based Model Routing
         if (feature === "resume_parsing" || feature === "resume.extract") {
             return [
-                { provider: "google", model: "gemini-3.6-flash" },
-                { provider: "litellm", model: "qwen/qwen3-8b" }
+                { provider: "google", model: "gemini-3.6-flash" }
             ];
         }
         if (feature === "candidate_matching") {
             return [
-                { provider: "google", model: "gemini-3.6-flash" },
-                { provider: "litellm", model: "deepseek/deepseek-r1-distill" }
+                { provider: "google", model: "gemini-3.6-flash" }
             ];
         }
         if (feature === "email_drafting") {
             return [
-                { provider: "google", model: "gemini-3.6-flash" },
-                { provider: "litellm", model: "mistral/mistral-small" }
+                { provider: "google", model: "gemini-3.6-flash" }
             ];
         }
         if (feature === "chat" || feature.includes("chat")) {
             return [
-                { provider: "google", model: "gemini-3.6-flash" },
-                { provider: "litellm", model: "qwen/qwen3-14b" }
+                { provider: "google", model: "gemini-3.6-flash" }
             ];
         }
         if (feature === "code_generation" || feature === "sql_generation") {
             return [
-                { provider: "google", model: "gemini-3.6-flash" },
-                { provider: "litellm", model: "qwen/qwen-coder" }
+                { provider: "google", model: "gemini-3.6-flash" }
             ];
         }
 
@@ -975,22 +948,16 @@ export class AIGateway {
             const m = reqModel.toLowerCase();
             if (m.includes("gemini") || m.includes("google")) {
                 routes = [
-                    { provider: "google", model: reqModel },
-                    { provider: "omniroute", model: "meta-llama/llama-3-70b-instruct" },
-                    { provider: "litellm", model: "mistral/mistral-small" },
-                    { provider: "openai", model: "gpt-4o-mini" }
+                    { provider: "google", model: reqModel }
                 ];
             } else if (m.includes("gpt") || m.includes("openai") || m.includes("o1")) {
                 routes = [
-                    { provider: "openai", model: reqModel },
-                    { provider: "google", model: "gemini-3.6-flash" },
-                    { provider: "omniroute", model: "meta-llama/llama-3-70b-instruct" }
+                    { provider: "google", model: "gemini-3.6-flash" }
                 ];
             } else {
                 routes = [
                     { provider: "ollama", model: reqModel },
-                    { provider: "google", model: "gemini-3.6-flash" },
-                    { provider: "openai", model: "gpt-4o-mini" }
+                    { provider: "google", model: "gemini-3.6-flash" }
                 ];
             }
         } else {
@@ -1146,7 +1113,25 @@ export class AIGateway {
                 return resultObj;
 
             } catch (error: any) {
-                console.warn(`[AIGateway] Provider ${providerId} (${route.model}) failed: ${error.message}`);
+                let category = "other";
+                const msg = error.message ? error.message.toLowerCase() : "";
+                if (msg.includes("key") || msg.includes("api_key") || msg.includes("apikey") || msg.includes("unauthorized") || msg.includes("credentials")) {
+                    category = "API key missing/invalid";
+                } else if (msg.includes("429") || msg.includes("quota") || msg.includes("exhausted") || msg.includes("limit") || msg.includes("resource_exhausted")) {
+                    category = "quota";
+                } else if (msg.includes("model") || msg.includes("not found") || msg.includes("404")) {
+                    category = "model unavailable";
+                } else if (msg.includes("permission") || msg.includes("forbidden") || msg.includes("403")) {
+                    category = "permission";
+                } else if (msg.includes("network") || msg.includes("fetch") || msg.includes("dns") || msg.includes("connect")) {
+                    category = "network";
+                } else if (msg.includes("timeout") || msg.includes("abort")) {
+                    category = "timeout";
+                } else if (msg.includes("bad request") || msg.includes("400") || msg.includes("schema") || msg.includes("invalid argument")) {
+                    category = "malformed request";
+                }
+                
+                console.warn(`[AIGateway] Provider ${providerId} (${route.model}) failed: ${error.message} [Classification: ${category}]`);
                 lastError = error;
                 
                 // Record failure to Circuit Breaker (CTO Req #4)
@@ -1217,32 +1202,31 @@ export class AIGateway {
         let defaultFallbackText = "";
         if (feature === "resume_parsing" || feature === "resume.extract") {
             defaultFallbackText = JSON.stringify({
-                fullName: null,
+                name: "Parsing Pending",
+                fullName: "Parsing Pending",
                 email: null,
                 phone: null,
                 location: null,
-                totalExperienceYears: 5,
-                currentCompany: "Client Company",
-                currentTitle: "Software Engineer",
-                skills: ["JavaScript", "TypeScript", "React"],
-                primarySkills: ["TypeScript", "React"],
-                secondarySkills: ["Node.js"],
-                certifications: [],
+                skills: [],
+                experience: null,
                 education: [],
-                projects: [],
-                domainExperience: ["Software Engineering"],
-                resumeQualityScore: 75,
-                aiConfidence: 70,
-                aiSummary: "Profile ingested and structured via HireNest Deterministic Fallback Engine."
+                currentTitle: null,
+                currentRole: null,
+                parsingStatus: "PARSING_PENDING",
+                requiresManualReview: true,
+                aiConfidence: 0,
+                summary: "AI Service failed. Resume is pending manual verification and re-scoring."
             });
         } else if (feature === "candidate_matching") {
             defaultFallbackText = JSON.stringify({
-                matchScore: 85,
-                hardConstraintsPassed: true,
-                matchingSkills: ["TypeScript", "React"],
+                matchScore: -1,
+                semanticScore: -1,
+                hardConstraintsPassed: false,
+                matchingSkills: [],
                 missingSkills: [],
-                rationale: "Candidate meets core experience and skill requirements based on deterministic rule analysis.",
-                status: "FALLBACK_ACTIVE"
+                rationale: "AI Matching failed. Match evaluation currently unavailable.",
+                status: "UNAVAILABLE",
+                matchingStatus: "UNAVAILABLE"
             });
         } else if (feature === "executive_summary") {
             defaultFallbackText = JSON.stringify({

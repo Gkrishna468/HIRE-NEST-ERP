@@ -1,6 +1,8 @@
 import React, { useState, useCallback } from "react";
 import { Upload, X, CheckCircle, AlertCircle, Trash2, Bot } from "lucide-react";
 import { Button } from "../lib/Button";
+import { auth } from "../lib/firebase";
+import { parseBulkResumes } from "../services/aiService";
 
 interface BulkUploadProps {
   onClose: () => void;
@@ -47,45 +49,55 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
         const formData = new FormData();
         formData.append("file", file);
         
-        let extText = "[Parse Failure Fallback]\\nCould not extract fully.";
+        let extText = "";
+        let extractionSucceeded = false;
         try {
+            const token = await auth.currentUser?.getIdToken();
+            const headers: Record<string, string> = {};
+            if (token) {
+              headers["Authorization"] = `Bearer ${token}`;
+            }
             const res = await fetch("/api/extract-text", {
               method: "POST",
+              headers,
               body: formData,
             });
             if (res.ok) {
               const data = await res.json();
-              if (data.text) extText = data.text;
+              if (data.text && data.text.trim().length >= 40) {
+                extText = data.text;
+                extractionSucceeded = true;
+              }
             }
         } catch (e) {
-            console.warn("Extraction failed", e);
+            console.warn("Extraction failed for file " + file.name, e);
         }
 
-        const tempName = file.name.replace(/\\.[^/.]+$/, "").replace(/[-_]/g, " ");
+        let parsedProfile: any = null;
+        let distilledName = "";
+        let parseStatus = "FAILED";
 
-        // We simulate distillation for UX (the backend will do the real one async after save, but we need immediate UI review)
-        let distilledName = tempName;
-        let missingName = false;
-        
-        // Optional quick-pass using GPT to get just name/email for review
-        try {
-           const matchRes = await fetch("/api/match-candidates-detailed", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                jd: "Extract basic identity details: name and email.",
-                candidateProfile: extText,
-              }),
-           });
-           if (matchRes.ok) {
-              // we just reuse this endpoint as a generic NLP parser
-              // Actually we'd prefer a faster NLP parser, but this will do.
-           }
-        } catch(e) {}
-
-        if (distilledName.toLowerCase().includes("resume") || distilledName.length < 3) {
-            missingName = true;
-            distilledName = "";
+        if (extractionSucceeded && extText && extText.trim()) {
+            try {
+                // Call the real AI parser
+                const results = await parseBulkResumes([extText]);
+                if (results && results.length > 0) {
+                    const profile = results[0];
+                    if (profile && profile.name && 
+                        profile.name !== "Parsing Pending" && 
+                        profile.name !== "Needs Manual Review" && 
+                        profile.name !== "Unnamed Candidate" && 
+                        profile.name !== "Local Mock Generated" &&
+                        profile.name !== "Candidate Missing Skill") {
+                        
+                        parsedProfile = profile;
+                        distilledName = profile.name;
+                        parseStatus = "COMPLETED";
+                    }
+                }
+            } catch (err) {
+                console.error("AI parsing failed in bulk upload component:", err);
+            }
         }
 
         parsedCandidates.push({
@@ -93,9 +105,13 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
             originalFile: file,
             fileName: file.name,
             extractedText: extText,
-            name: distilledName,
-            missingName,
-            status: "Parsed"
+            name: distilledName || "Failed to Parse",
+            missingName: !distilledName,
+            status: parseStatus === "COMPLETED" ? "Parsed" : "FAILED",
+            parsedProfile: parsedProfile ? {
+                ...parsedProfile,
+                status: "COMPLETED"
+            } : null
         });
     }
 
@@ -108,10 +124,12 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
       setCandidates(prev => prev.map(c => c.id === id ? { ...c, name: newName, missingName: newName.trim() === "" } : c));
   };
 
-  const hasMissingNames = candidates.some(c => c.missingName);
+  const hasMissingNames = candidates.some(c => c.status === "Parsed" && c.missingName);
+  const hasSuccessful = candidates.some(c => c.status === "Parsed" && c.parsedProfile);
 
   const confirmImport = () => {
-      onImport(candidates);
+      const successful = candidates.filter(c => c.status === "Parsed" && c.parsedProfile && c.name && c.name !== "Failed to Parse");
+      onImport(successful);
   };
 
   return (
@@ -193,7 +211,9 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
                       <tr key={c.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-3 text-slate-500 truncate max-w-[150px]" title={c.fileName}>{c.fileName}</td>
                         <td className="px-4 py-3">
-                          {c.missingName ? (
+                          {c.status === "FAILED" ? (
+                            <span className="text-rose-500 font-medium italic">Unparseable (Skipped)</span>
+                          ) : c.missingName ? (
                             <div className="flex items-center gap-2">
                                <input 
                                  type="text" 
@@ -215,7 +235,9 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
                           )}
                         </td>
                         <td className="px-4 py-3">
-                           {c.missingName ? (
+                           {c.status === "FAILED" ? (
+                             <span className="inline-flex items-center px-2 py-1 rounded bg-rose-100 text-rose-700 text-xs font-semibold">Failed</span>
+                           ) : c.missingName ? (
                              <span className="inline-flex items-center px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold">Missing Name</span>
                            ) : (
                              <span className="inline-flex items-center px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">Ready</span>
@@ -236,7 +258,7 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
                  </div>
                  <h3 className="text-2xl font-bold text-slate-900 mb-2">Import Successful</h3>
                  <p className="text-slate-500 border-b border-slate-100 pb-6 mb-6">
-                   {candidates.length} candidate profiles have been added to the CandidatePool.
+                   {candidates.filter(c => c.status === "Parsed").length} candidate profiles have been added to the CandidatePool.
                  </p>
                  <Button onClick={onClose} variant="default" className="px-8">View Candidates</Button>
              </div>
@@ -254,7 +276,7 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
              )}
              
              {step === "REVIEW" && (
-               <Button onClick={confirmImport} disabled={hasMissingNames} className={hasMissingNames ? "opacity-50" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
+               <Button onClick={confirmImport} disabled={!hasSuccessful || hasMissingNames} className={(!hasSuccessful || hasMissingNames) ? "opacity-50" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
                  Complete Import
                </Button>
              )}

@@ -17,6 +17,137 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[FATAL] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
+// Polyfill Promise.try for third-party libraries (e.g., pdf-parse, pdfjs-dist)
+if (typeof (Promise as any).try === 'undefined') {
+  (Promise as any).try = function <T>(fn: (...args: any[]) => T | PromiseLike<T>, ...args: any[]): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      try {
+        resolve(fn(...args));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+}
+
+// Polyfill Uint8Array.prototype.toHex for newer versions of pdfjs-dist
+if (typeof (Uint8Array.prototype as any).toHex !== 'function') {
+  (Uint8Array.prototype as any).toHex = function (this: Uint8Array): string {
+    let hex = '';
+    for (let i = 0; i < this.length; i++) {
+      hex += this[i].toString(16).padStart(2, '0');
+    }
+    return hex;
+  };
+}
+
+// Polyfill Map and WeakMap getOrInsertComputed and getOrInsert for pdfjs-dist and modern ECMAScript specifications
+if (typeof (Map.prototype as any).getOrInsertComputed !== 'function') {
+  (Map.prototype as any).getOrInsertComputed = function (key: any, callback: (key: any) => any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    const value = callback(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (Map.prototype as any).getOrInsert !== 'function') {
+  (Map.prototype as any).getOrInsert = function (key: any, value: any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (WeakMap.prototype as any).getOrInsertComputed !== 'function') {
+  (WeakMap.prototype as any).getOrInsertComputed = function (key: any, callback: (key: any) => any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    const value = callback(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (WeakMap.prototype as any).getOrInsert !== 'function') {
+  (WeakMap.prototype as any).getOrInsert = function (key: any, value: any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    this.set(key, value);
+    return value;
+  };
+}
+
+// Polyfill Math.sumPrecise for modern ECMAScript specifications
+if (typeof (Math as any).sumPrecise !== 'function') {
+  (Math as any).sumPrecise = function (iterable: any): number {
+    if (iterable === null || iterable === undefined || typeof iterable[Symbol.iterator] !== 'function') {
+      throw new TypeError('Math.sumPrecise: Argument must be an iterable');
+    }
+
+    let hasElements = false;
+    let hasNaN = false;
+    let hasPositiveInfinity = false;
+    let hasNegativeInfinity = false;
+    
+    const values: number[] = [];
+    for (const item of iterable) {
+      if (typeof item !== 'number') {
+        throw new TypeError('Math.sumPrecise: All elements must be numbers');
+      }
+      hasElements = true;
+      if (Number.isNaN(item)) {
+        hasNaN = true;
+      } else if (item === Infinity) {
+        hasPositiveInfinity = true;
+      } else if (item === -Infinity) {
+        hasNegativeInfinity = true;
+      } else {
+        values.push(item);
+      }
+    }
+
+    if (!hasElements) {
+      return -0;
+    }
+
+    if (hasNaN || (hasPositiveInfinity && hasNegativeInfinity)) {
+      return NaN;
+    }
+    if (hasPositiveInfinity) {
+      return Infinity;
+    }
+    if (hasNegativeInfinity) {
+      return -Infinity;
+    }
+
+    let sum = -0;
+    let c = 0;
+    for (let i = 0; i < values.length; i++) {
+      const x = values[i];
+      if (i === 0) {
+        sum = x;
+        continue;
+      }
+      const t = sum + x;
+      if (Math.abs(sum) >= Math.abs(x)) {
+        c += (sum - t) + x;
+      } else {
+        c += (x - t) + sum;
+      }
+      sum = t;
+    }
+
+    return sum + c;
+  };
+}
+
 // Static Imports for all Handlers & Admin
 import { adminAuth, db as adminDb } from './src/lib/firebase-admin';
 import { verifyAuth } from './src/api-lib/middlewares/authMiddleware.js';
@@ -37,7 +168,6 @@ import matchHealthHandler from './src/api-lib/handlers/match-health';
 import clientAiMatchesHandler from './src/api-lib/handlers/client-ai-matches';
 import oauthHandler from './src/api-lib/handlers/oauth';
 import workspaceHandler from './src/api-lib/handlers/workspace';
-import whatsappHandler from './src/api-lib/handlers/whatsapp';
 import googleProxyHandler from './src/api-lib/handlers/google-proxy';
 import cronHandler from './src/api-lib/handlers/cron';
 import eventsHandler from './src/api-lib/handlers/events';
@@ -62,7 +192,6 @@ import billingHandler from './src/api-lib/handlers/billing';
 import aiGatewayHandler from './src/api-lib/handlers/ai-gateway';
 import agentsExecuteHandler from './src/api-lib/handlers/agents-execute';
 import rufloHandler from './src/api-lib/handlers/ruflo';
-import openAIRouter from './src/api-lib/handlers/openai';
 import { CRMEventBridge } from './src/integrations/crm/CRMEventBridge.js';
 
 const __dirname = process.cwd();
@@ -94,12 +223,12 @@ async function createServer() {
       return await aiHealthHandler(req, res);
   });
   app.get('/ready', (req, res) => {
-      if (adminDb) {
-          res.status(200).json({ status: 'ready' });
-      } else {
-          res.status(503).json({ status: 'not_ready' });
-      }
+      res.status(200).json({ status: 'ready', databaseConnected: !!adminDb });
   });
+  app.get('/readyz', (req, res) => {
+      res.status(200).json({ status: 'ready', databaseConnected: !!adminDb });
+  });
+  app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
   app.get('/live', (req, res) => res.status(200).json({ status: 'alive' }));
 
   app.get('/api/purge-forbidden', async (req, res) => {
@@ -317,7 +446,6 @@ hirenest_active_requests 0
   // Mount OAuth and Google Proxy BEFORE global catch-all
   app.use('/api/oauth', oauthHandler);
   app.use('/api/workspace', workspaceHandler);
-  app.use("/api/whatsapp", whatsappHandler);
   app.use("/api/billing", billingHandler);
   app.use('/api/cron', cronHandler);
   app.use('/api/events', eventsHandler);
@@ -328,10 +456,6 @@ hirenest_active_requests 0
   app.use('/api/recruiter-os', recruiterOsHandler);
   app.use('/api/executive-metrics', executiveMetricsHandler);
   app.use('/api/daily-briefing', dailyBriefingHandler);
-
-  // OpenAI-Compatible API Gateway routes
-  app.use('/v1', aiLimiter, openAIRouter);
-  app.use('/api/v1', aiLimiter, openAIRouter);
 
   // API Route Handler
   app.use('/api', async (req: any, res: any, next: any) => {
@@ -436,6 +560,7 @@ hirenest_active_requests 0
           break;
 
 
+        case 'bulk-parse':
         case 'bulk-parse-resumes':
           if (bulkParseHandler) return await bulkParseHandler(req, res);
           break;
@@ -587,7 +712,10 @@ hirenest_active_requests 0
     }
 
     if (!res.headersSent) {
-      if (req.originalUrl?.startsWith('/api') || req.path?.startsWith('/api')) {
+      if (req.originalUrl?.startsWith('/api') || req.path?.startsWith('/api') || req.originalUrl?.startsWith('/v1') || req.path?.startsWith('/v1')) {
+         return res.status(err.status || 500).json({ success: false, error: err.message || "A server error occurred", requestId: req.requestId });
+      }
+      if (req.xhr || req.headers?.accept?.indexOf('json') !== -1) {
          return res.status(err.status || 500).json({ success: false, error: err.message || "A server error occurred", requestId: req.requestId });
       }
       next(err);

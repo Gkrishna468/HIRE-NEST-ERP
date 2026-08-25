@@ -78,7 +78,7 @@ export async function analyzeCandidateMatch(jd: string, candidateProfile: string
 export async function parseBulkResumes(resumeTexts: string[]): Promise<any[]> {
   try {
     const headers = await getAuthHeaders();
-    const response = await fetch("/api/bulk-parse-resumes", {
+    const response = await fetch("/api/bulk-parse", {
       method: "POST",
       headers,
       body: JSON.stringify({ resumeTexts }),

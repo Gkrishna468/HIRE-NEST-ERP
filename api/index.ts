@@ -1,3 +1,134 @@
+// Polyfill Promise.try for third-party libraries (e.g., pdf-parse, pdfjs-dist)
+if (typeof (Promise as any).try === 'undefined') {
+  (Promise as any).try = function <T>(fn: (...args: any[]) => T | PromiseLike<T>, ...args: any[]): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      try {
+        resolve(fn(...args));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  };
+}
+
+// Polyfill Uint8Array.prototype.toHex for newer versions of pdfjs-dist
+if (typeof (Uint8Array.prototype as any).toHex !== 'function') {
+  (Uint8Array.prototype as any).toHex = function (this: Uint8Array): string {
+    let hex = '';
+    for (let i = 0; i < this.length; i++) {
+      hex += this[i].toString(16).padStart(2, '0');
+    }
+    return hex;
+  };
+}
+
+// Polyfill Map and WeakMap getOrInsertComputed and getOrInsert for pdfjs-dist and modern ECMAScript specifications
+if (typeof (Map.prototype as any).getOrInsertComputed !== 'function') {
+  (Map.prototype as any).getOrInsertComputed = function (key: any, callback: (key: any) => any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    const value = callback(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (Map.prototype as any).getOrInsert !== 'function') {
+  (Map.prototype as any).getOrInsert = function (key: any, value: any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (WeakMap.prototype as any).getOrInsertComputed !== 'function') {
+  (WeakMap.prototype as any).getOrInsertComputed = function (key: any, callback: (key: any) => any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    const value = callback(key);
+    this.set(key, value);
+    return value;
+  };
+}
+
+if (typeof (WeakMap.prototype as any).getOrInsert !== 'function') {
+  (WeakMap.prototype as any).getOrInsert = function (key: any, value: any): any {
+    if (this.has(key)) {
+      return this.get(key);
+    }
+    this.set(key, value);
+    return value;
+  };
+}
+
+// Polyfill Math.sumPrecise for modern ECMAScript specifications
+if (typeof (Math as any).sumPrecise !== 'function') {
+  (Math as any).sumPrecise = function (iterable: any): number {
+    if (iterable === null || iterable === undefined || typeof iterable[Symbol.iterator] !== 'function') {
+      throw new TypeError('Math.sumPrecise: Argument must be an iterable');
+    }
+
+    let hasElements = false;
+    let hasNaN = false;
+    let hasPositiveInfinity = false;
+    let hasNegativeInfinity = false;
+    
+    const values: number[] = [];
+    for (const item of iterable) {
+      if (typeof item !== 'number') {
+        throw new TypeError('Math.sumPrecise: All elements must be numbers');
+      }
+      hasElements = true;
+      if (Number.isNaN(item)) {
+        hasNaN = true;
+      } else if (item === Infinity) {
+        hasPositiveInfinity = true;
+      } else if (item === -Infinity) {
+        hasNegativeInfinity = true;
+      } else {
+        values.push(item);
+      }
+    }
+
+    if (!hasElements) {
+      return -0;
+    }
+
+    if (hasNaN || (hasPositiveInfinity && hasNegativeInfinity)) {
+      return NaN;
+    }
+    if (hasPositiveInfinity) {
+      return Infinity;
+    }
+    if (hasNegativeInfinity) {
+      return -Infinity;
+    }
+
+    let sum = -0;
+    let c = 0;
+    for (let i = 0; i < values.length; i++) {
+      const x = values[i];
+      if (i === 0) {
+        sum = x;
+        continue;
+      }
+      const t = sum + x;
+      if (Math.abs(sum) >= Math.abs(x)) {
+        c += (sum - t) + x;
+      } else {
+        c += (x - t) + sum;
+      }
+      sum = t;
+    }
+
+    return sum + c;
+  };
+}
+
 import { adminAuth } from '../src/lib/firebase-admin.js';
 
 export default async function handler(req: any, res: any) {
@@ -14,7 +145,7 @@ export default async function handler(req: any, res: any) {
     const urlStr = req.url || '';
     
     const isPublic = 
-      urlStr.includes('/api/public') || urlStr.includes('/api/workspace/gmail/webhook') || urlStr.includes('/api/whatsapp/webhook') || 
+      urlStr.includes('/api/public') || urlStr.includes('/api/workspace/gmail/webhook') || 
       path?.startsWith('public');
       
     if (isPublic) {
@@ -57,7 +188,7 @@ export default async function handler(req: any, res: any) {
     else if (path === 'parse-jd')          targetHandler = (await import('../src/api-lib/handlers/parse-jd.js')).default;
     else if (path === 'extract-text')      targetHandler = (await import('../src/api-lib/handlers/extract-text.js')).default;
     else if (path === 'match-detailed')    targetHandler = (await import('../src/api-lib/handlers/match-candidates-detailed.js')).default;
-    else if (path === 'bulk-parse')        targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default;
+    else if (path === 'bulk-parse' || path === 'bulk-parse-resumes')        targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default;
     else if (path === 'interviews')        targetHandler = (await import('../src/api-lib/handlers/interviews.js')).default;
     else if (path === 'intel')             targetHandler = (await import('../src/api-lib/handlers/intel.js')).default;
     else if (path === 'analytics')         targetHandler = (await import('../src/api-lib/handlers/analytics.js')).default;
@@ -66,7 +197,6 @@ export default async function handler(req: any, res: any) {
     else if (path?.startsWith('oauth'))    targetHandler = (await import('../src/api-lib/handlers/oauth.js')).default;
     else if (path?.startsWith('google'))   targetHandler = (await import('../src/api-lib/handlers/google-proxy.js')).default;
     else if (path?.startsWith('workspace')) targetHandler = (await import('../src/api-lib/handlers/workspace.js')).default;
-    else if (path?.startsWith('whatsapp')) targetHandler = (await import('../src/api-lib/handlers/whatsapp.js')).default;
     else if (path?.startsWith('cron'))      targetHandler = (await import('../src/api-lib/handlers/cron.js')).default;
     else if (path?.startsWith('public'))    targetHandler = (await import('../src/api-lib/handlers/public.js')).default;
     else {
@@ -79,13 +209,14 @@ export default async function handler(req: any, res: any) {
         case 'parse-jd': targetHandler = (await import('../src/api-lib/handlers/parse-jd.js')).default; break;
         case 'extract-text': targetHandler = (await import('../src/api-lib/handlers/extract-text.js')).default; break;
         case 'match-detailed': targetHandler = (await import('../src/api-lib/handlers/match-candidates-detailed.js')).default; break;
-        case 'bulk-parse': targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default; break;
+        case 'bulk-parse':
+        case 'bulk-parse-resumes': targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default; break;
         default: targetHandler = (await import('../src/api-lib/handlers/admin.js')).default; break;
       }
     }
 
     if (targetHandler) {
-      const expressRouters = ['oauth', 'google', 'workspace', 'whatsapp', 'cron'];
+      const expressRouters = ['oauth', 'google', 'workspace', 'cron'];
       const matchedRouter = expressRouters.find(r => path?.startsWith(r));
       if (matchedRouter) {
         // Rewrite req.url so the Express Router matches it

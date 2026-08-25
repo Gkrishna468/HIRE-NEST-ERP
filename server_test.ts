@@ -85,12 +85,12 @@ async function createServer() {
       return await aiHealthHandler(req, res);
   });
   app.get('/ready', (req, res) => {
-      if (adminDb) {
-          res.status(200).json({ status: 'ready' });
-      } else {
-          res.status(503).json({ status: 'not_ready' });
-      }
+      res.status(200).json({ status: 'ready', databaseConnected: !!adminDb });
   });
+  app.get('/readyz', (req, res) => {
+      res.status(200).json({ status: 'ready', databaseConnected: !!adminDb });
+  });
+  app.get('/healthz', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
   app.get('/live', (req, res) => res.status(200).json({ status: 'alive' }));
 
   app.get('/api/purge-forbidden', async (req, res) => {
@@ -537,7 +537,10 @@ hirenest_active_requests 0
     }
 
     if (!res.headersSent) {
-      if (req.path.startsWith('/api/')) {
+      if (req.path.startsWith('/api/') || req.path.startsWith('/api') || req.path.startsWith('/v1')) {
+         return res.status(err.status || 500).json({ success: false, error: err.message || "A server error occurred", requestId: req.requestId });
+      }
+      if (req.xhr || req.headers?.accept?.indexOf('json') !== -1) {
          return res.status(err.status || 500).json({ success: false, error: err.message || "A server error occurred", requestId: req.requestId });
       }
       next(err);

@@ -9,24 +9,19 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       req.originalUrl === '/api/audit' || 
       cleanUrl === '/health' ||
       cleanUrl === '/api/health' ||
+      cleanUrl === '/healthz' ||
       cleanUrl === '/ready' ||
+      cleanUrl === '/readyz' ||
       cleanUrl === '/live' ||
       req.originalUrl.includes('/oauth/callback') || 
       req.originalUrl.includes('/api/oauth/url') ||
       req.originalUrl.startsWith('/api/public') || 
       req.originalUrl.includes('/api/workspace/gmail/webhook') || 
-      req.originalUrl.includes('/api/whatsapp/webhook') ||
       req.originalUrl.includes('/api/automation/events') ||
       req.originalUrl.includes('/api/automation-events') ||
       req.originalUrl.includes('/api/communication') ||
       req.originalUrl.includes('/api/kill-switch') ||
-      Boolean(req.headers['x-hirenest-signature']) ||
-      (req.method === 'GET' && (
-        cleanUrl === '/v1' || 
-        cleanUrl === '/v1/models' || 
-        cleanUrl === '/api/v1' || 
-        cleanUrl === '/api/v1/models'
-      ))
+      Boolean(req.headers['x-hirenest-signature'])
     ) {
       return next();
     }

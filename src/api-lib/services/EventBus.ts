@@ -203,30 +203,6 @@ export class EventBus {
                     console.error(`[EventBus] Failed to dispatch event to subscriber ${sub.subscriber}:`, err);
                 }
             }
-
-            // Safe, failure-isolated dispatch to n8n Orchestration Layer
-            try {
-                const { n8nService } = await import('./n8nService.js');
-                n8nService.triggerWorkflow({
-                    workflowName: event.eventType,
-                    eventId: event.eventId,
-                    eventType: event.eventType,
-                    traceId: event.traceId,
-                    tenantId: event.tenantId || 'GLOBAL',
-                    source: event.source || 'EVENT_BUS',
-                    actorId: event.payload?.actorId || 'SYSTEM',
-                    timestamp: event.publishedAt || new Date().toISOString(),
-                    candidateId: event.payload?.candidateId || event.payload?.id,
-                    requirementId: event.payload?.requirementId,
-                    payload: event.payload
-                }).then(res => {
-                    console.log(`[EventBus] n8n trigger for ${event.eventType} completed with status: ${res.status}`);
-                }).catch(err => {
-                    console.warn(`[EventBus] n8n trigger isolated error warning: ${err.message}`);
-                });
-            } catch (n8nErr: any) {
-                console.warn('[EventBus] Failed to invoke n8nService trigger (isolated):', n8nErr.message);
-            }
         } catch (error) {
             console.error('[EventBus] Error in publishInternal router:', error);
         }

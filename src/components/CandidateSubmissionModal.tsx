@@ -53,9 +53,9 @@ export default function CandidateSubmissionModal({
       if (res.ok) {
         const data = await res.json();
         if (data.text) {
-          // Now pass extracted text to the intel parser via bulk-parse-resumes or similar.
+          // Now pass extracted text to the intel parser via bulk-parse or similar.
           // Here we can use the same AI distillation used in bulk upload
-          const intelRes = await fetch("/api/bulk-parse-resumes", {
+          const intelRes = await fetch("/api/bulk-parse", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

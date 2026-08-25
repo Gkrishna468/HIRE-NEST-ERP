@@ -247,28 +247,76 @@ const PIPELINE_STAGES = [
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData("application/json", JSON.stringify(candidate))}
                   onClick={() => onCandidateClick(candidate)}
-                  className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 hover:shadow-md transition-all group"
+                  className="bg-white rounded-lg p-4 shadow-sm border border-slate-200 cursor-grab hover:border-indigo-300 hover:shadow-md transition-all group flex flex-col space-y-2"
                 >
-                  <p className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                      {candidate.fullName || candidate.name || "Unknown"}
-                  </p>
-                  {candidate.distillationStatus === "FAILED" && (
-                    (candidate.resumeText || candidate.resumeLastParsedAt) ? (
-                      <div className="mt-1 flex items-center gap-1 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                         <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                         Resume Parsed ✓ <span className="opacity-70 mx-0.5">|</span> AI Analysis Pending
-                      </div>
-                    ) : (
-                      <div className="mt-1 flex items-center gap-1 text-amber-600 text-[10px] font-bold uppercase tracking-wider">
-                         <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                         AI Enrichment Failed
-                      </div>
-                    )
-                  )}
-                  <div className="flex justify-between items-center">
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-1 flex-1">{candidate.primaryEmail || candidate.email}</p>
-                      {candidate.matchScore > 0 && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 rounded">{candidate.matchScore}%</span>}
+                  <div>
+                    <p className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center justify-between gap-1">
+                      <span className="truncate">{candidate.fullName || candidate.name || "Unknown"}</span>
+                      {candidate.matchScore > 0 && (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">
+                          {candidate.matchScore}%
+                        </span>
+                      )}
+                    </p>
+                    <span className="text-[10px] font-mono text-slate-400 block mt-0.5">
+                      {candidate.candidateId || candidate.id || "HN-CAN-PENDING"}
+                    </span>
                   </div>
+
+                  {/* Parsed Status Badge */}
+                  {(candidate.distillationStatus === "FAILED" || candidate.status === "FAILED") ? (
+                    <div className="flex items-center gap-1 text-rose-600 text-[10px] font-bold uppercase tracking-wider bg-rose-50 border border-rose-100 px-1.5 py-0.5 rounded w-max">
+                       <ShieldAlert className="w-3 h-3 text-rose-500" />
+                       Parse Failed
+                    </div>
+                  ) : (candidate.distillationStatus === "COMPLETED" || candidate.status === "COMPLETED") ? (
+                    <div className="flex items-center gap-1 text-emerald-600 text-[10px] font-bold uppercase tracking-wider bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded w-max">
+                       <CheckCircle className="w-3 h-3 text-emerald-500" />
+                       Parsed ✓
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 text-indigo-600 text-[10px] font-bold uppercase tracking-wider bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded w-max">
+                       <Activity className="w-3 h-3 text-indigo-500 animate-pulse" />
+                       Processing
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-500 truncate">{candidate.primaryEmail || candidate.email || "No Email Provided"}</p>
+
+                  {/* Skills preview */}
+                  {candidate.skills && getSkillsArray(candidate.skills).length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {getSkillsArray(candidate.skills).slice(0, 2).map((skill: string, idx: number) => (
+                        <span key={idx} className="text-[9px] font-medium bg-slate-100 border border-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
+                          {skill}
+                        </span>
+                      ))}
+                      {getSkillsArray(candidate.skills).length > 2 && (
+                        <span className="text-[9px] text-slate-400 px-1.5 py-0.5">
+                          +{getSkillsArray(candidate.skills).length - 2}
+                         </span>
+                      )}
+                    </div>
+                  )}
+
+                  {candidate.createdAt && (
+                    <div className="text-[9px] text-slate-400 font-medium pt-1 border-t border-slate-100 mt-1">
+                      Parsed: {(() => {
+                         const dateVal = candidate.resumeLastParsedAt || candidate.createdAt;
+                         if (!dateVal) return "";
+                         try {
+                           const d = dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal);
+                           return d.toLocaleDateString(undefined, {
+                             month: "short",
+                             day: "numeric",
+                             year: "numeric"
+                           });
+                         } catch (e) {
+                           return "";
+                         }
+                      })()}
+                    </div>
+                  )}
                 </div>
              ))}
           </div>
@@ -331,6 +379,50 @@ export default function CandidatesTab() {
     userRole === "ops_admin" ||
     userRole === "hq_admin" ||
     userRole === "hq";
+
+  const handleCleanupSyntheticCandidates = async () => {
+    if (!window.confirm("Are you sure you want to clean up all synthetic 'CAND_P6D_FAIL...' and failed parsing candidate records? This will delete them permanently from Firestore.")) {
+      return;
+    }
+    
+    setIsBulkProcessing(true);
+    let deletedCount = 0;
+    try {
+      const { collection, getDocs, deleteDoc, doc } = await import("firebase/firestore");
+      const snap = await getDocs(collection(db, "candidatePool"));
+      
+      const deletePromises = snap.docs.map(async (d) => {
+        const data = d.data();
+        const docId = d.id;
+        const name = (data.fullName || data.name || "").toUpperCase();
+        
+        const isSynthetic = 
+          docId.startsWith("CAND_P6D_FAIL") ||
+          name.startsWith("CAND_P6D_FAIL") ||
+          name.includes("MISSING SKILL") ||
+          name.includes("NEEDS MANUAL REVIEW") ||
+          name.includes("PARSING PENDING") ||
+          name.includes("LOCAL MOCK GENERATED");
+          
+        if (isSynthetic) {
+          try {
+            await deleteDoc(doc(db, "candidatePool", docId));
+            deletedCount++;
+          } catch (err) {
+            console.error(`Failed to delete legacy doc ${docId}:`, err);
+          }
+        }
+      });
+      
+      await Promise.all(deletePromises);
+      alert(`Success! Permanently deleted ${deletedCount} synthetic / failed candidate records.`);
+    } catch (e: any) {
+      console.error("Cleanup error:", e);
+      alert("Error cleaning up synthetic candidates: " + e.message);
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
 
   const handleNameSave = async (candId: string) => {
     if (!editingName || !editingName.name.trim()) return;
@@ -1103,8 +1195,8 @@ ${extText}`;
         await setDoc(doc(db, "candidatePool", candId), {
           fullName: tempName,
           name: tempName,
-          primaryEmail: "pending@extraction.io",
-          email: "pending@extraction.io",
+          primaryEmail: null,
+          email: null,
           candidateId: candId,
           vendorId: userOrgId,
           sourceOrganizations: [userOrgId],
@@ -1687,6 +1779,16 @@ ${extText}`;
                   )}
                 </div>
               )}
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleCleanupSyntheticCandidates}
+                  disabled={isBulkProcessing}
+                  className="border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700 font-bold"
+                >
+                  <AlertTriangle className="w-4 h-4 mr-2 text-rose-500" /> Cleanup Synthetic
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
                 <Upload className="w-4 h-4 mr-2" /> Bulk Upload
               </Button>
@@ -1772,10 +1874,20 @@ ${extText}`;
                        {candidate.fullName || candidate.name || "Unknown"}
                        {candidate.email && <CheckCircle className="w-4 h-4 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />}
                     </span>
-                    {(candidate.distillationStatus === "FAILED" || candidate.status === "PARSE_FAILED") && (
+                    {(candidate.distillationStatus === "FAILED" || candidate.status === "PARSE_FAILED" || candidate.status === "FAILED") ? (
                        <span className="flex items-center gap-1 text-rose-600 text-[10px] font-bold uppercase tracking-wider mt-1 border border-rose-200 bg-rose-50 px-2 py-0.5 rounded w-max">
                           <ShieldAlert className="w-3 h-3 text-rose-500" />
                           Parse Failed
+                       </span>
+                    ) : (candidate.distillationStatus === "COMPLETED" || candidate.status === "COMPLETED" || candidate.status === "ACTIVE") ? (
+                       <span className="flex items-center gap-1 text-emerald-600 text-[10px] font-bold uppercase tracking-wider mt-1 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded w-max">
+                          <CheckCircle className="w-3 h-3 text-emerald-500" />
+                          Parsed ✓
+                       </span>
+                    ) : (
+                       <span className="flex items-center gap-1 text-indigo-600 text-[10px] font-bold uppercase tracking-wider mt-1 border border-indigo-200 bg-indigo-50 px-2 py-0.5 rounded w-max">
+                          <Activity className="w-3 h-3 text-indigo-500 animate-pulse" />
+                          Processing
                        </span>
                     )}
                     <span className="text-xs font-mono text-slate-400 font-normal">
@@ -1790,6 +1902,24 @@ ${extText}`;
                       {candidate.ownerName && (
                         <span className="text-[8px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
                           Owner: {candidate.ownerName}
+                        </span>
+                      )}
+                      {candidate.createdAt && (
+                        <span className="text-[8px] font-bold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          Parsed: {(() => {
+                             const dateVal = candidate.resumeLastParsedAt || candidate.createdAt;
+                             if (!dateVal) return "";
+                             try {
+                               const d = dateVal.seconds ? new Date(dateVal.seconds * 1000) : new Date(dateVal);
+                               return d.toLocaleDateString(undefined, {
+                                 month: "short",
+                                 day: "numeric",
+                                 year: "numeric"
+                               });
+                             } catch (e) {
+                               return "";
+                             }
+                          })()}
                         </span>
                       )}
                     </div>
@@ -1867,17 +1997,179 @@ ${extText}`;
                  setProcessingStats({ show: true, processing: imported.length, total: imported.length, parsed: 0, failed: 0, matched: 0 });
                  
                  try {
-                     const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+                     const { doc, setDoc, updateDoc, serverTimestamp, getDocs, query, collection, where } = await import("firebase/firestore");
                      
                      let count = 0;
                      for(const c of imported) {
-                        const candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
-                        await setDoc(doc(db, "candidatePool", candId), {
-                          fullName: c.name,
-                          name: c.name,
-                          primaryEmail: "pending@extraction.io",
-                          email: "pending@extraction.io",
-                          candidateId: candId,
+                        let candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
+                        const file = c.originalFile;
+                        
+                        // Compute resume text hash for deduplication
+                        let resumeHash = "";
+                        try {
+                          const encoder = new TextEncoder();
+                          const hashBuffer = await crypto.subtle.digest(
+                            "SHA-256",
+                            encoder.encode(c.extractedText || ""),
+                          );
+                          const hashArray = Array.from(new Uint8Array(hashBuffer));
+                          resumeHash = hashArray
+                            .map((b) => b.toString(16).padStart(2, "0"))
+                            .join("");
+                        } catch (hashErr) {
+                          console.warn("Hashing failed", hashErr);
+                        }
+
+                        // Deduplication check
+                        if (resumeHash) {
+                          try {
+                            let existingUserQ;
+                            if (userRole === "admin" || userRole === "super_admin" || userRole === "ops_admin" || userRole === "hq_admin") {
+                              existingUserQ = query(
+                                collection(db, "candidatePool"),
+                                where("resumeHash", "==", resumeHash),
+                              );
+                            } else {
+                              existingUserQ = query(
+                                collection(db, "candidatePool"),
+                                where("resumeHash", "==", resumeHash),
+                                where("vendorId", "==", userOrgId),
+                              );
+                            }
+                            
+                            const existingDocs = await getDocs(existingUserQ);
+                            if (!existingDocs.empty) {
+                              console.warn(`File ${c.fileName} is a duplicate submission (resume matched exactly). Skipping.`);
+                              setProcessingStats((prev) => {
+                                if (!prev) return null;
+                                return {
+                                  ...prev,
+                                  processing: Math.max(0, prev.processing - 1),
+                                  parsed: (prev.parsed || 0) + 1,
+                                };
+                              });
+                              continue;
+                            }
+                          } catch (dupErr) {
+                            console.warn("Duplicate check failed in bulk import:", dupErr);
+                          }
+                        }
+
+                        // Storage Upload
+                        let storagePath = "";
+                        if (file) {
+                          try {
+                              const { ref, uploadBytes } = await import("firebase/storage");
+                              const { storage } = await import("../lib/firebase");
+                              const fileRef = ref(storage, `resumes/${userOrgId || "HQ"}/${candId}/${c.fileName}`);
+                              await uploadBytes(fileRef, file);
+                              storagePath = fileRef.fullPath;
+                          } catch (storageErr) {
+                              console.warn("Storage upload failed in bulk import:", storageErr);
+                          }
+                        }
+
+                        let isDuplicate = false;
+                        let duplicateReason = "";
+                        let status = "COMPLETED";
+                        let distillationStatus = "COMPLETED";
+                        let pipelineStage = "Candidate Added";
+                        let resolvedCandId = candId;
+
+                        const email = c.parsedProfile?.email || "";
+                        const phone = c.parsedProfile?.phone || "";
+                        const name = c.name || c.parsedProfile?.name || "";
+
+                        if (email && email !== "No Email Provided" && !email.includes("pending@") && !email.includes("mock@")) {
+                          try {
+                            const candHash = await generateIdentityHash(
+                              email,
+                              phone !== "No Phone Provided" ? phone : "",
+                              name,
+                              c.parsedProfile?.linkedin || "",
+                              c.parsedProfile?.experience || ""
+                            );
+
+                            if (candHash) {
+                              const vaultResult = await checkAndClaimOwnership(
+                                candHash,
+                                userOrgId || "HQ",
+                                name,
+                                "Bulk Upload AI Parse",
+                                email,
+                                phone !== "No Phone Provided" ? phone : ""
+                              );
+
+                              if (!vaultResult.success) {
+                                isDuplicate = true;
+                                status = "DISPUTED";
+                                duplicateReason = `Ownership Vault: Active claim held by another vendor. Dispute ${vaultResult.disputeId} generated.`;
+                              } else {
+                                // check for local duplicates
+                                const q = query(
+                                  collection(db, "candidatePool"),
+                                  where("email", "==", email)
+                                );
+                                const snap = await getDocs(q);
+                                const incomingPhone = phone ? phone.replace(/\D/g, "") : "";
+                                const duplicates = snap.docs.filter((d) => {
+                                  const targetData = d.data();
+                                  if (targetData.vendorId !== (userOrgId || "HQ") && targetData.ownerVendorId !== (userOrgId || "HQ")) return false;
+                                  if (resumeHash && resumeHash === targetData.resumeHash) return true;
+                                  const existingPhone = targetData.phone ? targetData.phone.replace(/\D/g, "") : "";
+                                  if (existingPhone && incomingPhone && existingPhone === incomingPhone) return true;
+                                  return false;
+                                });
+
+                                if (duplicates.length > 0) {
+                                  const primary = duplicates[0];
+                                  resolvedCandId = primary.id;
+                                  console.log(`[IDENTITY RESOLUTION] Merging duplicate upload into existing primary ID: ${resolvedCandId}`);
+                                  await updateDoc(doc(db, "candidatePool", resolvedCandId), {
+                                    resumeText: c.extractedText || primary.data().resumeText,
+                                    updatedAt: serverTimestamp(),
+                                  });
+                                  // Skip creating new document since it is a duplicate
+                                  setProcessingStats((prev) => {
+                                    if (!prev) return null;
+                                    return {
+                                      ...prev,
+                                      processing: Math.max(0, prev.processing - 1),
+                                      parsed: (prev.parsed || 0) + 1,
+                                    };
+                                  });
+                                  continue;
+                                }
+                              }
+                            }
+                          } catch (vaultErr) {
+                            console.warn("Vault check failed in bulk import:", vaultErr);
+                          }
+                        }
+
+                        const isFailed = c.parsedProfile?.status === "PARSE_FAILED" || !c.extractedText || c.extractedText.includes("[Parse Failure Fallback]");
+
+                        if (isFailed) {
+                          console.warn(`Skipping database write for failed parse of candidate: ${c.fileName}`);
+                          setProcessingStats((prev) => {
+                            if (!prev) return null;
+                            return {
+                              ...prev,
+                              processing: Math.max(0, prev.processing - 1),
+                              failed: (prev.failed || 0) + 1,
+                            };
+                          });
+                          continue;
+                        }
+
+                        const savePayload = {
+                          fullName: name,
+                          name: name,
+                          primaryEmail: email || null,
+                          email: email || null,
+                          phone: phone || null,
+                          phoneHash: phone || null,
+                          candidateId: resolvedCandId,
                           createdFrom: userRole === "vendor" ? "VENDOR" : "RECRUITER",
                           createdVia: "IMPORT",
                           createdByRole: (userRole || "vendor").toUpperCase() as any,
@@ -1888,19 +2180,102 @@ ${extText}`;
                           acquisitionMethod: "IMPORT" as any,
                           vendorId: userOrgId || "HQ",
                           sourceOrganizations: [userOrgId || "HQ"],
-                          pipelineStage: "Candidate Added",
+                          pipelineStage: pipelineStage,
                           source: "Bulk Upload",
                           resumeText: c.extractedText,
+                          resumeHash: resumeHash,
                           fileName: c.fileName,
-                          status: "QUEUED",
-                          distillationStatus: "PROCESSING",
+                          storagePath: storagePath,
+                          status: status,
+                          distillationStatus: distillationStatus,
                           createdAt: serverTimestamp(),
                           updatedAt: serverTimestamp(),
+                          
+                          // Rich AI Profile Details
+                          skills: c.parsedProfile?.skills || [],
+                          experience: c.parsedProfile?.experience || "",
+                          currentRole: c.parsedProfile?.currentRole || "",
+                          summary: c.parsedProfile?.summary || "",
+                          riskScore: c.parsedProfile?.riskScore || 0,
+                          isRisky: c.parsedProfile?.isRisky || false,
+                          
+                          // Parsed Metadata
+                          resumeLastParsedAt: new Date().toISOString(),
+                          resumeParserVersion: "v1_gemini_pro",
+                          resumeSource: "bulk_upload",
+
+                          // Disputed / Duplicate state if any
+                          isDuplicate: isDuplicate,
+                          duplicateReason: duplicateReason,
+                        };
+
+                        await setDoc(doc(db, "candidatePool", resolvedCandId), savePayload);
+
+                        // Trigger notifications & events
+                        try {
+                          await publishEvent({
+                            type: "success",
+                            title: "Candidate Parsed",
+                            message: `Intelligence extraction complete for ${name}`,
+                            recipients: ["GLOBAL_ADMIN", "GLOBAL_CLIENT", "GLOBAL_VENDOR"],
+                          });
+
+                          await emitEvent(
+                            "CandidateEnriched",
+                            "CANDIDATE",
+                            resolvedCandId,
+                            auth.currentUser?.uid || "system",
+                            userRole || "system",
+                            {
+                              name: name,
+                              score: 0,
+                              vendorId: userOrgId || "HQ",
+                            }
+                          );
+                        } catch (eventErr) {
+                          console.warn("Failed to publish event during bulk import:", eventErr);
+                        }
+
+                        // Update processing stats
+                        setProcessingStats((prev) => {
+                          if (!prev) return null;
+                          return {
+                            ...prev,
+                            processing: Math.max(0, prev.processing - 1),
+                            parsed: isFailed ? prev.parsed : (prev.parsed || 0) + 1,
+                            failed: isFailed ? (prev.failed || 0) + 1 : (prev.failed || 0),
+                          };
                         });
                         
-                        enrichCandidate(candId, c.extractedText);
                         count++;
                      }
+
+                     // Trigger background matchmaking scan after successful batch parsing
+                     try {
+                       const idToken = await auth.currentUser?.getIdToken();
+                       fetch("/api/rescan-matches", {
+                         method: "POST",
+                         headers: {
+                           "Content-Type": "application/json",
+                           "Authorization": `Bearer ${idToken}`
+                         },
+                         body: JSON.stringify({ orgId: userOrgId || "HQ" })
+                       }).then(res => res.json())
+                         .then(data => {
+                           console.log("[MATCH_ENGINE_AUTO] Successful match scan:", data);
+                           setProcessingStats((prev) => {
+                             if (!prev) return null;
+                             return {
+                               ...prev,
+                               matched: data.matchUpdatesCount || 0
+                             };
+                           });
+                         })
+                         .catch(err => console.error("[MATCH_ENGINE_AUTO] Match scan failed:", err));
+                     } catch (matchErr) {
+                       console.error("[MATCH_ENGINE_AUTO] Auth Token error:", matchErr);
+                     }
+
                  } catch (e) {
                      console.error("Import error", e);
                  }
@@ -1922,6 +2297,10 @@ ${extText}`;
             <div className="text-xs text-slate-400 mt-2 flex flex-col gap-1.5">
               <div className="flex justify-between">
                 <span>Total Uploaded:</span>
+                <span className="font-semibold text-slate-200">{processingStats.total}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Extracted:</span>
                 <span className="font-semibold text-slate-200">{processingStats.total}</span>
               </div>
               <div className="flex justify-between">

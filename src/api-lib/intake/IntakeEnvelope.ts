@@ -1,6 +1,5 @@
 export type IntakeSource =
   | "gmail"
-  | "whatsapp"
   | "linkedin"
   | "website"
   | "api"

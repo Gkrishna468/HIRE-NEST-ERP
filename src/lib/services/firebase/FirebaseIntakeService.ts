@@ -5,7 +5,7 @@ import { RequirementInput } from '../../../types/Requirement';
 import { Candidate } from '../../../types.ts';
 
 export interface IntakeEvent {
-  source: 'EMAIL' | 'WHATSAPP' | 'PORTAL' | 'API';
+  source: 'EMAIL' | 'PORTAL' | 'API';
   type: 'REQUIREMENT' | 'CANDIDATE' | 'SUBMISSION';
   payload: any;
   orgId: string;
@@ -73,7 +73,6 @@ export class FirebaseIntakeService {
     
     const mappedViaMap: Record<string, 'CRM' | 'OS' | 'PORTAL' | 'API' | 'IMPORT'> = {
       'EMAIL': 'IMPORT',
-      'WHATSAPP': 'API',
       'PORTAL': 'PORTAL',
       'API': 'API'
     };

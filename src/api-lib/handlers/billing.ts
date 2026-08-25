@@ -1,26 +1,14 @@
 import express from "express";
 import { db } from "../../lib/firebase-admin.js";
 import { WorkspaceResolver } from "../services/WorkspaceResolver.js";
-import Stripe from 'stripe';
 
 const billingHandler = express.Router();
-
-let stripeClient: Stripe | null = null;
-function getStripe(): Stripe | null {
-    if (!stripeClient) {
-        const key = process.env.STRIPE_SECRET_KEY;
-        if (key && !key.includes('placeholder')) {
-            stripeClient = new Stripe(key);
-        }
-    }
-    return stripeClient;
-}
 
 billingHandler.get("/status", async (req, res) => {
   try {
     const workspace = await WorkspaceResolver.resolve(req);
     
-    // In a real app, query Stripe/Razorpay or the local synced subscription doc
+    // Query local synced subscription doc
     const snap = await db.collection("billing_subscriptions")
         .where("tenantId", "==", workspace.orgId)
         .limit(1)
@@ -80,32 +68,20 @@ billingHandler.get("/usage", async (req, res) => {
   }
 });
 
-billingHandler.post("/webhook", express.raw({type: 'application/json'}), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
+billingHandler.post("/webhook", express.json(), async (req, res) => {
     let event;
 
     try {
-        if (endpointSecret && sig) {
-            const stripe = getStripe();
-            if (stripe) {
-                event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-            } else {
-                event = JSON.parse(req.body.toString());
-            }
-        } else {
-            event = JSON.parse(req.body.toString());
-        }
+        event = req.body;
     } catch (err: any) {
         console.error(`[BILLING WEBHOOK] Webhook Error: ${err.message}`);
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
     try {
-        console.log("[BILLING WEBHOOK] Received event", event.type);
+        console.log("[BILLING WEBHOOK] Received event", event?.type);
         
-        if (event.type === "invoice.payment_succeeded" || event.type === "payment.captured") {
+        if (event && (event.type === "invoice.payment_succeeded" || event.type === "payment.captured")) {
             const tenantId = event.data?.object?.metadata?.tenantId;
             if (tenantId) {
                 await db.collection("billing_subscriptions").doc(tenantId).set({

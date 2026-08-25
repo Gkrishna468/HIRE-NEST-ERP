@@ -82,7 +82,6 @@ import DealRoomsTab from "./views/DealRoomsTab";
 import InterviewsTab from "./views/InterviewsTab";
 import { PlacementsTab } from "./views/PlacementsTab";
 import InboxTab from "./views/InboxTab";
-import WhatsAppHubTab from "./views/WhatsAppHubTab";
 
 import WorkflowOperationsTab from "./views/WorkflowOperationsTab";
 import OperationalHealthTab from "./views/OperationalHealthTab";
@@ -452,13 +451,7 @@ const AppContent = () => {
                 active={location.pathname === "/emails"}
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <SidebarItem
-                to="/whatsapp"
-                icon={MessageCircle}
-                label="WhatsApp Hub"
-                active={location.pathname === "/whatsapp"}
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
+
             </>
           )}
 
@@ -793,7 +786,6 @@ const AppContent = () => {
             )}
             <Route path="/client-360" element={<Client360Tab userRole={role || ""} />} />
             <Route path="/vendor-360" element={<Vendor360Tab userRole={role || ""} />} />
-            <Route path="/whatsapp" element={<WhatsAppHubTab />} />
             {isAdmin && (
               <Route path="/benchmarks" element={<BenchmarkDashboard />} />
             )}
