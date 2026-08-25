@@ -160,8 +160,11 @@ import parseJdHandler from './src/api-lib/handlers/parse-jd';
 import extractTextHandler from './src/api-lib/handlers/extract-text';
 import matchDetailedHandler from './src/api-lib/handlers/match-candidates-detailed';
 import bulkParseHandler from './src/api-lib/handlers/bulk-parse-resumes';
+import upsertCandidateHandler from "./src/api-lib/handlers/upsert-candidate";
 import workflowsHandler from './src/api-lib/handlers/workflows';
 import rescanMatchesHandler from './src/api-lib/handlers/rescan-matches';
+import rescanResumeHandler from './src/api-lib/handlers/rescan-resume';
+import resumeLedgerHandler from './src/api-lib/handlers/resume-ledger';
 import rebuildMatrixHandler from './src/api-lib/handlers/rebuild-matrix';
 import cleanupMatchesHandler from './src/api-lib/handlers/cleanup-matches';
 import matchHealthHandler from './src/api-lib/handlers/match-health';
@@ -192,6 +195,8 @@ import billingHandler from './src/api-lib/handlers/billing';
 import aiGatewayHandler from './src/api-lib/handlers/ai-gateway';
 import agentsExecuteHandler from './src/api-lib/handlers/agents-execute';
 import rufloHandler from './src/api-lib/handlers/ruflo';
+import aiHealthHandler from './src/api-lib/handlers/ai-health';
+import { ErrorMonitor } from './src/api-lib/telemetry/errorMonitor.js';
 import { CRMEventBridge } from './src/integrations/crm/CRMEventBridge.js';
 
 const __dirname = process.cwd();
@@ -219,7 +224,6 @@ async function createServer() {
   app.get('/health', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
   app.get('/api/health', (req, res) => res.status(200).json({ status: 'ok', version: '1.0' }));
   app.get('/health/ai', async (req, res) => {
-      const aiHealthHandler = (await import('./src/api-lib/handlers/ai-health')).default;
       return await aiHealthHandler(req, res);
   });
   app.get('/ready', (req, res) => {
@@ -560,9 +564,12 @@ hirenest_active_requests 0
           break;
 
 
-        case 'bulk-parse':
-        case 'bulk-parse-resumes':
+        case "bulk-parse":
+        case "bulk-parse-resumes":
           if (bulkParseHandler) return await bulkParseHandler(req, res);
+          break;
+        case 'upsert-candidate':
+          if (upsertCandidateHandler) return await upsertCandidateHandler(req, res);
           break;
 
         case 'ai':
@@ -578,6 +585,16 @@ hirenest_active_requests 0
           
         case 'rescan-matches':
           if (rescanMatchesHandler) return await rescanMatchesHandler(req, res);
+          break;
+
+        case 'rescan-resume':
+        case 'rescan':
+          if (rescanResumeHandler) return await rescanResumeHandler(req, res);
+          break;
+
+        case 'resume-ledger':
+        case 'watchdog/recover-stale':
+          if (resumeLedgerHandler) return await resumeLedgerHandler(req, res);
           break;
 
         case 'rebuild-matrix':
@@ -698,7 +715,6 @@ hirenest_active_requests 0
     
     // Asynchronous error tracking for production readiness
     try {
-        const { ErrorMonitor } = await import("./src/api-lib/telemetry/errorMonitor.js");
         await ErrorMonitor.captureError({
             requestId: req.requestId,
             context: req.path,
@@ -724,33 +740,10 @@ hirenest_active_requests 0
 
   // Vite integration
   const distIndexPath = path.join(process.cwd(), 'dist', 'index.html');
-  const hasDistIndex = fs.existsSync(distIndexPath);
   const isRunningFromCjs = process.argv[1]?.endsWith('server.cjs');
-  const isProd = (isRunningFromCjs || (process.env.NODE_ENV === 'production' && !fs.existsSync(path.resolve(__dirname, 'vite.config.ts')))) && hasDistIndex;
+  const isProd = process.env.NODE_ENV === 'production' || isRunningFromCjs || !fs.existsSync(path.resolve(process.cwd(), 'vite.config.ts'));
 
-  if (!isProd) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'custom',
-    });
-    app.use(vite.middlewares);
-    
-    app.use(async (req, res, next) => {
-      const url = req.originalUrl;
-      if (url.startsWith('/api') || req.path.startsWith('/api')) {
-        return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
-      }
-      try {
-        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e) {
-        vite.ssrFixStacktrace(e);
-        next(e);
-      }
-    });
-  } else {
+  const serveStaticFiles = () => {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*all', (req, res) => {
@@ -764,6 +757,37 @@ hirenest_active_requests 0
         res.status(404).send('Application build not found. Please build the project.');
       }
     });
+  };
+
+  if (!isProd) {
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'custom',
+      });
+      app.use(vite.middlewares);
+      
+      app.use(async (req, res, next) => {
+        const url = req.originalUrl;
+        if (url.startsWith('/api') || req.path.startsWith('/api')) {
+          return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
+        }
+        try {
+          let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+          template = await vite.transformIndexHtml(url, template);
+          res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+        } catch (e) {
+          vite.ssrFixStacktrace(e);
+          next(e);
+        }
+      });
+    } catch (viteImportError) {
+      console.warn("[Server] Vite is not available in this environment. Falling back to production static serving mode.");
+      serveStaticFiles();
+    }
+  } else {
+    serveStaticFiles();
   }
 
   const PORT = 3000;

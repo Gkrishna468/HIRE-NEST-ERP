@@ -137,7 +137,7 @@ export class MatchingOffice {
                     requirementId: reqObj.id,
                     tenantId: reqObj.tenantId || reqObj.orgId || cand.tenantId || "TENANT-HQ",
                     matchScore: mScore,
-                    matchTier: engineResult.tier,
+                    matchTier: engineResult.tier || "WEAK_MATCH",
                     summary: engineResult.reasoning || "AI Match Generated",
                     strengths: engineResult.matchedSkills || [], 
                     missingSkills: engineResult.missingMandatorySkills || [],
@@ -147,17 +147,18 @@ export class MatchingOffice {
                     experienceGaps: engineResult.experienceGaps || [],
                     riskFlags: engineResult.riskFlags || [],
                     breakdown: {
-                        skillsScore: engineResult.deterministicScore,
-                        experienceScore: engineResult.deterministicScore,
-                        semanticScore: engineResult.semanticScore,
-                        businessScore: engineResult.businessScore,
+                        skillsScore: engineResult.deterministicScore || 0,
+                        experienceScore: engineResult.deterministicScore || 0,
+                        semanticScore: engineResult.semanticScore >= 0 ? engineResult.semanticScore : 0,
+                        businessScore: engineResult.businessScore || 0,
                     },
-                    suggestedAction: engineResult.suggestedAction,
-                    aiScreeningStatus: engineResult.aiScreeningStatus
+                    suggestedAction: engineResult.suggestedAction || "RECRUITER_REVIEW",
+                    aiScreeningStatus: engineResult.aiScreeningStatus || "COMPLETED"
                 };
 
                 const matchId = `${cand.id}_${reqObj.id}`;
                 const vendorId = cand.vendorId || cand.orgId || "UNKNOWN";
+                const effectiveOrgId = reqObj.orgId || cand.orgId || vendorId || "GLOBAL";
                 
                 const matchDocRef = db.collection("candidate_matches").doc(matchId);
                 const existingMatch = await matchDocRef.get();
@@ -180,7 +181,7 @@ export class MatchingOffice {
                         cand.id, 
                         reqObj.id, 
                         'MATCHED', 
-                        { score: mScore, confidence: mScore / 100 }
+                        { score: mScore, confidence: mScore / 100, tenantId: effectiveOrgId }
                     );
                 } catch (graphErr) {
                     console.warn(`[MatchingOffice] Failed to update Business Graph for ${cand.id} <-> ${reqObj.id}:`, graphErr);
@@ -194,7 +195,7 @@ export class MatchingOffice {
                     requirementId: reqObj.id,
                     matchScore: mScore,
                     summary: matchResult.summary
-                }, 'MATCHING_OFFICE', reqObj.orgId || cand.orgId);
+                }, 'MATCHING_OFFICE', effectiveOrgId);
 
                 return matchPayload;
             }

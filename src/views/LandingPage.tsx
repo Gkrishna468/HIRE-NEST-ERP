@@ -16,15 +16,24 @@ import {
   MessageSquare,
   Lock,
   Menu,
-  X
+  X,
+  Sparkles,
+  UploadCloud,
+  Briefcase,
+  UserCheck,
+  Star
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { db } from '../lib/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { CandidateRegisterModal } from '../components/CandidateRegisterModal';
 
 export default function LandingPage() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [candidateModalOpen, setCandidateModalOpen] = useState(false);
+  const [candidateModalMode, setCandidateModalMode] = useState<"REGISTER" | "LOGIN">("REGISTER");
+
   const [formData, setFormData] = useState({
     name: '',
     companyName: '',
@@ -36,6 +45,15 @@ export default function LandingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [error, setError] = useState('');
+
+  const openCandidateRegister = () => {
+    setCandidateModalMode("REGISTER");
+    setCandidateModalOpen(true);
+  };
+
+  const openCandidateLogin = () => {
+    navigate('/login?role=candidate');
+  };
 
   const handlePlanSelection = (planName: string) => {
     setFormData(prev => ({ ...prev, plan: planName }));
@@ -93,22 +111,44 @@ export default function LandingPage() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Features</a>
             <a href="#pricing" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Pricing</a>
-            <a href="#early-access" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Early Access</a>
-            <Link to="/login" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Login</Link>
+            
+            {/* Candidate Portal First-Class Action */}
+            <div className="flex items-center gap-2 bg-indigo-950/60 p-1 rounded-2xl border border-indigo-500/30">
+              <button 
+                onClick={openCandidateRegister}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-900/30"
+              >
+                <Sparkles size={14} /> Candidate Register (CV Match)
+              </button>
+              <Link 
+                to="/login?role=candidate" 
+                className="text-xs font-bold uppercase tracking-wider text-indigo-300 hover:text-white px-3 py-2 transition-colors"
+              >
+                Candidate Login
+              </Link>
+            </div>
+
+            <Link to="/login" className="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white transition-colors">Enterprise Login</Link>
             <button 
               onClick={() => document.getElementById('early-access')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-xl shadow-indigo-900/20"
+              className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border border-white/10"
             >
-              Get Early Access
+              Get Access
             </button>
           </div>
 
           {/* Mobile Actions: Always show Login, and a menu toggle */}
-          <div className="flex md:hidden items-center gap-3">
-            <Link to="/login" className="text-[10px] font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl border border-white/10 transition-all">
+          <div className="flex md:hidden items-center gap-2">
+            <button 
+              onClick={openCandidateRegister}
+              className="text-[10px] font-black uppercase tracking-wider bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl transition-all"
+            >
+              Upload CV
+            </button>
+            <Link to="/login" className="text-[10px] font-black uppercase tracking-wider bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl border border-white/10 transition-all">
               Login
             </Link>
             <button 
@@ -124,6 +164,26 @@ export default function LandingPage() {
         {/* Mobile Navigation Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-slate-950 border-b border-white/5 px-6 py-6 space-y-4 animate-in slide-in-from-top-4 duration-200">
+            <div className="p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-2xl space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400 block">Candidate Entry Point</span>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  openCandidateRegister();
+                }}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+              >
+                <Sparkles size={14} /> Register CV & AI Match
+              </button>
+              <Link
+                to="/login?role=candidate"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-center text-xs font-bold text-indigo-300 py-1"
+              >
+                Candidate Login →
+              </Link>
+            </div>
+
             <a 
               href="#features" 
               onClick={() => setMobileMenuOpen(false)}
@@ -138,27 +198,20 @@ export default function LandingPage() {
             >
               Pricing
             </a>
-            <a 
-              href="#early-access" 
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-xs font-black uppercase tracking-widest text-slate-400 hover:text-white py-2"
-            >
-              Early Access
-            </a>
             <div className="pt-2 border-t border-white/5 flex flex-col gap-3">
               <Link 
                 to="/login" 
                 onClick={() => setMobileMenuOpen(false)}
                 className="w-full text-center py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all border border-white/5"
               >
-                Login
+                Enterprise Login
               </Link>
               <button 
                 onClick={() => {
                   setMobileMenuOpen(false);
                   document.getElementById('early-access')?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-xs font-black uppercase tracking-widest text-white transition-all text-center"
+                className="w-full py-3 bg-white hover:bg-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-950 transition-all text-center"
               >
                 Get Early Access
               </button>
@@ -191,7 +244,7 @@ export default function LandingPage() {
               {[
                 { icon: CheckCircle2, text: "Autonomous Workflows" },
                 { icon: CheckCircle2, text: "Real-time Intelligence" },
-                { icon: CheckCircle2, text: "End-to-End Visibility" }
+                { icon: CheckCircle2, text: "Direct Candidate Portal" }
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs font-bold text-slate-300">
                   <item.icon size={16} className="text-indigo-500" />
@@ -200,13 +253,55 @@ export default function LandingPage() {
               ))}
             </div>
 
-            <div className="pt-8">
-               <button 
-                onClick={() => document.getElementById('early-access')?.scrollIntoView({ behavior: 'smooth' })}
-                className="group flex items-center gap-3 bg-white text-slate-950 px-8 py-5 rounded-[2rem] text-sm font-black uppercase tracking-widest hover:scale-105 transition-all"
-              >
-                Join Early Access <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />
-              </button>
+            {/* Candidate & Enterprise Dual CTAs */}
+            <div className="pt-6 space-y-4">
+              <div className="p-6 bg-gradient-to-r from-indigo-950/80 to-purple-950/60 border border-indigo-500/30 rounded-3xl backdrop-blur-md shadow-2xl relative overflow-hidden">
+                <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-8 w-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
+                      <Sparkles size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white">For Candidates & Job Seekers</h4>
+                      <p className="text-[11px] text-indigo-300 font-medium">Instant AI Fitment • Full-Time & C2H Roles</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+                    Direct Apply
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button 
+                    onClick={openCandidateRegister}
+                    className="flex-1 min-w-[200px] flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider shadow-lg shadow-indigo-600/30 hover:scale-[1.02] transition-all"
+                  >
+                    <UploadCloud size={16} /> Register CV & Instant Match
+                  </button>
+                  <Link 
+                    to="/login?role=candidate"
+                    className="px-5 py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-2xl text-xs font-black uppercase tracking-wider transition-all text-center"
+                  >
+                    Candidate Login
+                  </Link>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <button 
+                  onClick={() => document.getElementById('early-access')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="group flex items-center gap-3 bg-white text-slate-950 px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:scale-105 transition-all"
+                >
+                  Join Early Access <ArrowRight size={16} className="group-hover:translate-x-2 transition-transform" />
+                </button>
+                <Link
+                  to="/login"
+                  className="px-6 py-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white transition-all"
+                >
+                  Enterprise Login →
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -746,6 +841,14 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Candidate Registration & AI Matching Modal */}
+      <CandidateRegisterModal
+        isOpen={candidateModalOpen}
+        onClose={() => setCandidateModalOpen(false)}
+        initialMode={candidateModalMode}
+        onSwitchToLogin={openCandidateLogin}
+      />
     </div>
   );
 }

@@ -26,6 +26,7 @@ import {
   Power,
   Network,
   User,
+  Users,
 } from "lucide-react";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import {
@@ -123,6 +124,14 @@ export default function JobsTab() {
   >("Remote");
   const [location, setLocation] = useState<string>("");
   const [mandatorySkills, setMandatorySkills] = useState<string>("");
+  
+  // Candidate Direct Application Settings
+  const [directApplyEnabled, setDirectApplyEnabled] = useState<boolean>(true);
+  const [allowedWorkModes, setAllowedWorkModes] = useState<string[]>(["Onsite", "C2H", "Remote"]);
+  const [publicVisibility, setPublicVisibility] = useState<boolean>(true);
+  const [candidateLoginRequired, setCandidateLoginRequired] = useState<boolean>(true);
+  const [reqFilterMode, setReqFilterMode] = useState<string>("ALL");
+
   const [isParsing, setIsParsing] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [orgId, setOrgId] = useState<string | null>(null);
@@ -897,6 +906,14 @@ export default function JobsTab() {
         createdAt: serverTimestamp(),
         matchProcessingStatus: "pending",
         
+        // Candidate Application Settings (P0 Direct Candidate Governance)
+        directApplyEnabled: directApplyEnabled,
+        directApplySettings: {
+          allowedWorkModes: allowedWorkModes,
+          publicVisibility: publicVisibility,
+          candidateLoginRequired: candidateLoginRequired
+        },
+
         // Provenance & Trackability Refinements
         createdFrom: isClient ? "CLIENT" : "RECRUITER",
         createdVia: "OS",
@@ -1503,6 +1520,81 @@ export default function JobsTab() {
                   />
                 </div>
 
+                {/* Candidate Application Settings Panel */}
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                        <Users size={14} className="text-indigo-600" />
+                        Candidate Application Settings
+                      </h4>
+                      <p className="text-[10px] text-slate-500">Configure direct candidate discovery and portal application rules.</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={directApplyEnabled}
+                        onChange={(e) => setDirectApplyEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                      <span className="ml-2 text-[10px] font-bold text-slate-700">
+                        {directApplyEnabled ? "Direct Apply ON" : "Direct Apply OFF"}
+                      </span>
+                    </label>
+                  </div>
+
+                  {directApplyEnabled && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200 text-xs">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-600 block mb-1.5 uppercase">
+                          Allowed Application Modes:
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {["Onsite", "C2H", "Remote", "C2C"].map((mode) => (
+                            <label key={mode} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-700 bg-white px-2 py-1 rounded border border-slate-200 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={allowedWorkModes.includes(mode)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setAllowedWorkModes([...allowedWorkModes, mode]);
+                                  } else {
+                                    setAllowedWorkModes(allowedWorkModes.filter((m) => m !== mode));
+                                  }
+                                }}
+                                className="rounded text-indigo-600 focus:ring-indigo-500 w-3 h-3"
+                              />
+                              <span>{mode}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col justify-center space-y-1.5">
+                        <label className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={publicVisibility}
+                            onChange={(e) => setPublicVisibility(e.target.checked)}
+                            className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                          />
+                          <span>Public Visibility in Candidate Portal</span>
+                        </label>
+                        <label className="inline-flex items-center gap-2 text-[11px] font-medium text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={candidateLoginRequired}
+                            onChange={(e) => setCandidateLoginRequired(e.target.checked)}
+                            className="rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+                          />
+                          <span>Candidate Login / Verification Required</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-between items-center bg-indigo-50/50 -mx-4 -mb-4 p-3 border-t border-indigo-100">
                   <div className="flex items-center gap-2">
                     <BrainCircuit size={16} className="text-indigo-500" />
@@ -1526,19 +1618,60 @@ export default function JobsTab() {
           )}
 
           <div className="flex-1 overflow-y-auto min-h-0 pt-2 pr-2 pb-20 custom-scrollbar">
-            <div className="mb-4">
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-800">
                 Active Requirements Pipeline
               </h2>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  { id: "ALL", label: "All Requirements" },
+                  { id: "DIRECT_APPLY", label: "⭐ Direct Apply Active" },
+                  { id: "ONSITE", label: "🏢 Onsite" },
+                  { id: "C2H", label: "⏱️ C2H" },
+                  { id: "REMOTE", label: "🌐 Remote" },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => setReqFilterMode(mode.id)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-tight transition-all ${
+                      reqFilterMode === mode.id
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "bg-slate-200/70 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {(() => {
               const visibleJobs = filteredJobs.filter(
-                (j) =>
-                  isAdmin ||
-                  j.clientId === orgId ||
-                  (j.visibility === "VENDOR_NETWORK" &&
-                    j.status === "PUBLISHED"),
+                (j) => {
+                  const roleAccess =
+                    isAdmin ||
+                    j.clientId === orgId ||
+                    (j.visibility === "VENDOR_NETWORK" &&
+                      j.status === "PUBLISHED");
+                  if (!roleAccess) return false;
+
+                  if (reqFilterMode === "DIRECT_APPLY") {
+                    return j.directApplyEnabled !== false;
+                  }
+                  if (reqFilterMode === "ONSITE") {
+                    return (j.workMode || "").toUpperCase().includes("ONSITE");
+                  }
+                  if (reqFilterMode === "C2H") {
+                    return (
+                      (j.workMode || "").toUpperCase().includes("C2H") ||
+                      (j.jobType || "").toUpperCase().includes("C2H")
+                    );
+                  }
+                  if (reqFilterMode === "REMOTE") {
+                    return (j.workMode || "").toUpperCase().includes("REMOTE");
+                  }
+                  return true;
+                }
               );
 
               if (visibleJobs.length === 0) {

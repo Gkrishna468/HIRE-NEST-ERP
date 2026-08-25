@@ -127,6 +127,11 @@ try {
   if (app) {
     try {
       adminDb = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
+      try {
+        adminDb.settings({ ignoreUndefinedProperties: true });
+      } catch (settingsErr: any) {
+        console.warn("[Firebase Admin] settings ignoreUndefinedProperties warning:", settingsErr.message);
+      }
     } catch (e: any) {
       console.error("[Firebase Admin] Failed to initialize adminDb:", e.message);
     }

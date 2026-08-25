@@ -67,7 +67,7 @@ export const useCandidateStore = create<CandidateState>((set, get) => ({
     set({ candidateLoading: true, candidateError: null });
     try {
       const { name, email, phone, experience, currentLocation, orgId, aiAnalysis, keySkills } = payload;
-      const candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
+      const candId = payload.candidateId || "HN-CAN-" + Math.random().toString(36).substr(2, 9);
       
       await ServiceProvider.candidateService.createCandidate({
           fullName: name,
@@ -102,7 +102,11 @@ export const useCandidateStore = create<CandidateState>((set, get) => ({
   deleteCandidate: async (id: string) => {
     set({ candidateLoading: true, candidateError: null });
     try {
-      await ServiceProvider.candidateService.archiveCandidate(id);
+      const res = await fetch(`/api/candidates?id=${id}`, { method: "DELETE" });
+      if (!res.ok) {
+         const d = await res.json().catch(()=>({}));
+         throw new Error(d.error || "Failed to delete candidate");
+      }
       set({ candidate: null, candidateLoading: false });
     } catch (e: any) {
       set({ candidateError: e.message, candidateLoading: false });
@@ -113,69 +117,53 @@ export const useCandidateStore = create<CandidateState>((set, get) => ({
   retryEnrichment: async (candidate: any) => {
     set({ candidateLoading: true, candidateError: null });
     try {
-      let resumeTextToUse = candidate.resumeText || candidate.extractedText;
+      const candId = candidate.candidateId || candidate.id;
+      const resumeTextToUse = candidate.resumeText || candidate.extractedText || "";
 
-      if (candidate.storagePath) {
-        try {
-          const { getStorage, ref, getDownloadURL } = await import("firebase/storage");
-          const storage = getStorage();
-          const fileRef = ref(storage, candidate.storagePath);
-          const url = await getDownloadURL(fileRef);
-          
-          const fileRes = await fetch(url);
-          const blob = await fileRes.blob();
-          
-          const formData = new FormData();
-          formData.append("file", blob, candidate.fileName || "resume.pdf");
-          
-          const extRes = await fetch("/api/extract-text", {
-             method: "POST",
-             body: formData
-          });
-          
-          if (extRes.ok) {
-             const extData = await extRes.json();
-             if (extData.text && extData.text.length > 50) {
-                 resumeTextToUse = extData.text;
-             }
-          }
-        } catch (e) {
-          console.warn("Could not fetch or re-extract from storage, falling back to existing DB text", e);
-        }
-      }
-
-      if (!resumeTextToUse || (resumeTextToUse.includes("[Parse Failure Fallback]") && resumeTextToUse.length < 500)) {
-        throw new Error("No valid resume text available to parse. Upload a new resume instead.");
-      }
-
-      const { parseBulkResumes } = await import("../services/aiService");
-      const parsedResults = await parseBulkResumes([resumeTextToUse]);
-      const result = parsedResults && parsedResults.length > 0 ? parsedResults[0] : null;
-
-      if (!result || !result.name) {
-         throw new Error("AI could not extract structured data. Document layout may be unreadable.");
-      }
-
-      const updateData: any = {
-          distillationStatus: "COMPLETED",
-          isStale: false,
+      const res = await fetch("/api/rescan-resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateId: candId,
           resumeText: resumeTextToUse,
-          name: result.name !== "Unknown" ? result.name : candidate.name,
-          fullName: result.name !== "Unknown" ? result.name : candidate.name,
-          email: result.email && !result.email.includes("pending@") ? result.email : candidate.email,
-          primaryEmail: result.email && !result.email.includes("pending@") ? result.email : candidate.primaryEmail,
-          phone: result.phone !== "N/A" ? result.phone : candidate.phone,
-          experience: result.experience !== "Unparsed" ? result.experience : candidate.experience,
+          filename: candidate.fileName || `${candidate.name || "Candidate"}_Resume.txt`,
+          forceRescan: true,
+        }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to rescan resume deterministically.");
+      }
+
+      const data = await res.json();
+      const updateData: any = {
+        distillationStatus: data.status === "FAILED" ? "FAILED" : "COMPLETED",
+        status: data.status === "FAILED" ? "FAILED" : "COMPLETED",
+        isStale: false,
+        resumeProcessingStatus: data.status,
+        resumeProcessingId: data.processingId,
+        name: data.candidateName || candidate.name,
+        fullName: data.candidateName || candidate.fullName || candidate.name,
+        email: data.email || candidate.email,
+        primaryEmail: data.email || candidate.primaryEmail,
+        phone: data.phone || candidate.phone,
+        location: data.location || candidate.location,
+        experience: `${data.experienceYears || 0} Years`,
+        totalExperience: data.experienceYears || 0,
+        skills: data.skills || candidate.skills || [],
+        currentRole: data.currentRole || candidate.currentRole,
+        requiresManualReview: data.requiresManualReview || data.status === "MANUAL_REVIEW",
       };
 
-      if (result.skills && Array.isArray(result.skills)) {
-         updateData.skills = result.skills.slice(0, 15);
+      try {
+        await ServiceProvider.candidateService.updateCandidate(candId, updateData);
+      } catch (svcErr) {
+        console.warn("ServiceProvider candidate update warning:", svcErr);
       }
 
-      await ServiceProvider.candidateService.updateCandidate(candidate.candidateId || candidate.id, updateData);
-
       const current = get().candidate;
-      if (current && current.id === (candidate.candidateId || candidate.id)) {
+      if (current && (current.id === candId || (current as any).candidateId === candId)) {
         set({ candidate: { ...current, ...updateData } as Candidate });
       }
 

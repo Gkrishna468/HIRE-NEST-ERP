@@ -75,6 +75,22 @@ service cloud.firestore {
       );
     }
 
+    function isMainAdmin() {
+      return isVerified() &&
+      (
+        isHQ() ||
+        isSuperAdmin() ||
+        authRole() in [
+          'admin',
+          'super_admin',
+          'platform_authority',
+          'hq_admin',
+          'ceo',
+          'ops_admin'
+        ]
+      );
+    }
+
     function isAdmin() {
       return isVerified() &&
       (
@@ -427,14 +443,16 @@ service cloud.firestore {
       allow read:
       if isAdmin() ||
          isSameOrg(resource.data.vendorId) ||
-         isSameOrg(resource.data.clientId);
+         isSameOrg(resource.data.clientId) ||
+         (isVerified() && (resource.data.email == authEmail() || resource.data.userId == request.auth.uid));
 
       allow create:
       if isVerified() &&
          (
            isAdmin() ||
            isSameOrg(incoming().vendorId) ||
-           isSameOrg(incoming().clientId)
+           isSameOrg(incoming().clientId) ||
+           (incoming().sourceType == "DIRECT_CANDIDATE" && incoming().email == authEmail())
          ) &&
          isValidCandidate(incoming());
 
@@ -443,25 +461,152 @@ service cloud.firestore {
          isAdmin() ||
          isSameOrg(existing().vendorId) ||
          isSameOrg(existing().clientId) ||
+         (existing().sourceType == "DIRECT_CANDIDATE" && existing().email == authEmail()) ||
          request.resource.data.diff(resource.data).changedKeys().hasOnly([
              "fullName",
              "name",
              "updatedAt",
              "status",
              "isNameManuallyEdited",
-             "candidateId"
+             "candidateId",
+             "ownershipConflict",
+             "ownershipConflictResolvedAt",
+             "ownershipConflictResolvedBy",
+             "ownershipConflictResolution",
+             "conflictResolutionNotes",
+             "internalNotes"
          ])
+      ) && (
+         !('status' in request.resource.data) ||
+         request.resource.data.status != 'DELETED' ||
+         isMainAdmin() ||
+         (authRole() == 'vendor_admin' && isSameOrg(existing().vendorId) && existing().ownershipType != 'DIRECT')
+      ) && (
+         !('isActive' in request.resource.data) ||
+         request.resource.data.isActive == true ||
+         isMainAdmin() ||
+         (authRole() == 'vendor_admin' && isSameOrg(existing().vendorId) && existing().ownershipType != 'DIRECT')
       );
 
       allow delete:
-      if isAdmin() ||
-         isSameOrg(existing().vendorId) ||
-         isSameOrg(existing().clientId);
+      if isMainAdmin() ||
+         (isVerified() && authRole() == 'vendor_admin' && isSameOrg(existing().vendorId) && existing().ownershipType != 'DIRECT');
 
       match /ai_matches/{matchId} {
-        allow read: if isVerified();
-        allow write: if isVerified();
+        allow read: if isVerified() && (isAdmin() || isSameOrg(resource.data.vendorId));
+        allow write: if isVerified() && isAdmin();
       }
+    }
+
+    // =====================================================
+    // DIRECT CANDIDATE APPLICATIONS (CANDIDATE RBAC BOUNDARY)
+    // =====================================================
+
+    match /applications/{appId} {
+      allow read:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        resource.data.candidateEmail == authEmail() ||
+        resource.data.candidateUserId == request.auth.uid ||
+        resource.data.candidateUid == request.auth.uid
+      );
+
+      allow create:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        incoming().candidateEmail == authEmail() ||
+        incoming().candidateUid == request.auth.uid ||
+        incoming().sourceType == "DIRECT_CANDIDATE"
+      );
+
+      allow update:
+      if isVerified() && (isAdmin() || resource.data.candidateEmail == authEmail() || resource.data.candidateUid == request.auth.uid);
+
+      allow delete:
+      if isAdmin();
+    }
+
+    // =====================================================
+    // JOB MATCH NOTIFICATIONS (CANDIDATE & HQ MATCH TRACKER)
+    // =====================================================
+
+    match /job_match_notifications/{notifId} {
+      allow read:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        resource.data.candidateEmail == authEmail() ||
+        resource.data.candidateId == request.auth.uid ||
+        resource.data.candidateUid == request.auth.uid
+      );
+
+      allow create:
+      if isVerified();
+
+      allow update:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        resource.data.candidateEmail == authEmail() ||
+        resource.data.candidateId == request.auth.uid
+      );
+
+      allow delete:
+      if isAdmin();
+    }
+
+    // =====================================================
+    // CANDIDATE PROFILES & NOTIFICATIONS
+    // =====================================================
+
+    match /candidate_profiles/{profileId} {
+      allow read:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        profileId == request.auth.uid ||
+        resource.data.email == authEmail() ||
+        resource.data.userId == request.auth.uid
+      );
+
+      allow create, update:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        profileId == request.auth.uid ||
+        request.resource.data.email == authEmail() ||
+        request.resource.data.userId == request.auth.uid
+      );
+
+      allow delete:
+      if isAdmin();
+    }
+
+    match /candidate_notifications/{notifId} {
+      allow read:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        resource.data.candidateEmail == authEmail() ||
+        resource.data.candidateId == request.auth.uid ||
+        resource.data.candidateUid == request.auth.uid
+      );
+
+      allow create:
+      if isVerified();
+
+      allow update:
+      if isVerified() &&
+      (
+        isAdmin() ||
+        resource.data.candidateEmail == authEmail() ||
+        resource.data.candidateId == request.auth.uid
+      );
+
+      allow delete:
+      if isAdmin();
     }
 
     // =====================================================

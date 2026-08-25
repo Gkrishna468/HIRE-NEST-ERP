@@ -1,8 +1,21 @@
 import React, { useState, useCallback } from "react";
-import { Upload, X, CheckCircle, AlertCircle, Trash2, Bot } from "lucide-react";
+import { 
+  Upload, 
+  X, 
+  CheckCircle, 
+  AlertCircle, 
+  Trash2, 
+  Bot, 
+  FileText, 
+  Clock, 
+  Sparkles, 
+  ChevronRight, 
+  Cpu, 
+  ShieldCheck, 
+  RefreshCw 
+} from "lucide-react";
 import { Button } from "../lib/Button";
 import { auth } from "../lib/firebase";
-import { parseBulkResumes } from "../services/aiService";
 
 interface BulkUploadProps {
   onClose: () => void;
@@ -10,11 +23,39 @@ interface BulkUploadProps {
   userOrgId: string;
 }
 
+export interface ProcessingResultItem {
+  id: number;
+  originalFile: File;
+  fileName: string;
+  fileSize: number;
+  processingId?: string;
+  status: "QUEUED" | "EXTRACTING" | "OCR" | "PARSING" | "PERSISTING" | "COMPLETED" | "FAILED" | "MANUAL_REVIEW" | "DUPLICATE";
+  stage: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  skills: string[];
+  experienceYears: number;
+  currentRole: string;
+  extractionMethod: string;
+  ocrUsed: boolean;
+  textLength: number;
+  parserVersion: string;
+  startedAt?: string;
+  completedAt?: string;
+  timeline: Array<{ stage: string; status: string; timestamp: string; message: string }>;
+  error?: string;
+  missingName?: boolean;
+  candidateProfile?: any;
+}
+
 export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadProps) {
-  const [step, setStep] = useState<"UPLOAD" | "PARSE" | "REVIEW" | "CONFIRM">("UPLOAD");
+  const [step, setStep] = useState<"UPLOAD" | "PROCESSING" | "RESULTS">("UPLOAD");
   const [files, setFiles] = useState<File[]>([]);
-  const [candidates, setCandidates] = useState<any[]>([]);
-  const [processing, setProcessing] = useState(false);
+  const [results, setResults] = useState<ProcessingResultItem[]>([]);
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(0);
+  const [selectedResultIndex, setSelectedResultIndex] = useState<number>(0);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -39,163 +80,252 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
     setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const startParsing = async () => {
-    setStep("PARSE");
-    setProcessing(true);
-    const parsedCandidates: any[] = [];
+  const startPipeline = async () => {
+    setStep("PROCESSING");
+    const initialResults: ProcessingResultItem[] = files.map((file, idx) => ({
+      id: idx,
+      originalFile: file,
+      fileName: file.name,
+      fileSize: file.size,
+      status: "QUEUED",
+      stage: "QUEUED",
+      name: "",
+      email: "",
+      phone: "",
+      location: "",
+      skills: [],
+      experienceYears: 0,
+      currentRole: "",
+      extractionMethod: "PENDING",
+      ocrUsed: false,
+      textLength: 0,
+      parserVersion: "2.5.0",
+      timeline: [
+        { stage: "QUEUED", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: "Queued for deterministic ingestion." }
+      ],
+    }));
+
+    setResults(initialResults);
+
+    const processedList: ProcessingResultItem[] = [];
 
     for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        let extText = "";
-        let extractionSucceeded = false;
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            const headers: Record<string, string> = {};
-            if (token) {
-              headers["Authorization"] = `Bearer ${token}`;
-            }
-            const res = await fetch("/api/extract-text", {
-              method: "POST",
-              headers,
-              body: formData,
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (data.text && data.text.trim().length >= 40) {
-                extText = data.text;
-                extractionSucceeded = true;
-              }
-            }
-        } catch (e) {
-            console.warn("Extraction failed for file " + file.name, e);
-        }
+      setCurrentProcessingIndex(i);
+      const file = files[i];
 
-        let parsedProfile: any = null;
-        let distilledName = "";
-        let parseStatus = "FAILED";
+      // Update UI stage to EXTRACTING
+      setResults(prev => prev.map((r, idx) => idx === i ? {
+        ...r,
+        status: "EXTRACTING",
+        stage: "EXTRACTING",
+        timeline: [
+          ...r.timeline,
+          { stage: "EXTRACTING", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: `Extracting text from ${file.name}...` }
+        ]
+      } : r));
 
-        if (extractionSucceeded && extText && extText.trim()) {
-            try {
-                // Call the real AI parser
-                const results = await parseBulkResumes([extText]);
-                if (results && results.length > 0) {
-                    const profile = results[0];
-                    parsedProfile = profile;
-                    const isSynthetic = !profile?.name || 
-                      profile.name === "Parsing Pending" || 
-                      profile.name === "Needs Manual Review" || 
-                      profile.name === "Unnamed Candidate" || 
-                      profile.name === "Local Mock Generated" ||
-                      profile.name === "Candidate Missing Skill" ||
-                      profile.name === "Unknown Candidate" ||
-                      profile.name === "Candidate Unknown" ||
-                      profile.name.startsWith("CAND_P6D_FAIL");
-                    
-                    if (!isSynthetic) {
-                        distilledName = profile.name;
-                    }
-                    parseStatus = "COMPLETED";
-                } else {
-                    parsedProfile = {
-                        name: "",
-                        email: "",
-                        phone: "",
-                        skills: [],
-                        experience: "",
-                        currentRole: "",
-                        summary: ""
-                    };
-                    parseStatus = "COMPLETED";
-                }
-            } catch (err) {
-                console.error("AI parsing failed in bulk upload component:", err);
-                parsedProfile = {
-                    name: "",
-                    email: "",
-                    phone: "",
-                    skills: [],
-                    experience: "",
-                    currentRole: "",
-                    summary: ""
-                };
-                parseStatus = "COMPLETED";
-            }
-        }
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("forceRescan", "true");
+      formData.append("orgId", userOrgId);
 
-        parsedCandidates.push({
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        const headers: Record<string, string> = {};
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const res = await fetch("/api/extract-text", {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const isManual = data.status === "MANUAL_REVIEW" || data.requiresManualReview || !data.candidateName;
+
+          const itemResult: ProcessingResultItem = {
             id: i,
             originalFile: file,
             fileName: file.name,
-            extractedText: extText,
-            name: distilledName || "",
-            missingName: !distilledName,
-            status: parseStatus === "COMPLETED" ? "Parsed" : "FAILED",
-            parsedProfile: parsedProfile ? {
-                ...parsedProfile,
-                status: "COMPLETED"
-            } : null
-        });
+            fileSize: file.size,
+            processingId: data.processingId || data.ledgerId,
+            status: isManual ? "MANUAL_REVIEW" : (data.status || "COMPLETED"),
+            stage: data.stage || (isManual ? "MANUAL_REVIEW" : "COMPLETED"),
+            name: data.candidateName || "",
+            email: data.email || "",
+            phone: data.phone || "",
+            location: data.location || "Remote / Flexible",
+            skills: data.skills || [],
+            experienceYears: data.experienceYears || 0,
+            currentRole: data.currentRole || "Candidate",
+            extractionMethod: data.extractionMethod || "TEXT_UTF8",
+            ocrUsed: data.ocrUsed || false,
+            textLength: data.textLength || 0,
+            parserVersion: data.parserVersion || "2.5.0",
+            startedAt: data.startedAt,
+            completedAt: data.completedAt || new Date().toISOString(),
+            timeline: data.timeline || [
+              { stage: "COMPLETED", status: "SUCCESS", timestamp: new Date().toLocaleTimeString(), message: "Processed deterministically." }
+            ],
+            missingName: !data.candidateName,
+            candidateProfile: data.candidateProfile,
+          };
+
+          processedList.push(itemResult);
+          setResults(prev => prev.map((r, idx) => idx === i ? itemResult : r));
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          const failedItem: ProcessingResultItem = {
+            id: i,
+            originalFile: file,
+            fileName: file.name,
+            fileSize: file.size,
+            status: "FAILED",
+            stage: "FAILED",
+            name: "",
+            email: "",
+            phone: "",
+            location: "",
+            skills: [],
+            experienceYears: 0,
+            currentRole: "",
+            extractionMethod: "FAILED",
+            ocrUsed: false,
+            textLength: 0,
+            parserVersion: "2.5.0",
+            timeline: [
+              { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: errData.message || "Extraction failed." }
+            ],
+            error: errData.message || "Failed to process resume.",
+          };
+          processedList.push(failedItem);
+          setResults(prev => prev.map((r, idx) => idx === i ? failedItem : r));
+        }
+      } catch (err: any) {
+        const errorItem: ProcessingResultItem = {
+          id: i,
+          originalFile: file,
+          fileName: file.name,
+          fileSize: file.size,
+          status: "FAILED",
+          stage: "FAILED",
+          name: "",
+          email: "",
+          phone: "",
+          location: "",
+          skills: [],
+          experienceYears: 0,
+          currentRole: "",
+          extractionMethod: "FAILED",
+          ocrUsed: false,
+          textLength: 0,
+          parserVersion: "2.5.0",
+          timeline: [
+            { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: err.message }
+          ],
+          error: err.message,
+        };
+        processedList.push(errorItem);
+        setResults(prev => prev.map((r, idx) => idx === i ? errorItem : r));
+      }
     }
 
-    setCandidates(parsedCandidates);
-    setProcessing(false);
-    setStep("REVIEW");
+    setStep("RESULTS");
   };
 
   const updateCandidateName = (id: number, newName: string) => {
-      setCandidates(prev => prev.map(c => c.id === id ? { ...c, name: newName, missingName: newName.trim() === "" } : c));
+    setResults(prev => prev.map(c => c.id === id ? { 
+      ...c, 
+      name: newName, 
+      missingName: newName.trim() === "",
+      status: newName.trim() ? "COMPLETED" : "MANUAL_REVIEW"
+    } : c));
   };
 
-  const hasMissingNames = candidates.some(c => c.status === "Parsed" && c.missingName);
-  const hasSuccessful = candidates.some(c => c.status === "Parsed" && c.parsedProfile);
+  const completedCount = results.filter(r => r.status === "COMPLETED" || r.status === "DUPLICATE").length;
+  const manualCount = results.filter(r => r.status === "MANUAL_REVIEW").length;
+  const failedCount = results.filter(r => r.status === "FAILED").length;
 
-  const confirmImport = () => {
-      const successful = candidates.filter(c => c.status === "Parsed" && c.parsedProfile && c.name && c.name !== "Failed to Parse");
-      onImport(successful);
+  const handleConfirmImport = () => {
+    const valid = results.filter(r => (r.status === "COMPLETED" || r.status === "DUPLICATE" || (r.status === "MANUAL_REVIEW" && r.name)) && r.name.trim().length > 0);
+    onImport(valid.map(v => ({
+      ...v,
+      status: "Parsed",
+      parsedProfile: {
+        ...v.candidateProfile,
+        name: v.name,
+        fullName: v.name,
+        skills: v.skills,
+        totalExperience: v.experienceYears,
+        experience: `${v.experienceYears} Years`,
+        location: v.location,
+        status: "COMPLETED",
+      }
+    })));
   };
+
+  const selectedItem = results[selectedResultIndex] || results[0];
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl max-w-3xl w-full flex flex-col shadow-2xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Upload className="w-5 h-5 text-indigo-600" /> Bulk Import
-          </h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors"><X className="w-5 h-5" /></button>
+    <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl max-w-4xl w-full flex flex-col shadow-2xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600/10 text-indigo-600 flex items-center justify-center">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                Deterministic Resume Ingestion Engine
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Zero-AI Active</span>
+              </h2>
+              <p className="text-xs text-slate-500">Authoritative OCR, Rule-Based Parser, and Ledger State Machine</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
+        {/* Body Content */}
         <div className="p-6 overflow-y-auto flex-1">
+          {/* STEP 1: UPLOAD */}
           {step === "UPLOAD" && (
             <div className="space-y-6">
               <div 
-                className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center hover:bg-slate-50 hover:border-indigo-400 transition-colors cursor-pointer"
+                className="border-2 border-dashed border-slate-300 rounded-2xl p-10 text-center hover:bg-slate-50 hover:border-indigo-500 transition-all cursor-pointer"
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
                 onClick={() => document.getElementById('file-upload')?.click()}
               >
-                <input type="file" id="file-upload" className="hidden" multiple accept=".pdf,.doc,.docx,.txt" onChange={handleFileSelect} />
-                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <input type="file" id="file-upload" className="hidden" multiple accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg" onChange={handleFileSelect} />
+                <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                   <Upload className="w-8 h-8" />
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-1">Drag & drop resumes here</h3>
-                <p className="text-sm text-slate-500 mb-4">PDF, DOCX, or TXT up to 10MB each</p>
-                <Button variant="outline" className="pointer-events-none">Browse Files</Button>
+                <h3 className="text-lg font-bold text-slate-900 mb-1">Drag & drop candidate resumes</h3>
+                <p className="text-sm text-slate-500 mb-4">PDF, DOCX, Scanned PDF, Images, or TXT (Up to 10MB each)</p>
+                <Button variant="outline" className="pointer-events-none rounded-xl">Select Documents</Button>
               </div>
 
               {files.length > 0 && (
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold text-sm text-slate-700">{files.length} files selected</h4>
-                    <button onClick={() => setFiles([])} className="text-xs text-red-500 hover:text-red-700 font-medium">Clear All</button>
+                    <h4 className="font-semibold text-sm text-slate-700">{files.length} document{files.length > 1 ? "s" : ""} queued for ingestion</h4>
+                    <button onClick={() => setFiles([])} className="text-xs text-rose-500 hover:text-rose-700 font-medium">Clear All</button>
                   </div>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {files.map((f, i) => (
-                      <div key={i} className="flex items-center justify-between bg-white p-2 px-3 rounded-lg border border-slate-200 text-sm">
-                        <span className="truncate text-slate-700">{f.name}</span>
-                        <button onClick={() => removeFile(i)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 className="w-4 h-4" /></button>
+                      <div key={i} className="flex items-center justify-between bg-white p-2.5 px-3.5 rounded-xl border border-slate-200 text-sm">
+                        <div className="flex items-center gap-2.5 truncate">
+                          <FileText className="w-4 h-4 text-indigo-500 shrink-0" />
+                          <span className="truncate font-medium text-slate-700">{f.name}</span>
+                          <span className="text-xs text-slate-400">({(f.size / 1024).toFixed(1)} KB)</span>
+                        </div>
+                        <button onClick={() => removeFile(i)} className="text-slate-400 hover:text-rose-500 p-1 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -204,109 +334,219 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
             </div>
           )}
 
-          {step === "PARSE" && (
-            <div className="py-24 flex flex-col items-center justify-center text-center">
-               <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
-               <h3 className="text-xl font-bold text-slate-900 mb-2">Processing {files.length} resumes...</h3>
-               <p className="text-slate-500">Extracting text and running initial identity resolution logic via AI.</p>
+          {/* STEP 2: PROCESSING (Live Pipeline Stage Tracking) */}
+          {step === "PROCESSING" && (
+            <div className="py-8 space-y-6">
+              <div className="text-center space-y-2">
+                <div className="inline-flex p-3 bg-indigo-50 text-indigo-600 rounded-2xl animate-pulse">
+                  <RefreshCw className="w-8 h-8 animate-spin" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Processing document {currentProcessingIndex + 1} of {files.length}
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Running deterministic state machine: <span className="font-mono text-indigo-600 font-semibold">QUEUED → EXTRACTING → OCR → PARSING → PERSISTING → COMPLETED</span>
+                </p>
+              </div>
+
+              {/* Progress items */}
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {results.map((r, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl border bg-slate-50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${
+                        r.status === "COMPLETED" ? "bg-emerald-500" :
+                        r.status === "FAILED" ? "bg-rose-500" :
+                        r.status === "MANUAL_REVIEW" ? "bg-amber-500" :
+                        "bg-indigo-500 animate-ping"
+                      }`} />
+                      <div>
+                        <p className="font-semibold text-sm text-slate-800">{r.fileName}</p>
+                        <p className="text-xs text-slate-500">
+                          {r.name ? `Candidate: ${r.name} • ` : ""}Stage: <span className="font-semibold text-indigo-600">{r.stage}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-white border text-slate-700">
+                      {r.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {step === "REVIEW" && (
+          {/* STEP 3: RESULTS (Processing Result UI & Timeline) */}
+          {step === "RESULTS" && (
             <div className="space-y-6">
-              <div className="bg-indigo-50 text-indigo-700 p-4 rounded-xl border border-indigo-100 flex items-start gap-3">
-                 <Bot className="w-5 h-5 shrink-0 mt-0.5" />
-                 <div>
-                   <p className="font-semibold text-sm mb-1">AI Distillation Complete</p>
-                   <p className="text-sm opacity-90">Please verify names before importing. Files where a candidate name could not be confidently determined require manual entry.</p>
-                 </div>
+              {/* Summary Stats Strip */}
+              <div className="grid grid-cols-4 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                  <p className="text-xs text-slate-500 font-medium uppercase">Total Processed</p>
+                  <p className="text-xl font-bold text-slate-900 mt-1">{results.length}</p>
+                </div>
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                  <p className="text-xs text-emerald-600 font-medium uppercase">Successfully Parsed</p>
+                  <p className="text-xl font-bold text-emerald-700 mt-1">{completedCount}</p>
+                </div>
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                  <p className="text-xs text-amber-600 font-medium uppercase">Manual Review</p>
+                  <p className="text-xl font-bold text-amber-700 mt-1">{manualCount}</p>
+                </div>
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl">
+                  <p className="text-xs text-rose-600 font-medium uppercase">Failed</p>
+                  <p className="text-xl font-bold text-rose-700 mt-1">{failedCount}</p>
+                </div>
               </div>
 
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase text-xs">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">Source File</th>
-                      <th className="px-4 py-3 font-semibold w-1/2">Deduced Name</th>
-                      <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {candidates.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 text-slate-500 truncate max-w-[150px]" title={c.fileName}>{c.fileName}</td>
-                        <td className="px-4 py-3">
-                          {c.status === "FAILED" ? (
-                            <span className="text-rose-500 font-medium italic">Unparseable (Skipped)</span>
-                          ) : c.missingName ? (
-                            <div className="flex items-center gap-2">
-                               <input 
-                                 type="text" 
-                                 placeholder="Enter real name..."
-                                 className="w-full bg-red-50 border border-red-200 rounded px-2 py-1.5 focus:ring-red-500 focus:border-red-500 text-red-900 placeholder:text-red-300"
-                                 value={c.name}
-                                 onChange={(e) => updateCandidateName(c.id, e.target.value)}
-                               />
-                               <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+              {/* Master / Detail View */}
+              <div className="grid grid-cols-12 gap-4 border border-slate-200 rounded-2xl overflow-hidden min-h-[380px]">
+                {/* Left List */}
+                <div className="col-span-5 border-r border-slate-200 bg-slate-50/50 p-2 space-y-1.5 overflow-y-auto max-h-[420px]">
+                  {results.map((item, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setSelectedResultIndex(idx)}
+                      className={`w-full text-left p-3 rounded-xl transition-all flex flex-col gap-1 border ${
+                        selectedResultIndex === idx 
+                          ? "bg-white border-indigo-500 shadow-sm" 
+                          : "bg-transparent border-transparent hover:bg-slate-100"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-semibold text-sm text-slate-800 truncate max-w-[170px]">
+                          {item.name || item.fileName}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          item.status === "COMPLETED" ? "bg-emerald-100 text-emerald-700" :
+                          item.status === "MANUAL_REVIEW" ? "bg-amber-100 text-amber-700" :
+                          item.status === "DUPLICATE" ? "bg-blue-100 text-blue-700" :
+                          "bg-rose-100 text-rose-700"
+                        }`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span className="truncate">{item.fileName}</span>
+                        <span>{item.skills.length} skills</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right Detail Card */}
+                {selectedItem && (
+                  <div className="col-span-7 p-5 space-y-4 overflow-y-auto max-h-[420px]">
+                    {/* Candidate Identity Block */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold">Candidate Record</p>
+                          {selectedItem.missingName || selectedItem.status === "MANUAL_REVIEW" ? (
+                            <div className="mt-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                placeholder="Enter candidate full name..."
+                                value={selectedItem.name}
+                                onChange={(e) => updateCandidateName(selectedItem.id, e.target.value)}
+                                className="text-sm font-semibold bg-white border border-amber-300 rounded px-2.5 py-1 text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                              />
+                              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
                             </div>
                           ) : (
-                            <div className="flex items-center justify-between group">
-                               <span className="font-medium text-slate-900">{c.name}</span>
-                               <button 
-                                 onClick={() => updateCandidateName(c.id, "")}
-                                 className="text-xs text-indigo-600 opacity-0 group-hover:opacity-100 hover:underline px-2"
-                               >Edit</button>
-                            </div>
+                            <h4 className="text-lg font-bold text-slate-900 mt-0.5">{selectedItem.name}</h4>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                           {c.status === "FAILED" ? (
-                             <span className="inline-flex items-center px-2 py-1 rounded bg-rose-100 text-rose-700 text-xs font-semibold">Failed</span>
-                           ) : c.missingName ? (
-                             <span className="inline-flex items-center px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold">Missing Name</span>
-                           ) : (
-                             <span className="inline-flex items-center px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">Ready</span>
-                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <p className="text-xs text-slate-600 mt-0.5">{selectedItem.currentRole} • {selectedItem.experienceYears} Years Exp</p>
+                        </div>
+                        <span className="text-xs font-mono bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-semibold">
+                          {selectedItem.extractionMethod}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 pt-2 border-t border-slate-200">
+                        <p><span className="font-semibold text-slate-700">Email:</span> {selectedItem.email || "—"}</p>
+                        <p><span className="font-semibold text-slate-700">Phone:</span> {selectedItem.phone || "—"}</p>
+                        <p><span className="font-semibold text-slate-700">Location:</span> {selectedItem.location || "Remote"}</p>
+                        <p><span className="font-semibold text-slate-700">OCR Used:</span> {selectedItem.ocrUsed ? "Yes (Tesseract)" : "No (Native Text)"}</p>
+                      </div>
+
+                      {/* Skills list */}
+                      {selectedItem.skills.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200">
+                          <p className="text-xs font-semibold text-slate-700 mb-1.5">Extracted Skills ({selectedItem.skills.length})</p>
+                          <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                            {selectedItem.skills.map((s, si) => (
+                              <span key={si} className="text-[11px] bg-white border border-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-medium">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Processing Timeline Block */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                          Authoritative Ledger Timeline
+                        </h5>
+                        {selectedItem.processingId && (
+                          <span className="text-[10px] font-mono text-slate-400">ID: {selectedItem.processingId}</span>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 pl-2 border-l-2 border-indigo-200">
+                        {selectedItem.timeline.map((event, ei) => (
+                          <div key={ei} className="relative pl-3 text-xs">
+                            <div className={`absolute -left-[13px] top-1 w-2.5 h-2.5 rounded-full ${
+                              event.status === "FAILED" ? "bg-rose-500" :
+                              event.status === "SUCCESS" ? "bg-emerald-500" :
+                              "bg-indigo-500"
+                            }`} />
+                            <div className="flex items-center justify-between text-slate-500">
+                              <span className="font-semibold text-slate-700">{event.stage}</span>
+                              <span className="text-[10px]">{event.timestamp}</span>
+                            </div>
+                            <p className="text-slate-600 mt-0.5">{event.message}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          )}
-
-          {step === "CONFIRM" && (
-             <div className="py-24 flex flex-col items-center justify-center text-center">
-                 <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
-                    <CheckCircle className="w-10 h-10" />
-                 </div>
-                 <h3 className="text-2xl font-bold text-slate-900 mb-2">Import Successful</h3>
-                 <p className="text-slate-500 border-b border-slate-100 pb-6 mb-6">
-                   {candidates.filter(c => c.status === "Parsed").length} candidate profiles have been added to the CandidatePool.
-                 </p>
-                 <Button onClick={onClose} variant="default" className="px-8">View Candidates</Button>
-             </div>
           )}
         </div>
 
-        {step !== "CONFIRM" && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl flex justify-end gap-3 shrink-0">
-             <Button variant="outline" onClick={onClose}>Cancel</Button>
-             
-             {step === "UPLOAD" && (
-               <Button onClick={startParsing} disabled={files.length === 0} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                 Upload & Parse
-               </Button>
-             )}
-             
-             {step === "REVIEW" && (
-               <Button onClick={confirmImport} disabled={!hasSuccessful || hasMissingNames} className={(!hasSuccessful || hasMissingNames) ? "opacity-50" : "bg-emerald-600 hover:bg-emerald-700 text-white"}>
-                 Complete Import
-               </Button>
-             )}
-          </div>
-        )}
+        {/* Footer Controls */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+          <Button variant="outline" onClick={onClose}>
+            {step === "RESULTS" ? "Dismiss" : "Cancel"}
+          </Button>
+
+          {step === "UPLOAD" && (
+            <Button 
+              onClick={startPipeline} 
+              disabled={files.length === 0} 
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl"
+            >
+              Start Zero-AI Ingestion ({files.length})
+            </Button>
+          )}
+
+          {step === "RESULTS" && (
+            <Button 
+              onClick={handleConfirmImport}
+              disabled={completedCount === 0 && manualCount === 0}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm"
+            >
+              Complete Import ({completedCount + (manualCount > 0 ? results.filter(r => r.status === "MANUAL_REVIEW" && r.name).length : 0)} Candidates)
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,8 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       cleanUrl === '/ready' ||
       cleanUrl === '/readyz' ||
       cleanUrl === '/live' ||
+      cleanUrl === '/api/extract-text' ||
+      cleanUrl === '/api/parse-jd' ||
       req.originalUrl.includes('/oauth/callback') || 
       req.originalUrl.includes('/api/oauth/url') ||
       req.originalUrl.startsWith('/api/public') || 

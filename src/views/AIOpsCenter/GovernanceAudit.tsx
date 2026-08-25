@@ -688,8 +688,8 @@ export default function GovernanceAudit({
                       onChange={(e) => setSelectedModelForSimulation(e.target.value)}
                       className="bg-slate-950 border border-slate-900 rounded-xl px-2.5 py-1 text-[10px] font-black text-white outline-none cursor-pointer"
                     >
-                      <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro Preview</option>
-                      <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+                      <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+                      <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
                       <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
                       <option value="gpt-4o">GPT-4o</option>
                     </select>
@@ -735,7 +735,7 @@ export default function GovernanceAudit({
                     <div className="space-y-1 text-[9px]">
                       {[
                         { label: "Gemini 3.1 Pro", val: "98.4%", width: "w-[98%]", active: selectedModelForSimulation === "gemini-3.1-pro-preview", col: "bg-indigo-500" },
-                        { label: "Gemini 3.6 Flash", val: "94.2%", width: "w-[94%]", active: selectedModelForSimulation === "gemini-3.6-flash", col: "bg-emerald-500" },
+                        { label: "Gemini 3.7 Flash", val: "94.2%", width: "w-[94%]", active: selectedModelForSimulation === "gemini-3.7-flash", col: "bg-emerald-500" },
                         { label: "Claude 3.5 Sonnet", val: "98.1%", width: "w-[98%]", active: selectedModelForSimulation === "claude-3-5-sonnet", col: "bg-amber-500" },
                         { label: "GPT-4o", val: "97.6%", width: "w-[97%]", active: selectedModelForSimulation === "gpt-4o", col: "bg-rose-500" }
                       ].map((bar, i) => (
@@ -755,7 +755,7 @@ export default function GovernanceAudit({
                       <span className="text-slate-500 block text-[8px] uppercase font-bold">Router Latency rating</span>
                       <span className="text-indigo-400 font-black font-mono mt-0.5 block">
                         {selectedModelForSimulation === "gemini-3.1-pro-preview" ? "1120 ms (Nominal)" :
-                         selectedModelForSimulation === "gemini-3.6-flash" ? "450 ms (Ultra Fast)" :
+                         selectedModelForSimulation === "gemini-3.7-flash" ? "450 ms (Ultra Fast)" :
                          selectedModelForSimulation === "claude-3-5-sonnet" ? "1950 ms (High Latency)" : "1800 ms (Moderate)"}
                       </span>
                     </div>
@@ -763,7 +763,7 @@ export default function GovernanceAudit({
                       <span className="text-slate-500 block text-[8px] uppercase font-bold">Cost Factor per 1K Tx</span>
                       <span className="text-emerald-400 font-black font-mono mt-0.5 block">
                         {selectedModelForSimulation === "gemini-3.1-pro-preview" ? "$0.015 (High Value)" :
-                         selectedModelForSimulation === "gemini-3.6-flash" ? "$0.002 (Highly Optimal)" :
+                         selectedModelForSimulation === "gemini-3.7-flash" ? "$0.002 (Highly Optimal)" :
                          selectedModelForSimulation === "claude-3-5-sonnet" ? "$0.045 (Expensive)" : "$0.040 (Standard)"}
                       </span>
                     </div>

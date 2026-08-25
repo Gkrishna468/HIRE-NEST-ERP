@@ -186,7 +186,16 @@ export default function Onboarding({ onComplete }: { onComplete: (orgData: any) 
       case 'independent':
         return ["view_dashboard", "submit_self", "view_jobs", "view_deals"];
       case 'candidate':
-        return ["view_dashboard", "submit_self", "view_jobs"];
+        return [
+          "jobs.read.public",
+          "applications.create.own",
+          "applications.read.own",
+          "profile.read.own",
+          "profile.update.own",
+          "resume.upload.own",
+          "documents.read.own",
+          "screening.submit.own"
+        ];
       default:
         return ["view_dashboard"];
     }

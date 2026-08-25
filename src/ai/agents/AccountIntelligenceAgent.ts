@@ -26,7 +26,7 @@ export class AccountIntelligenceAgent implements HireNestAgent {
     requiresHumanApproval: true,
     allowedRoles: ['admin', 'super_admin', 'bdm'],
     maxExecutionRisk: 'LOW' as const,
-    modelPolicy: { primary: 'gemini-3.6-flash', fallback: 'gemini-3.6-flash' },
+    modelPolicy: { primary: 'gemini-2.5-flash', fallback: 'gemini-2.5-flash' },
     auditRequired: true
   };
 

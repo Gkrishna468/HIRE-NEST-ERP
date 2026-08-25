@@ -1,4 +1,5 @@
 import { adminDb } from "../../lib/firebase-admin.js";
+import { FieldValue } from "firebase-admin/firestore";
 import { MatchingOffice } from "../services/MatchingOffice.js";
 
 export async function runMatchIntelligenceEngine(
@@ -70,7 +71,7 @@ export default async function handler(req: any, res: any) {
           : "Global Match Refresh",
         status: "running",
         targetId: reqId || "GLOBAL",
-        createdAt: adminDb.doc("1/1").firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
 
     const matchUpdatesCount = await runMatchIntelligenceEngine(
@@ -87,7 +88,7 @@ export default async function handler(req: any, res: any) {
         status: "success",
         duration,
         logs: `Successfully evaluated matches. ${matchUpdatesCount} opportunities created or updated.`,
-        completedAt: adminDb.doc("1/1").firestore.FieldValue.serverTimestamp(),
+        completedAt: FieldValue.serverTimestamp(),
       });
 
     return res.status(200).json({ success: true, matchUpdatesCount });
@@ -101,7 +102,7 @@ export default async function handler(req: any, res: any) {
         status: "failed",
         duration,
         error: e.message,
-        completedAt: adminDb.doc("1/1").firestore.FieldValue.serverTimestamp(),
+        completedAt: FieldValue.serverTimestamp(),
       })
       .catch(console.error);
 

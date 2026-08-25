@@ -26,7 +26,20 @@ export const checkIsIndependent = (role: string) => {
   return role === "independent" || role === "independent_vendor" || role === "independent_consultant";
 };
 
-export const checkIsCandidate = (role: string) => {
-  return role === "candidate";
+export const checkIsCandidate = (role?: string | null) => {
+  if (!role) return false;
+  const normalized = role.toLowerCase().trim();
+  return normalized === "candidate" || normalized === "direct_candidate";
 };
+
+export const CANDIDATE_PERMISSIONS = [
+  "jobs.read.public",
+  "applications.create.own",
+  "applications.read.own",
+  "profile.read.own",
+  "profile.update.own",
+  "resume.upload.own",
+  "documents.read.own",
+  "screening.submit.own"
+] as const;
 

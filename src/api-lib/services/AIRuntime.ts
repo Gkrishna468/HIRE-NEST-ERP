@@ -36,7 +36,7 @@ export class AIRuntime {
     static async analyze(request: AIRuntimeRequest): Promise<AIRuntimeResponse> {
         const startTime = Date.now();
         try {
-            let preferredModel = "gemini-3.6-flash";
+            let preferredModel = "gemini-3.7-flash";
             if (request.modelPreference === "accurate" || request.modelPreference === "large_context") {
                 preferredModel = "gemini-3.1-pro-preview";
             }

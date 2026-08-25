@@ -393,7 +393,18 @@ export default function Candidate360Modal({
                             </span>
                          )}
                       </div>
-                      <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={async () => {
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          disabled={isRetrying}
+                          className="h-8 text-xs font-bold bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100" 
+                          onClick={handleRetryEnrichment}
+                        >
+                          <RotateCcw size={14} className={cn("mr-1.5", isRetrying && "animate-spin")} />
+                          {isRetrying ? "Rescanning..." : "Deterministic Rescan"}
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={async () => {
                          const url = displayCandidate.resumeUrl || displayCandidate.originalResumeUrl || displayCandidate.resumeFileUrl;
                          if (url) {
                            window.open(url, '_blank');
@@ -414,7 +425,23 @@ export default function Candidate360Modal({
                            alert('Original resume file not found.');
                          }
                       }}><UploadCloud size={14} className="mr-2" /> Download Original</Button>
+                      </div>
                    </div>
+                   {displayCandidate.resumeProcessingStatus && (
+                      <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs text-slate-600">
+                        <div>
+                          <span className="font-semibold text-slate-700">Ledger Status: </span>
+                          <span className="font-mono px-2 py-0.5 rounded bg-white border border-slate-200 text-indigo-700 font-bold">{displayCandidate.resumeProcessingStatus}</span>
+                          {displayCandidate.resumeProcessingId && (
+                            <span className="ml-2 font-mono text-slate-400 text-[11px]">ID: {displayCandidate.resumeProcessingId}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-700">Engine: </span>
+                          <span className="font-mono text-slate-600">{displayCandidate.resumeParserVersion || "2.5.0"} (Deterministic Zero-AI)</span>
+                        </div>
+                      </div>
+                   )}
                    <div className="flex-1 bg-white border border-slate-200 rounded-xl p-6 shadow-sm overflow-y-auto font-mono text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
                       {displayCandidate.parsedResumeText || displayCandidate.resumeText || displayCandidate.extractedText || "No parsed resume text available."}
                    </div>

@@ -84,7 +84,7 @@ export class EventBus {
             metadata: {
                 parentCorrelationId: traceContext?.parentCorrelationId || payload?.correlationId || ""
             },
-            orgId // legacy
+            orgId: orgId || payload?.orgId || payload?.organizationId || 'GLOBAL' // legacy
         };
 
         // 1. Record the event in the events collection

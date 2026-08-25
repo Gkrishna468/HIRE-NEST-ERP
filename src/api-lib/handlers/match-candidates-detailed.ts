@@ -1,22 +1,11 @@
 import { AIRuntime } from "../services/AIRuntime.js";
 import { PromptRegistry } from "../services/PromptRegistry.js";
-
-const logAiUsage = async (
-  metricName: string,
-  orgId: string,
-  model: string,
-  tokenEstimate: number,
-  method: string,
-) => {
-  console.log(`[AI USAGE] ${orgId} used ${tokenEstimate} tokens via ${method}`);
-};
+import { SkillNormalizer } from "../../resume-engine/matching/skill-normalizer.js";
+import { extractStatedExperience } from "../../resume-engine/parser/experience.js";
 
 // Helper to extract years of experience using regex
 function extractYearsOfExperience(text: string): number {
-  const match = text.match(
-    /(\d+)\+?\s*(?:vears?|yrs?|years?)\s*(?:of)?\s*(?:experience)?/i,
-  );
-  return match ? parseInt(match[1], 10) : 0;
+  return extractStatedExperience(text);
 }
 
 export default async function handler(req: any, res: any) {
@@ -33,59 +22,22 @@ export default async function handler(req: any, res: any) {
 
   try {
     // ---------------------------------------------------------
-    // DETERMINISTIC BUSINESS LOGIC - AI GATEWAY MOVED TO CLIENT
+    // DETERMINISTIC BUSINESS LOGIC - ZERO AI DEPENDENCY
     // ---------------------------------------------------------
+    const jdText = typeof jd === "string" ? jd : JSON.stringify(jd);
+    const resumeText = typeof candidateProfile === "string" ? candidateProfile : JSON.stringify(candidateProfile);
 
-    // We are no longer using Gemini for Match Scoring. Rely entirely on deterministic heuristics.
-    const jdLower =
-      typeof jd === "string"
-        ? jd.toLowerCase()
-        : JSON.stringify(jd).toLowerCase();
-    const resumeLower =
-      typeof candidateProfile === "string"
-        ? candidateProfile.toLowerCase()
-        : JSON.stringify(candidateProfile).toLowerCase();
+    // 1. Skill Extraction & Overlap using Controlled Taxonomy
+    const jdLower = jdText.toLowerCase();
+    const resumeLower = resumeText.toLowerCase();
 
-    // 1. Skill Match
+    // Standard list of canonical skills
     const techWords = [
-      "react",
-      "node",
-      "typescript",
-      "javascript",
-      "python",
-      "java",
-      "c++",
-      ".net",
-      "aws",
-      "azure",
-      "gcp",
-      "docker",
-      "kubernetes",
-      "sql",
-      "linux",
-      "agile",
-      "css",
-      "html",
-      "api",
-      "rest",
-      "graphql",
-      "microservices",
-      "ruby",
-      "go",
-      "rust",
-      "swift",
-      "kotlin",
-      "spring",
-      "django",
-      "flask",
-      "vue",
-      "angular",
-      "mongodb",
-      "postgresql",
-      "mysql",
-      "redis",
-      "kafka",
-      "rabbitmq",
+      "react", "node", "typescript", "javascript", "python", "java", "c++", "c#", ".net",
+      "aws", "azure", "gcp", "docker", "kubernetes", "sql", "linux", "agile", "css", "html",
+      "api", "rest", "graphql", "microservices", "ruby", "go", "rust", "swift", "kotlin",
+      "spring", "django", "flask", "vue", "angular", "mongodb", "postgresql", "mysql",
+      "redis", "kafka", "rabbitmq", "terraform", "ci/cd", "multithreading", "rtos", "embedded"
     ];
 
     const requiredSkills = techWords.filter((word) => jdLower.includes(word));
@@ -103,12 +55,12 @@ export default async function handler(req: any, res: any) {
         Math.round((foundSkills.length / requiredSkills.length) * 100),
       );
     } else if (foundSkills.length > 0) {
-      skillsScore = 80; // Implicitly matched something, but no clear requirements
+      skillsScore = 80;
     }
 
     // 2. Experience Match
-    const requiredExp = extractYearsOfExperience(jdLower);
-    const candidateExp = extractYearsOfExperience(resumeLower);
+    const requiredExp = extractYearsOfExperience(jdText);
+    const candidateExp = extractYearsOfExperience(resumeText);
 
     let experienceScore = 70; // baseline
     if (requiredExp > 0) {
@@ -121,7 +73,7 @@ export default async function handler(req: any, res: any) {
       experienceScore = 85;
     }
 
-    // 3. Location/Domain Match (Basic heuristics, normally geo-lookup or strict sector lists)
+    // 3. Location/Domain Match
     const remoteKeywords = ["remote", "work from home", "wfh", "telecommute"];
     const requiresRemote = remoteKeywords.some((k) => jdLower.includes(k));
     const candidateWantsRemote = remoteKeywords.some((k) =>
@@ -132,7 +84,7 @@ export default async function handler(req: any, res: any) {
     if (requiresRemote && candidateWantsRemote) locationScore = 100;
     else if (!requiresRemote && requiresRemote) locationScore = 60;
 
-    let domainScore = 75; // Average expected domain fit
+    let domainScore = 75;
 
     // Compute Total Deterministic Score
     const totalScore = Math.round(
@@ -146,7 +98,7 @@ export default async function handler(req: any, res: any) {
     if (totalScore >= 80) recommendation = "STRONG_FIT";
     if (totalScore < 60) recommendation = "NOT_SUITABLE";
 
-    // 4. OPTIONAL AI EXPLANATION PASS (Gemini is LAST, for reasoning only)
+    // 4. OPTIONAL AI EXPLANATION PASS (Gemini is strictly optional for text reasoning only)
     let aiReasoning = "";
     const explainWithAI = req.body.explainWithAI === true;
 

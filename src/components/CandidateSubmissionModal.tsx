@@ -19,6 +19,7 @@ export default function CandidateSubmissionModal({
 }: CandidateSubmissionModalProps) {
   const [isParsing, setIsParsing] = useState(false);
   const [parsed, setParsed] = useState(false);
+  const [candidateId, setCandidateId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,47 +54,34 @@ export default function CandidateSubmissionModal({
       if (res.ok) {
         const data = await res.json();
         if (data.text) {
-          // Now pass extracted text to the intel parser via bulk-parse or similar.
-          // Here we can use the same AI distillation used in bulk upload
-          const intelRes = await fetch("/api/bulk-parse", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ resumeTexts: [data.text] }),
-          });
-
-          if (intelRes.ok) {
-            const intelData = await intelRes.json();
-            if (intelData && intelData.length > 0) {
-              const profile = intelData[0];
-              if (profile.name && profile.name !== "Parsing Pending" && profile.name !== "Unknown") {
-                setName(profile.name);
-              }
-              setEmail(
-                profile.email?.includes("pending@") ? "" : profile.email || "",
-              );
-              setPhone(profile.phone === "N/A" ? "" : profile.phone || "");
-              setExperience(profile.experience === "Unparsed" ? "" : profile.experience || "");
-              setKeySkills(
-                Array.isArray(profile.skills)
-                  ? profile.skills.join(", ")
-                  : profile.skills || "",
-              );
-
-              const analysis = {
-                fitScore: 88,
-                skills: profile.skills || [],
-                analysis: profile.summary || "Parsed from document.",
-                candidateAnalysis: profile.summary || "Parsed from document.",
-                sourcingCriteria: "Extracted candidate qualifications matched to job requirements.",
-                authenticity: "Parsed from document",
-              };
-              setAiAnalysis(analysis);
-              setParsed(true);
-            }
+          const profile = data;
+          if (profile.candidateName && profile.candidateName !== "Parsing Pending" && profile.candidateName !== "Unknown") {
+            setName(profile.candidateName);
           }
-        }
+          setEmail(
+            profile.email?.includes("pending@") ? "" : profile.email || "",
+          );
+          setPhone(profile.phone === "N/A" ? "" : profile.phone || "");
+          setExperience(profile.experienceYears === 0 ? "" : `${profile.experienceYears} Years`);
+          setKeySkills(
+            Array.isArray(profile.skills)
+              ? profile.skills.join(", ")
+              : profile.skills || "",
+          );
+
+          const analysis = {
+            fitScore: 88,
+            skills: profile.skills || [],
+            analysis: profile.candidateProfile?.summary || "Parsed from document.",
+            candidateAnalysis: profile.candidateProfile?.summary || "Parsed from document.",
+            sourcingCriteria: "Extracted candidate qualifications matched to job requirements.",
+            authenticity: "Parsed from document",
+            processingId: profile.processingId || profile.ledgerId
+          };
+          setAiAnalysis(analysis);
+          setParsed(true);
+          if (data.candidateId) setCandidateId(data.candidateId);
+          }
       } else {
         console.error("Extraction failed");
       }
@@ -123,7 +111,8 @@ export default function CandidateSubmissionModal({
         keySkills,
         aiAnalysis,
         orgId: "local", // Fallback Mock
-        submitterUid: "local_user"
+        submitterUid: "local_user",
+        candidateId: candidateId || undefined
       };
 
       if (reqId === "GENERAL") {
