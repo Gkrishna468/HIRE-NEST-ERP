@@ -83,20 +83,45 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
                 const results = await parseBulkResumes([extText]);
                 if (results && results.length > 0) {
                     const profile = results[0];
-                    if (profile && profile.name && 
-                        profile.name !== "Parsing Pending" && 
-                        profile.name !== "Needs Manual Review" && 
-                        profile.name !== "Unnamed Candidate" && 
-                        profile.name !== "Local Mock Generated" &&
-                        profile.name !== "Candidate Missing Skill") {
-                        
-                        parsedProfile = profile;
+                    parsedProfile = profile;
+                    const isSynthetic = !profile?.name || 
+                      profile.name === "Parsing Pending" || 
+                      profile.name === "Needs Manual Review" || 
+                      profile.name === "Unnamed Candidate" || 
+                      profile.name === "Local Mock Generated" ||
+                      profile.name === "Candidate Missing Skill" ||
+                      profile.name === "Unknown Candidate" ||
+                      profile.name === "Candidate Unknown" ||
+                      profile.name.startsWith("CAND_P6D_FAIL");
+                    
+                    if (!isSynthetic) {
                         distilledName = profile.name;
-                        parseStatus = "COMPLETED";
                     }
+                    parseStatus = "COMPLETED";
+                } else {
+                    parsedProfile = {
+                        name: "",
+                        email: "",
+                        phone: "",
+                        skills: [],
+                        experience: "",
+                        currentRole: "",
+                        summary: ""
+                    };
+                    parseStatus = "COMPLETED";
                 }
             } catch (err) {
                 console.error("AI parsing failed in bulk upload component:", err);
+                parsedProfile = {
+                    name: "",
+                    email: "",
+                    phone: "",
+                    skills: [],
+                    experience: "",
+                    currentRole: "",
+                    summary: ""
+                };
+                parseStatus = "COMPLETED";
             }
         }
 
@@ -105,7 +130,7 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
             originalFile: file,
             fileName: file.name,
             extractedText: extText,
-            name: distilledName || "Failed to Parse",
+            name: distilledName || "",
             missingName: !distilledName,
             status: parseStatus === "COMPLETED" ? "Parsed" : "FAILED",
             parsedProfile: parsedProfile ? {

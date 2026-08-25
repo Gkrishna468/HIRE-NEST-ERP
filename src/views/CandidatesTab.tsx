@@ -1352,7 +1352,7 @@ ${extText}`;
         const candSnap = await getDoc(doc(db, "candidatePool", candId));
         if (candSnap.exists()) {
            const candData = candSnap.data();
-           if (candData.manualName || candData.isNameManuallyEdited || candData.source === "Manual Add") {
+           if (candData.manualName || candData.isNameManuallyEdited || candData.source === "Manual Add" || candData.source === "Manual Form") {
               delete updatePayload.name;
               delete updatePayload.fullName;
            }
@@ -2147,10 +2147,20 @@ ${extText}`;
                           }
                         }
 
+                        const isSyntheticName = !name || 
+                          name === "Candidate Missing Skill" || 
+                          name === "Needs Manual Review" || 
+                          name === "Parsing Pending" || 
+                          name === "Unknown Candidate" || 
+                          name === "Unnamed Candidate" || 
+                          name === "Candidate Unknown" || 
+                          name.startsWith("CAND_P6D_FAIL") ||
+                          name.includes("Needs Manual Review");
+
                         const isFailed = c.parsedProfile?.status === "PARSE_FAILED" || !c.extractedText || c.extractedText.includes("[Parse Failure Fallback]");
 
-                        if (isFailed) {
-                          console.warn(`Skipping database write for failed parse of candidate: ${c.fileName}`);
+                        if (isFailed || isSyntheticName) {
+                          console.warn(`Skipping database write for failed/synthetic candidate: ${name || c.fileName}`);
                           setProcessingStats((prev) => {
                             if (!prev) return null;
                             return {

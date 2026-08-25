@@ -244,6 +244,11 @@ CRITICAL: If the resume content is missing, too short, or lacks a real human nam
             "[BULK_PARSE] Extraction model failed. Returning PARSE_FAILED.",
           );
           profile = {
+            success: false,
+            status: "FAILED",
+            stage: "AI_PARSING",
+            errorCode: "AI_PARSE_FAILED",
+            errorMessage: "AI Parsing failed. Manual review required.",
             name: "Needs Manual Review",
             fullName: "Needs Manual Review",
             email: "",
@@ -254,7 +259,6 @@ CRITICAL: If the resume content is missing, too short, or lacks a real human nam
             summary: "AI Parsing failed. Manual review required.",
             riskScore: -1,
             isRisky: false,
-            status: "PARSE_FAILED",
             pipelineStage: "Candidate Added",
             requiresManualReview: true,
           };
