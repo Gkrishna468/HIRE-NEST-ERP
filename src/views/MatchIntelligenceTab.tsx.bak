@@ -36,7 +36,7 @@ function getOrInitializeMatrix(match: any, req: any) {
       hardGateReason: match.hardGateReason || "",
       screeningQuestions: match.screeningQuestions || []
     };
-  }
+
 
   const title = (req?.title || "Software Engineer").toLowerCase();
   if (title.includes("c++") || title.includes("energy") || title.includes("automation")) {
@@ -68,7 +68,7 @@ function getOrInitializeMatrix(match: any, req: any) {
         { criterion: "Static analysis tools", question: "Have you used static analysis tools like SonarQube, Coverity, or clang-tidy to harden codebases?" }
       ]
     };
-  }
+
 
   // Fallback for dynamic matching logic
   return {
@@ -88,7 +88,7 @@ function getOrInitializeMatrix(match: any, req: any) {
       { criterion: "CI/CD & Cloud Orchestration", question: "How have you configured CI/CD automation pipelines for continuous deployment on GCP or AWS?" }
     ]
   };
-}
+
 
 export default function MatchIntelligenceTab() {
   const { userData } = useSystemStore();
@@ -125,7 +125,7 @@ export default function MatchIntelligenceTab() {
         { id: '3', type: 'SYSTEM', title: 'AI Evidence Generated', description: 'Gemini generated reasoning and fit assessment.', timestamp: '10:06 AM', status: 'COMPLETED' }
       ];
       setMatchTimelines(prev => ({ ...prev, [matchId]: simulatedEvents }));
-    }
+
   };
 
   const handleCreateDealRoom = async (match: any, req: any, cand: any) => {
@@ -174,7 +174,7 @@ export default function MatchIntelligenceTab() {
       console.error("Failed to create deal room", e);
     } finally {
       setProcessingMatch(null);
-    }
+
   };
 
   const handleUpdateMatchMatrix = async (matchId: string, updatedFields: any) => {
@@ -183,7 +183,7 @@ export default function MatchIntelligenceTab() {
       await updateDoc(doc(db, "candidate_matches", matchId), updatedFields);
     } catch (e) {
       console.error("Failed to save match matrix updates", e);
-    }
+
   };
 
   const handleOpenVerificationModal = (match: any, cand: any, criterionName: string) => {
@@ -247,7 +247,7 @@ export default function MatchIntelligenceTab() {
       alert("Error executing resume enhancement.");
     } finally {
       setUpdatingResume(null);
-    }
+
   };
 
   useEffect(() => {
@@ -319,7 +319,7 @@ export default function MatchIntelligenceTab() {
         </div>
       </div>
     );
-  }
+
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fade-in pb-24">
@@ -390,12 +390,12 @@ export default function MatchIntelligenceTab() {
             >
               Run Match Scan
             </button>
+            <div className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm relative overflow-hidden">
           )}
         </div>
       ) : (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-5 border border-slate-200 rounded-xl shadow-sm relative overflow-hidden">
               <Zap
                 className="absolute -right-4 -bottom-4 text-amber-500/10"
                 size={80}
@@ -510,7 +510,7 @@ export default function MatchIntelligenceTab() {
                                     : req?.financials
                                       ? `₹${Math.round(vendorBudget * ((match.placementProbability || 0) / 100)).toLocaleString()}`
                                       : "--";
-                                }
+
 
                                 const rowMatrixState = getOrInitializeMatrix(match, req);
 
@@ -1006,7 +1006,7 @@ export default function MatchIntelligenceTab() {
                                     : req?.financials
                                       ? `₹${Math.round(vendorBudget * ((match.placementProbability || 0) / 100)).toLocaleString()}`
                                       : "--";
-                                }
+
 
                                 const rowMatrixState = getOrInitializeMatrix(match, req);
 

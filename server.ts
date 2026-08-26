@@ -160,7 +160,6 @@ import parseJdHandler from './src/api-lib/handlers/parse-jd';
 import extractTextHandler from './src/api-lib/handlers/extract-text';
 import matchDetailedHandler from './src/api-lib/handlers/match-candidates-detailed';
 import bulkParseHandler from './src/api-lib/handlers/bulk-parse-resumes';
-import upsertCandidateHandler from "./src/api-lib/handlers/upsert-candidate";
 import workflowsHandler from './src/api-lib/handlers/workflows';
 import rescanMatchesHandler from './src/api-lib/handlers/rescan-matches';
 import rescanResumeHandler from './src/api-lib/handlers/rescan-resume';
@@ -568,8 +567,6 @@ hirenest_active_requests 0
         case "bulk-parse-resumes":
           if (bulkParseHandler) return await bulkParseHandler(req, res);
           break;
-        case 'upsert-candidate':
-          if (upsertCandidateHandler) return await upsertCandidateHandler(req, res);
           break;
 
         case 'ai':

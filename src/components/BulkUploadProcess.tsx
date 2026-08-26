@@ -29,6 +29,7 @@ export interface ProcessingResultItem {
   fileName: string;
   fileSize: number;
   processingId?: string;
+  candidateId?: string;
   status: "QUEUED" | "EXTRACTING" | "OCR" | "PARSING" | "PERSISTING" | "COMPLETED" | "FAILED" | "MANUAL_REVIEW" | "DUPLICATE";
   stage: string;
   name: string;
@@ -150,6 +151,7 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
             fileName: file.name,
             fileSize: file.size,
             processingId: data.processingId || data.ledgerId,
+            candidateId: data.candidateId,
             status: isManual ? "MANUAL_REVIEW" : (data.status || "COMPLETED"),
             stage: data.stage || (isManual ? "MANUAL_REVIEW" : "COMPLETED"),
             name: data.candidateName || "",

@@ -1,5 +1,4 @@
 import { db } from '../../lib/firebase-admin.js';
-import { AIRuntime } from './AIRuntime.js';
 
 export interface MatchResult {
   candidateId: string;
@@ -167,36 +166,9 @@ export class ProprietaryMatchingEngine {
   }
 
   private static async calculateSemanticScore(candidate: any, requirement: any) {
-    const prompt = `
-      Perform a technical semantic match between this candidate and job requirement.
-      Candidate:
-      - Skills: ${candidate.skills?.join(', ')}
-      - Summary: ${candidate.summary}
-      
-      Requirement:
-      - Title: ${requirement.title}
-      - Skills: ${requirement.skills?.join(', ')}
-      - JD: ${requirement.jdFullProfile || requirement.description}
-
-      Respond with a JSON object:
-      {
-        "score": number (0-100),
-        "reasoning": "Brief explanation of alignment",
-        "missingCriticalSkills": ["string"]
-      }
-    `;
-
-    const response = await AIRuntime.analyze({
-      prompt,
-      modelPreference: 'fast',
-      schema: true
-    });
-
-    if (response.outcome === 'failed' || !response.data || typeof response.data.score !== 'number') {
-      return null;
-    }
-
-    return response.data;
+    // ZERO-AI REQUIREMENT: Semantic scoring via LLM is removed.
+    // The system must fall back to deterministic scoring.
+    return null;
   }
 
   private static async calculateBusinessScore(candidate: any, requirement: any, orgId: string): Promise<number> {
