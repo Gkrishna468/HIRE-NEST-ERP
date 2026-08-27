@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   X,
@@ -109,13 +109,26 @@ export function CandidateRegisterModal({
       });
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || errData.error || `Resume parsing failed (Status ${res.status}). Please upload a valid PDF or DOCX file.`);
+        let errData: any = {};
+        try {
+          errData = await res.json();
+        } catch {
+          errData = {};
+        }
+        const errorMsg = errData.message || (typeof errData.error === 'string' ? errData.error : errData.error?.message) || `Resume upload failed (Status ${res.status}).`;
+        throw new Error(errorMsg);
       }
 
-      const parseResult = await res.json();
-      if (!parseResult.success) {
-        throw new Error(parseResult.message || parseResult.error || "Could not extract readable text from this file.");
+      let parseResult: any = {};
+      try {
+        parseResult = await res.json();
+      } catch {
+        throw new Error("Unable to parse server response.");
+      }
+
+      if (!parseResult.success && !parseResult.ok) {
+        const errorMsg = parseResult.message || (typeof parseResult.error === 'string' ? parseResult.error : parseResult.error?.message) || "Could not extract text from this file.";
+        throw new Error(errorMsg);
       }
 
       const profile = parseResult.candidateProfile || {};

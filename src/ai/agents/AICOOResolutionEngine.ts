@@ -2,13 +2,13 @@ import { globalAgentRegistry } from '../orchestrator/AgentRegistry.js';
 import { AgentExecutionContext, AgentResult, HireNestAgent } from '../orchestrator/types.js';
 import { AgentResultHelper } from '../orchestrator/AgentResult.js';
 
-export class AICOOExceptionEngine implements HireNestAgent {
+export class AICOOResolutionEngine implements HireNestAgent {
   metadata = {
-    id: 'ai_coo_exception_engine',
-    name: 'Always-On AI COO Exception Engine',
+    id: 'ai_coo_resolution_engine',
+    name: 'Always-On AI COO Resolution Engine',
     role: 'ceo',
-    purpose: 'Continuously monitors operational health, detects SLA breaches, flags stale requirements, unresponded submissions, and builds exception-driven daily briefings.',
-    capabilities: ['sla-monitoring', 'stale-requirement-detection', 'vendor-alerts', 'exception-briefing'],
+    purpose: 'Continuously monitors operational health, detects SLA breaches, flags stale requirements, unresponded submissions, and builds resolution-driven daily briefings.',
+    capabilities: ['sla-monitoring', 'stale-requirement-detection', 'vendor-alerts', 'resolution-briefing'],
     tools: ['propose_stale_requirement_action', 'create_follow_up_task'],
     allowedTools: ['propose_stale_requirement_action', 'create_follow_up_task'],
     permissions: ['ops:read', 'ops:monitor', 'ops:briefing'],
@@ -33,7 +33,7 @@ export class AICOOExceptionEngine implements HireNestAgent {
   async execute(prompt: string, context: AgentExecutionContext): Promise<AgentResult> {
     const startTime = Date.now();
 
-    const exceptionsReport = {
+    const anomaliesReport = {
       critical: [
         { id: 'crit-1', type: 'SLA_BREACH', title: '2 Client Submissions awaiting response > 72h', action: 'Escalate to Client TA Manager' },
         { id: 'crit-2', type: 'DUPLICATE_RISK', title: 'Candidate Alex Rivers re-submitted via Vendor Y', action: 'Block duplicate submission in CandidateOwnershipVault' }
@@ -50,26 +50,26 @@ export class AICOOExceptionEngine implements HireNestAgent {
     };
 
     const outputText = `
-### 🚨 AI COO Morning Exception Briefing
+### 🚨 AI COO Morning Resolution Briefing
 
-🔴 **CRITICAL EXCEPTIONS (${exceptionsReport.critical.length})**
-${exceptionsReport.critical.map(c => `• **[${c.type}]** ${c.title}\n  *Action:* ${c.action}`).join('\n')}
+🔴 **CRITICAL ISSUES (${anomaliesReport.critical.length})**
+${anomaliesReport.critical.map(c => `• **[${c.type}]** ${c.title}\n  *Action:* ${c.action}`).join('\n')}
 
-🟠 **ATTENTION REQUIRED (${exceptionsReport.attention.length})**
-${exceptionsReport.attention.map(a => `• **[${a.type}]** ${a.title}\n  *Action:* ${a.action}`).join('\n')}
+🟠 **ATTENTION REQUIRED (${anomaliesReport.attention.length})**
+${anomaliesReport.attention.map(a => `• **[${a.type}]** ${a.title}\n  *Action:* ${a.action}`).join('\n')}
 
-🟢 **HIGH-VALUE OPPORTUNITIES (${exceptionsReport.opportunities.length})**
-${exceptionsReport.opportunities.map(o => `• **[${o.type}]** ${o.title}\n  *Action:* ${o.action}`).join('\n')}
+🟢 **HIGH-VALUE OPPORTUNITIES (${anomaliesReport.opportunities.length})**
+${anomaliesReport.opportunities.map(o => `• **[${o.type}]** ${o.title}\n  *Action:* ${o.action}`).join('\n')}
     `.trim();
 
     return AgentResultHelper.success(
       this.metadata.id,
       outputText,
       Date.now() - startTime,
-      { data: exceptionsReport } as any
+      { data: anomaliesReport } as any
     );
   }
 }
 
 // Auto-register instance
-globalAgentRegistry.register(new AICOOExceptionEngine());
+globalAgentRegistry.register(new AICOOResolutionEngine());

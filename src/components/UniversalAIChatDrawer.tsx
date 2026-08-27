@@ -366,9 +366,11 @@ export function UniversalAIChatDrawer({
                         <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-800/40">
                           <span className="text-[8px] font-mono text-slate-500 uppercase font-black">Sources:</span>
                           {msg.sources.map((s, idx) => (
-                            <Badge key={idx} className="bg-slate-950 text-slate-400 border-slate-800 text-[8px] font-mono scale-90">
-                              {s}
-                            </Badge>
+                            <span key={idx}>
+                              <Badge className="bg-slate-950 text-slate-400 border-slate-800 text-[8px] font-mono scale-90">
+                                {s}
+                              </Badge>
+                            </span>
                           ))}
                           
                           {/* Status Indicator */}

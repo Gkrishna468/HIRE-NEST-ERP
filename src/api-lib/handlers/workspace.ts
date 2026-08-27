@@ -38,12 +38,16 @@ workspaceHandler.post("/mailos/message/:id/analyze", async (req, res) => {
 
 workspaceHandler.get("/intake/metrics", async (req, res) => {
   try {
+    if (!db) {
+      return res.json({ success: true, metrics: {} });
+    }
     const workspace = await WorkspaceResolver.resolve(req);
     const today = new Date().toISOString().split('T')[0];
     const doc = await db.collection("intake_metrics").doc(`${workspace.orgId}_${today}`).get();
     res.json({ success: true, metrics: doc.exists ? doc.data() : {} });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    console.warn("[INTAKE METRICS] Fallback:", e?.message);
+    res.json({ success: true, metrics: {} });
   }
 });
 
@@ -86,8 +90,14 @@ workspaceHandler.get("/status", async (req, res) => {
   const uid = (req as any).user?.uid;
   if (!uid) return res.status(401).json({ error: "Unauthorized" });
 
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  if (!clientId || clientId === "YOUR_CLIENT_ID" || !clientSecret || clientSecret === "YOUR_CLIENT_SECRET") {
+    return res.json({ connected: false, status: "NOT_CONFIGURED" });
+  }
+
   if (!db) {
-    return res.json({ connected: false, error: "Database not configured" });
+    return res.json({ connected: false, status: "ERROR", error: "Database not configured" });
   }
 
   try {
@@ -96,8 +106,8 @@ workspaceHandler.get("/status", async (req, res) => {
       await db
         .collection("workspace_connections")
         .doc(uid)
-        .set({ connected: false }, { merge: true });
-      return res.json({ connected: false });
+        .set({ connected: false, status: "NOT_CONNECTED" }, { merge: true });
+      return res.json({ connected: false, status: "NOT_CONNECTED" });
     }
 
     const data = doc.data();
@@ -105,8 +115,8 @@ workspaceHandler.get("/status", async (req, res) => {
       await db
         .collection("workspace_connections")
         .doc(uid)
-        .set({ connected: false }, { merge: true });
-      return res.json({ connected: false });
+        .set({ connected: false, status: "NOT_CONNECTED" }, { merge: true });
+      return res.json({ connected: false, status: "NOT_CONNECTED" });
     }
 
     const userClient = createOAuthClient();
@@ -178,6 +188,7 @@ workspaceHandler.get("/status", async (req, res) => {
 
     const connectionStatus = {
       connected: true,
+      status: "CONNECTED",
       provider: "google",
       gmail: true,
       calendar: !!calendars.data.items,
@@ -209,17 +220,22 @@ workspaceHandler.get("/status", async (req, res) => {
     res.json(connectionStatus);
   } catch (e: any) {
     console.error("[Workspace Status] Error:", e.message || e);
+    const errMsg = e.message || String(e);
+    const isTokenError = errMsg.includes("invalid_grant") || errMsg.includes("Invalid Credentials") || errMsg.includes("expired") || errMsg.includes("token") || e.status === 401 || e.code === 401;
+    const finalState = isTokenError ? "TOKEN_EXPIRED" : "ERROR";
+
     try {
       await db
         .collection("workspace_connections")
         .doc(uid)
-        .set({ connected: false }, { merge: true });
+        .set({ connected: false, status: finalState, error: errMsg }, { merge: true });
     } catch (innerErr) {
       console.error("[Workspace Status] Failed to update db:", innerErr);
     }
     res.json({
       connected: false,
-      error: "Failed to verify tokens with Google APIs",
+      status: finalState,
+      error: errMsg,
     });
   }
 });

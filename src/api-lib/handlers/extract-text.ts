@@ -156,7 +156,7 @@ export default async function handler(req: any, res: any) {
 
     } catch (parseError: any) {
       console.error(
-        `[EXTRACTION] [${requestId}] Unexpected extraction exception for "${originalname}":`,
+        `[EXTRACTION] [${requestId}] Extraction exception for "${originalname}":`,
         parseError?.message || parseError,
       );
 
@@ -172,10 +172,14 @@ export default async function handler(req: any, res: any) {
         // Non-blocking telemetry
       }
 
-      return res.status(500).json({
+      return res.status(422).json({
+        ok: false,
         success: false,
-        message: "Internal server error during document text extraction",
-        error: parseError?.message || "Unknown extraction error",
+        error: {
+          code: "EXTRACTION_FAILED",
+          message: parseError?.message || "Extraction process failed",
+        },
+        message: parseError?.message || "Document text extraction encountered an error.",
         requestId,
         filename: originalname,
       });

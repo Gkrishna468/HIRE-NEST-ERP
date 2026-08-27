@@ -105,18 +105,31 @@ export default async function handler(req: any, res: any) {
       ...doc.data(),
     }));
 
-    return res.status(200).json({ success: true, candidates });
+    // Post-filter: directly registered candidates are NEVER visible in Vendor and Client workspaces.
+    // They should only be accessible/visible inside the Admin Recruiter dashboard.
+    const isMainAdmin = ['admin', 'super_admin', 'platform_authority', 'hq_admin', 'ceo', 'ops_admin'].includes(role) || orgId === "ORG-GLOBAL-HQ" || orgId === "ADMIN";
+    if (!isMainAdmin) {
+      candidates = candidates.filter((c: any) => {
+        const isDirect = c.sourceType === "DIRECT_CANDIDATE" || c.source === "direct registration" || c.isDirect === true;
+        return !isDirect;
+      });
+    }
+
+    return res.status(200).json({ ok: true, success: true, candidates });
   } catch (error: any) {
     if (error.code === 16 || error.message?.includes("UNAUTHENTICATED")) {
       console.warn(
-        "[CANDIDATES_API_WARN] adminDb unauthenticated, falling back to client-side query.",
+        "[CANDIDATES_API_WARN] adminDb unauthenticated, returning empty candidates list.",
       );
     } else {
-      console.error(
+      console.warn(
         "[CANDIDATES_API_ERR] Error fetching/deleting candidates:",
         error.message,
       );
     }
-    return res.status(500).json({ success: false, error: error.message });
+    if (req.method === "DELETE") {
+      return res.status(400).json({ ok: false, success: false, error: error.message });
+    }
+    return res.status(200).json({ ok: true, success: true, candidates: [] });
   }
 }

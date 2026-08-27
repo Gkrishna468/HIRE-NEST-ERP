@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { HireNestBrandLogo } from '../components/brand/HireNestBrandLogo';
 import { 
   ShieldCheck, 
   Zap, 
@@ -101,14 +102,7 @@ export default function LandingPage() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3">
-              <ShieldCheck size={24} />
-            </div>
-            <h1 className="text-xl font-black tracking-tighter">
-              HireNest<span className="text-indigo-600">OS</span>
-            </h1>
-          </div>
+          <HireNestBrandLogo size="md" theme="dark" showSubtitle />
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
@@ -773,12 +767,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-20">
             {/* Brand & Description */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white rotate-3">
-                  <ShieldCheck size={24} />
-                </div>
-                <h1 className="text-xl font-black tracking-tighter">HireNestOS</h1>
-              </div>
+              <HireNestBrandLogo size="md" theme="dark" showSubtitle />
               <p className="text-sm text-slate-400 leading-relaxed font-medium">
                 <strong className="text-slate-300">The Enterprise Recruitment Intelligence OS combining Knowledge, Data, Integrations, Skills, and Agents in one platform.</strong>
               </p>

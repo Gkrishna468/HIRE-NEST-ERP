@@ -803,9 +803,11 @@ export default function AdminSecurityDashboard() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {reasoningResult.appliedModes.map((mode: any) => (
-                      <Badge key={mode} className="bg-indigo-900/50 border-indigo-400/30 text-indigo-200 text-[9px] uppercase tracking-tighter">
-                         /{mode}
-                      </Badge>
+                      <span key={mode}>
+                        <Badge className="bg-indigo-900/50 border-indigo-400/30 text-indigo-200 text-[9px] uppercase tracking-tighter">
+                           /{mode}
+                        </Badge>
+                      </span>
                     ))}
                   </div>
                   {reasoningResult.suggestions && (

@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
-import { db } from "../../lib/firebase";
+import { db, auth } from "../../lib/firebase";
 import { collection, query, where, getDocs, limit } from "firebase/firestore";
 import { useDailyBriefing } from "../../hooks/useDailyBriefing";
 
@@ -114,7 +114,7 @@ export default function RecruiterWorkspace({
   const executeAction = async (actionId: string, actionType: string, payload: any, successMsg: string) => {
     setProcessingAction(actionId);
     try {
-      const idToken = await (window as any).firebase?.auth().currentUser?.getIdToken();
+      const idToken = await auth.currentUser?.getIdToken();
       
       const res = await fetch("/api/recruiter-os/action", {
         method: "POST",

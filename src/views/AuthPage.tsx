@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { HireNestBrandLogo } from '../components/brand/HireNestBrandLogo';
 import { 
   ShieldCheck, 
   Fingerprint, 
@@ -83,13 +84,8 @@ export default function AuthPage() {
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-600/10 blur-[120px] rounded-full" />
         
         <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-20">
-            <div className="h-10 w-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3">
-              <ShieldCheck size={24} />
-            </div>
-            <h1 className="text-xl font-black text-white tracking-tighter">
-              HireNest<span className="text-indigo-600">OS</span>
-            </h1>
+          <div className="mb-14">
+            <HireNestBrandLogo size="lg" theme="dark" showSubtitle showTagline />
           </div>
 
           <div className="space-y-8 max-w-md">
@@ -151,11 +147,8 @@ export default function AuthPage() {
       {/* Right Side: Login Form & Mode Switcher */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12 lg:p-24 bg-white relative">
         <div className="max-w-md w-full">
-          <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
-            <div className="h-10 w-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white rotate-3">
-              <ShieldCheck size={24} />
-            </div>
-            <h1 className="text-xl font-black text-slate-900 tracking-tighter">HireNestOS</h1>
+          <div className="lg:hidden flex items-center mb-8 justify-center">
+            <HireNestBrandLogo size="md" theme="light" showSubtitle />
           </div>
 
           {/* Mode Switcher Tabs */}

@@ -54,6 +54,19 @@ export default async function matchingGlobalHandler(req: any, res: any) {
     }
   }
 
+  const isAdmin =
+    role === "admin" ||
+    role === "super_admin" ||
+    role === "ops_admin" ||
+    role === "hq_admin" ||
+    role === "hq" ||
+    orgId === "ORG-GLOBAL-HQ" ||
+    orgId === "ADMIN";
+
+  if (!isAdmin) {
+    return res.status(403).json({ error: "Forbidden: Match Intelligence is restricted to administrators." });
+  }
+
   // Parse skills array
   let reqSkills: string[] = [];
   if (skills) {

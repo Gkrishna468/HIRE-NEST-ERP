@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Badge } from "../lib/Badge";
 import { Button } from "../lib/Button";
 import { EmptyState } from "../components/EmptyState";

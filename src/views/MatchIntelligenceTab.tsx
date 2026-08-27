@@ -25,6 +25,7 @@ import { useSystemStore } from "../stores/SystemStore";
 import { ExplainableEvidenceCard } from "../components/ExplainableEvidenceCard";
 import { cn } from "../lib/utils";
 import { LifecycleTimeline, TimelineEvent } from "../components/LifecycleTimeline";
+import HireNestLoader from "../components/HireNestLoader";
 
 // Initialize a default high-fidelity criterion-level evaluation matrix for candidates
 function getOrInitializeMatrix(match: any, req: any) {
@@ -304,18 +305,37 @@ export default function MatchIntelligenceTab() {
   }, [userData]);
 
   const role = userData?.role || "";
+  const isMatchAdmin = ["admin", "super_admin", "ops_admin", "hq_admin", "hq"].includes(role);
 
   if (loading) {
     return (
       <div className="p-8 max-w-7xl mx-auto flex justify-center items-center h-64">
-        <div className="text-center text-slate-400">
-          <Zap
-            className="mx-auto mb-3 animate-pulse text-indigo-400"
-            size={32}
-          />
-          <p className="font-bold tracking-widest uppercase text-[10px]">
-            {scanProgress || "Evaluating match intel..."}
-          </p>
+        <HireNestLoader label={scanProgress || "Evaluating match intelligence..."} size="md" />
+      </div>
+    );
+  }
+
+  if (!isMatchAdmin) {
+    return (
+      <div id="match-intel-restricted-container" className="p-8 max-w-7xl mx-auto space-y-8 animate-fade-in pb-24">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 max-w-2xl mx-auto text-center space-y-6 shadow-sm">
+          <div className="mx-auto w-12 h-12 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center border border-indigo-100">
+            <Zap size={24} className="animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <span id="restriction-badge" className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 tracking-wider uppercase">
+              Restricted Feature
+            </span>
+            <h1 className="text-xl font-bold text-slate-900">
+              Corporate HQ Administrator Access Required
+            </h1>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Match Intelligence is restricted to Corporate HQ Administrators only. To request strategic routing review, contact{" "}
+              <a href="mailto:info@hirenestworkforce.com" className="text-indigo-600 hover:text-indigo-700 font-semibold underline">
+                info@hirenestworkforce.com
+              </a>.
+            </p>
+          </div>
         </div>
       </div>
     );

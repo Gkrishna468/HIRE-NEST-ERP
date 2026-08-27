@@ -204,7 +204,7 @@ hirenest_active_requests 0
           // vendors get higher limits or different limits
           return `${req.user.uid}-${req.user.role || 'guest'}`;
       }
-      return ipKeyGenerator(req.ip); // fallback to IP for anonymous
+      return req.ip || req.headers['x-forwarded-for'] || 'anonymous';
   };
 
   const standardLimiter = rateLimit({

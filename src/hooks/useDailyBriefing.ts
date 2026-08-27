@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { auth } from '../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 export function useDailyBriefing(orgId?: string) {
   const [briefing, setBriefing] = useState<any>(null);
@@ -7,13 +9,21 @@ export function useDailyBriefing(orgId?: string) {
 
   useEffect(() => {
     let active = true;
-    const fetchBriefing = async () => {
+
+    const fetchBriefingForUser = async (user: any) => {
+      if (!user) {
+        if (active) {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         setLoading(true);
-        const idToken = await (window as any).firebase?.auth().currentUser?.getIdToken();
+        const idToken = await user.getIdToken();
         const res = await fetch(`/api/daily-briefing${orgId ? `?orgId=${orgId}` : ''}`, {
           headers: {
-            ...(idToken ? { "Authorization": `Bearer ${idToken}` } : {})
+            "Authorization": `Bearer ${idToken}`
           }
         });
         
@@ -23,6 +33,7 @@ export function useDailyBriefing(orgId?: string) {
         if (active) {
           if (json.success && json.data) {
             setBriefing(json.data);
+            setError(null);
           } else {
             throw new Error(json.error || "Invalid response format");
           }
@@ -52,10 +63,15 @@ export function useDailyBriefing(orgId?: string) {
       }
     };
 
-    fetchBriefing();
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (active) {
+        fetchBriefingForUser(user);
+      }
+    });
 
     return () => {
       active = false;
+      unsubscribe();
     };
   }, [orgId]);
 

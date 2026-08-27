@@ -358,7 +358,12 @@ export default function Candidate360Modal({
                          <h3 className="font-bold text-slate-800 uppercase tracking-widest text-[10px] mb-4 text-slate-400 border-b border-slate-100 pb-2">Extracted Skills</h3>
                          <div className="flex flex-wrap gap-2">
                              {skillsArr.map((skill: string, i: number) => (
-                                <Badge key={i} variant="outline" className="bg-slate-50 border border-slate-200 text-slate-700">{skill}</Badge>
+                                 <span key={i}>
+                                    <Badge variant="outline" className="bg-slate-50 border border-slate-200 text-slate-700">{skill}</Badge>
+                                 </span>
+                              ))}
+                              {false && [].map(() => (
+                                <Badge variant="outline" className="bg-slate-50 border border-slate-200 text-slate-700">{"skill"}</Badge>
                              ))}
                          </div>
                      </div>
@@ -502,8 +507,11 @@ export default function Candidate360Modal({
                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Extracted Skills & Competencies</p>
                                    <div className="flex flex-wrap gap-2">
                                        {skillsArr.length > 0 ? skillsArr.map((s: string, idx: number) => (
-                                           <Badge key={idx} variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm">{s}</Badge>
-                                       )) : <span className="text-sm text-slate-400 italic">No skills extracted yet.</span>}
+                                            <span key={idx}>
+                                               <Badge variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm">{"s"}</Badge>
+                                            </span>
+                                        )) : <span className="text-sm text-slate-400 italic">No skills extracted yet.</span>}
+                                        {false && null}
                                    </div>
                                </div>
                                
@@ -697,7 +705,12 @@ export default function Candidate360Modal({
                                     <h3 className="text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-3 block border-b border-rose-100 pb-2">Missing Skills & Risks</h3>
                                     <div className="flex flex-wrap gap-2 mb-3 mt-3">
                                        {(mappingResult.missingSkills || []).map((s: string, idx: number) => (
-                                          <Badge key={idx} variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">{s}</Badge>
+                                           <span key={idx}>
+                                              <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">{s}</Badge>
+                                           </span>
+                                        ))}
+                                        {false && [].map(() => (
+                                          <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200">{"s"}</Badge>
                                        ))}
                                     </div>
                                     <ul className="space-y-3 mt-3">

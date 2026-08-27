@@ -111,9 +111,11 @@ export const AIMatching: React.FC<AIMatchingProps> = ({ result, candidateName, o
                   </h5>
                   <div className="flex flex-wrap gap-2">
                     {result.missingSkills.map((s: string, i: number) => (
-                      <Badge key={i} className="bg-rose-500/20 text-rose-300 border-rose-500/30 text-[10px] font-mono">
-                        {s}
-                      </Badge>
+                      <span key={i}>
+                        <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/30 text-[10px] font-mono">
+                          {s}
+                        </Badge>
+                      </span>
                     ))}
                   </div>
                   <p className="text-[9px] text-slate-500 mt-3 italic">

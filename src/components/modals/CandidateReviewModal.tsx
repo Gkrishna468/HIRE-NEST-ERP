@@ -189,8 +189,8 @@ export function CandidateReviewModal({ submission, requirement, onClose, onSched
                      </h3>
                      <div className="flex flex-wrap gap-2">
                         {submission.skills ? (
-                            Array.isArray(submission.skills) ? submission.skills.map((s: string, i: number) => <Badge key={i} variant="outline" className="bg-slate-50">{s}</Badge>) :
-                            submission.skills.split(',').map((s: string, i: number) => <Badge key={i} variant="outline" className="bg-slate-50">{s}</Badge>)
+                            Array.isArray(submission.skills) ? submission.skills.map((s: string, i: number) => <span key={i}><Badge variant="outline" className="bg-slate-50">{s}</Badge></span>) :
+                            submission.skills.split(',').map((s: string, i: number) => <span key={i}><Badge variant="outline" className="bg-slate-50">{s}</Badge></span>)
                         ) : <span className="text-slate-400 text-sm italic">No skills extracted.</span>}
                      </div>
                   </div>

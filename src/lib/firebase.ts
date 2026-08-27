@@ -58,8 +58,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Error: ', jsonError);
   
   // Dispatch a custom event instead of throwing an uncatchable error that crashes the React tree
-  const event = new CustomEvent('firestore-security-error', { detail: errInfo });
-  window.dispatchEvent(event);
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      const event = new CustomEvent('firestore-security-error', { detail: errInfo });
+      window.dispatchEvent(event);
+    } catch {
+      // Ignore if event dispatch fails
+    }
+  }
   
   return errInfo;
 }

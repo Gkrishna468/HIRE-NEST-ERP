@@ -17,21 +17,55 @@ export const oauth2Client = createOAuthClient();
 const oauthHandler = express.Router();
 
 oauthHandler.get("/url", (req, res) => {
-  const { uid, redirectTo } = req.query;
-  if (!uid) return res.status(400).json({ error: "Missing uid parameter" });
+  try {
+    const { uid, redirectTo } = req.query;
+    if (!uid) {
+      return res.status(400).json({
+        ok: false,
+        configured: false,
+        error: {
+          code: "MISSING_UID",
+          message: "Missing uid parameter"
+        }
+      });
+    }
 
-  const url = oauth2Client.generateAuthUrl({
-    access_type: "offline",
-    prompt: "consent",
-    scope: [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "https://www.googleapis.com/auth/gmail.readonly",
-      "https://www.googleapis.com/auth/calendar",
-    ],
-    state: JSON.stringify({ uid, redirectTo: redirectTo || "/app" }),
-  });
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientId || clientId === "YOUR_CLIENT_ID" || !clientSecret || clientSecret === "YOUR_CLIENT_SECRET") {
+      return res.status(200).json({
+        ok: false,
+        configured: false,
+        error: {
+          code: "GOOGLE_OAUTH_NOT_CONFIGURED",
+          message: "Google connection is not configured."
+        }
+      });
+    }
 
-  res.json({ url });
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: [
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/calendar",
+      ],
+      state: JSON.stringify({ uid, redirectTo: redirectTo || "/app" }),
+    });
+
+    res.json({ ok: true, success: true, url, configured: true });
+  } catch (err: any) {
+    console.warn("[OAuth] generateAuthUrl error:", err?.message);
+    res.status(200).json({
+      ok: false,
+      configured: false,
+      error: {
+        code: "GOOGLE_OAUTH_ERROR",
+        message: err?.message || "Unable to initialize Google connection."
+      }
+    });
+  }
 });
 
 oauthHandler.get("/callback", async (req, res) => {

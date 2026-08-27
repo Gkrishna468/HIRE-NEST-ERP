@@ -171,10 +171,10 @@ export default function NetworkDirectoryTab() {
                 <div key={org.id} onClick={() => setSelectedOrg(org)} className="p-6 rounded-[24px] border border-slate-200 bg-white hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-50 transition-all cursor-pointer">
                   <div className="flex items-center gap-4 mb-6">
                     <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 font-bold border border-slate-200 uppercase">
-                      {(org.companyName || org.name || org.id).charAt(0)}
+                      {(org.companyName || org.name || org.id || "N").charAt(0)}
                     </div>
                     <div>
-                      <h3 className="font-black text-slate-900 tracking-tight text-lg">{org.companyName || org.name || org.id}</h3>
+                      <h3 className="font-black text-slate-900 tracking-tight text-lg">{org.companyName || org.name || org.id || "Unknown Organization"}</h3>
                       <p className="text-[10px] uppercase font-bold text-slate-500 tracking-widest flex items-center gap-1 mt-1">
                         <Building2 size={12}/> {org.type || 'Organization'} &bull; <span className="font-mono text-[9px] opacity-50">{org.id}</span>
                       </p>

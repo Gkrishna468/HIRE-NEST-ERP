@@ -4,6 +4,7 @@ import { Button } from '../lib/Button';
 import { EmptyState } from './EmptyState';
 import { auth } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import HireNestLoader from './HireNestLoader';
 
 export function GmailRecentMessages({ filterDomain, filterName, filterEmail }: { filterDomain?: string, filterName?: string, filterEmail?: string }) {
   const [emails, setEmails] = useState<any[]>([]);
@@ -132,7 +133,7 @@ export function GmailRecentMessages({ filterDomain, filterName, filterEmail }: {
        </div>
        <div className="flex-1 overflow-y-auto p-2 space-y-2 max-h-[300px]">
           {loading && emails.length === 0 ? (
-             <div className="flex justify-center p-4"><RefreshCw className="animate-spin text-slate-300" /></div>
+             <HireNestLoader label="Syncing Gmail..." size="sm" />
           ) : emails.length === 0 ? (
              <EmptyState icon={Mail} title="No Messages" description="No recent communications found." />
           ) : (

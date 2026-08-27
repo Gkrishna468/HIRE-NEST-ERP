@@ -545,8 +545,12 @@ export default function CandidatesTab() {
     }
   };
 
+  const consecutiveErrorsRef = React.useRef(0);
+  const retryTimeoutRef = React.useRef<any>(null);
+
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
+    let isCancelled = false;
 
     const init = async () => {
       if (!auth.currentUser) return;
@@ -624,22 +628,59 @@ export default function CandidatesTab() {
           if (!q) {
             setCandidates([]);
           } else {
-            unsubscribe = onSnapshot(
-              q,
-              (snap) => {
-                setCandidates(
-                  snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c: any) => 
-                     c.status !== "DELETED" && 
-                     c.isActive !== false && 
-                     c.name !== "Parsing Pending" &&
-                     c.status !== "PARSING_PENDING"
-                  ),
-                );
-              },
-              (error: any) => {
-                handleFirestoreError(error, OperationType.GET, "candidatePool");
-              },
-            );
+            const startListening = () => {
+              if (isCancelled) return;
+              if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+
+              unsubscribe = onSnapshot(
+                q,
+                (snap) => {
+                  consecutiveErrorsRef.current = 0; // reset on success!
+                  setCandidates(
+                    snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c: any) => {
+                       if (
+                         c.status === "DELETED" || 
+                         c.isActive === false || 
+                         c.name === "Parsing Pending" || 
+                         c.status === "PARSING_PENDING"
+                       ) {
+                         return false;
+                       }
+                       const isDirect = c.sourceType === "DIRECT_CANDIDATE" || c.source === "direct registration" || c.isDirect === true;
+                       if (isDirect && !isAdminUser) {
+                         return false;
+                       }
+                       return true;
+                    }),
+                  );
+                },
+                (error: any) => {
+                  console.error("[onSnapshot error in candidatePool]:", error);
+                  handleFirestoreError(error, OperationType.GET, "candidatePool");
+                  
+                  // Increment error count and backoff
+                  consecutiveErrorsRef.current += 1;
+                  const delay = Math.min(1000 * Math.pow(2, consecutiveErrorsRef.current), 30000);
+                  console.warn(`[onSnapshot Backoff] Pausing listener. Retrying in ${delay}ms (Attempt #${consecutiveErrorsRef.current})`);
+                  
+                  if (unsubscribe) {
+                    unsubscribe();
+                    unsubscribe = undefined;
+                  }
+
+                  // Only retry if we haven't hit too many consecutive errors
+                  if (consecutiveErrorsRef.current <= 5 && !isCancelled) {
+                    retryTimeoutRef.current = setTimeout(() => {
+                      startListening();
+                    }, delay);
+                  } else {
+                    console.error("[onSnapshot Fatal] Exceeded max retries or listener cancelled for candidatePool.");
+                  }
+                },
+              );
+            };
+
+            startListening();
           }
 
           let qSub = null;
@@ -692,7 +733,9 @@ export default function CandidatesTab() {
 
     init();
     return () => {
+      isCancelled = true;
       if (unsubscribe) unsubscribe();
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
   }, []);
 
@@ -1973,9 +2016,11 @@ ${extText}`;
                       {getSkillsArray(candidate.skills)
                         .slice(0, 3)
                         .map((skill: string, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-[10px] bg-slate-50 text-slate-600 border-slate-200">
-                            {skill}
-                          </Badge>
+                          <span key={idx}>
+                            <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-600 border-slate-200">
+                              {skill}
+                            </Badge>
+                          </span>
                         ))}
                       {getSkillsArray(candidate.skills).length > 3 && (
                         <Badge variant="outline" className="text-[10px] bg-slate-50 text-slate-500">

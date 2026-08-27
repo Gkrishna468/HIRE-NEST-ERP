@@ -6,6 +6,128 @@ import { Button } from "../lib/Button";
 import { cn } from "../lib/utils";
 import { Trash2, Check, Save, Lock, Clock } from "lucide-react";
 
+function SafeUserRow({ 
+  u, 
+  getRoleCategory, 
+  safeInitial, 
+  getRoleLabel, 
+  setSelectedUserForTracking, 
+  VerificationBadge, 
+  auth, 
+  setIsSubmitting, 
+  setUserToDelete, 
+  setEditingUser, 
+  isSubmitting 
+}: any) {
+  try {
+    const userId = u?.id || u?.uid || "unknown";
+    const userRole = u?.role || "member";
+    const userEmail = u?.email || "No Email Provided";
+    const displayName = u?.displayName || u?.name || "Anonymous User";
+    const orgName = u?.org?.companyName || u?.org?.name || u?.organizationId || "unmapped entity";
+    const plan = u?.org?.plan || null;
+    const lastLogin = u?.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never";
+
+    return (
+      <div key={userId} className="group flex items-center justify-between p-6 bg-white border-2 border-slate-50 rounded-[28px] hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-50 transition-all">
+        <div className="flex items-center gap-6">
+          <div className={cn(
+            "h-12 w-12 rounded-2xl flex items-center justify-center font-black",
+            getRoleCategory(userRole) === 'GOVERNANCE' ? 'bg-slate-900 text-white' :
+            getRoleCategory(userRole) === 'DEMAND' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'
+          )}>
+            {safeInitial(userEmail || displayName, 'U')}
+          </div>
+          <div className="text-left">
+            <div className="font-black text-slate-900 lowercase tracking-tight flex items-center gap-2">
+              <button onClick={() => setSelectedUserForTracking(u)} className="hover:text-indigo-600 transition-colors text-left underline decoration-slate-200 underline-offset-4">
+                {userEmail || displayName}
+              </button>
+              {userRole === 'admin' && <Check size={12} className="text-indigo-600" />}
+            </div>
+            <div className="flex items-center gap-3 mt-1">
+               <span className="text-[10px] text-slate-400 font-bold lowercase tracking-widest">
+                  {orgName.toLowerCase()}
+                  {plan && (
+                    <span className="ml-2 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 rounded text-[9px] uppercase font-black">
+                      {plan}
+                    </span>
+                  )}
+               </span>
+               <span className="h-1 w-1 rounded-full bg-slate-200" />
+               <span className={cn(
+                 "text-[10px] font-black lowercase tracking-widest",
+                 getRoleCategory(userRole) === 'GOVERNANCE' ? 'text-slate-900' :
+                 getRoleCategory(userRole) === 'DEMAND' ? 'text-indigo-600' : 'text-amber-600'
+               )}>
+                 {getRoleLabel(userRole).toLowerCase()}
+               </span>
+            </div>
+            <div className="mt-2 flex items-center gap-4">
+               <VerificationBadge verification={u?.verification} role={userRole} email={userEmail} />
+               <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                 <Clock size={12} className="text-slate-400" />
+                 {lastLogin}
+               </div>
+               <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                 <span className={cn("w-1.5 h-1.5 rounded-full", u?.disabled ? "bg-red-500" : "bg-emerald-500")} />
+                 {u?.disabled ? 'Disabled' : 'Active'}
+               </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+           <button 
+              onClick={async () => {
+                if (confirm(`Sync ${userEmail} role [${userRole}] to Custom Claims? This enables enterprise rule enforcement.`)) {
+                  try {
+                    setIsSubmitting(true);
+                    const token = await auth.currentUser?.getIdToken();
+                    const resp = await fetch('/api/assign-role', {
+                      method: 'POST',
+                      headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}` 
+                      },
+                      body: JSON.stringify({ uid: userId, role: userRole, organizationId: u?.organizationId })
+                    });
+                    if (resp.ok) alert("IAM Role synchronized. Access Protocol Updated.");
+                    else alert("IAM sync failed.");
+                  } catch (e) {
+                    alert("Network handshake failure");
+                  } finally {
+                    setIsSubmitting(false);
+                  }
+                }
+              }}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-500 hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+              title="Sync IAM Custom Claims"
+           >
+              <Lock size={16} />
+           </button>
+           <button 
+              onClick={() => setUserToDelete({ id: userId, orgId: u?.organizationId, email: userEmail, name: displayName, role: userRole, data: u })}
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-600 hover:text-white transition-all shadow-sm"
+           >
+              <Trash2 size={16} />
+           </button>
+        </div>
+      </div>
+    );
+  } catch (err) {
+    console.error("Failed to render corrupt user record:", err);
+    return (
+      <div className="p-6 bg-rose-50 border-2 border-rose-100 rounded-[28px] text-xs text-rose-700 flex items-center justify-between">
+        <div className="text-left">
+          <span className="font-bold">Corrupt User Record Detected</span> (ID: {u?.id || u?.uid || "unknown"})
+        </div>
+        <div className="text-[10px] bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-black">Malformed Data</div>
+      </div>
+    );
+  }
+}
+
 export default function AdminUsersManager({ orgData }: { orgData: any }) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,12 +163,20 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
     { value: 'ops_admin', label: 'ops administrator', category: 'GOVERNANCE' },
   ];
 
-  const getRoleCategory = (r: string) => {
+  const getRoleCategory = (r?: string) => {
+    if (!r) return 'DEMAND';
     return roles.find(ro => ro.value === r)?.category || 'DEMAND';
   };
 
-  const getRoleLabel = (r: string) => {
+  const getRoleLabel = (r?: string) => {
+    if (!r) return 'Member';
     return roles.find(ro => ro.value === r)?.label || r;
+  };
+
+  const safeInitial = (text?: string, fallback = 'U') => {
+    if (!text || typeof text !== 'string') return fallback.toLowerCase();
+    const trimmed = text.trim();
+    return trimmed.length > 0 ? trimmed.charAt(0).toLowerCase() : fallback.toLowerCase();
   };
 
   const VerificationBadge = ({ verification, role, email }: { verification: any, role: string, email: string }) => {
@@ -569,15 +699,15 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
                         <div className="flex items-center justify-between">
                            <div className="flex items-center gap-6">
                               <div className={cn(
-                                "h-14 w-14 rounded-2xl flex items-center justify-center text-white",
+                                "h-14 w-14 rounded-2xl flex items-center justify-center text-white font-black",
                                 req.verificationStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-indigo-600'
                               )}>
-                                 {req.companyName.charAt(0).toLowerCase()}
+                                 {safeInitial(req.companyName || req.email, 'O')}
                               </div>
                               <div>
-                                 <div className="text-sm font-black text-slate-900 tracking-tight">{req.companyName}</div>
+                                 <div className="text-sm font-black text-slate-900 tracking-tight">{req.companyName || 'Unnamed Entity'}</div>
                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-[10px] text-slate-400 font-bold lowercase tracking-widest">{req.email}</span>
+                                    <span className="text-[10px] text-slate-400 font-bold lowercase tracking-widest">{req.email || 'No email'}</span>
                                     <span className="h-1 w-1 rounded-full bg-slate-200" />
                                     <span className={cn(
                                       "text-[10px] font-black uppercase tracking-tighter",
@@ -628,6 +758,22 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
               ) : (
                 <>
                   {filteredUsers.map(u => (
+                    <SafeUserRow 
+                       key={u.id || Math.random().toString()} 
+                       u={u} 
+                       getRoleCategory={getRoleCategory} 
+                       safeInitial={safeInitial} 
+                       getRoleLabel={getRoleLabel} 
+                       setSelectedUserForTracking={setSelectedUserForTracking} 
+                       VerificationBadge={VerificationBadge} 
+                       auth={auth} 
+                       setIsSubmitting={setIsSubmitting} 
+                       setUserToDelete={setUserToDelete} 
+                       setEditingUser={setEditingUser} 
+                       isSubmitting={isSubmitting} 
+                    />
+                  ))}
+                  {false && filteredUsers.map(u => (
                     <div key={u.id} className="group flex items-center justify-between p-6 bg-white border-2 border-slate-50 rounded-[28px] hover:border-indigo-100 hover:shadow-xl hover:shadow-slate-50 transition-all">
                       <div className="flex items-center gap-6">
                         <div className={cn(
@@ -635,12 +781,12 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
                           getRoleCategory(u.role) === 'GOVERNANCE' ? 'bg-slate-900 text-white' :
                           getRoleCategory(u.role) === 'DEMAND' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'
                         )}>
-                          {u.email.charAt(0).toLowerCase()}
+                          {safeInitial(u.email || u.displayName || u.name, 'U')}
                         </div>
                         <div>
                           <div className="font-black text-slate-900 lowercase tracking-tight flex items-center gap-2">
                             <button onClick={() => setSelectedUserForTracking(u)} className="hover:text-indigo-600 transition-colors text-left underline decoration-slate-200 underline-offset-4">
-                              {u.email}
+                              {u.email || u.displayName || u.name || 'Anonymous User'}
                             </button>
                             {u.role === 'admin' && <Check size={12} className="text-indigo-600" />}
                           </div>
@@ -817,10 +963,10 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
                   getRoleCategory(selectedUserForTracking.role) === 'GOVERNANCE' ? 'bg-slate-900' :
                   getRoleCategory(selectedUserForTracking.role) === 'DEMAND' ? 'bg-indigo-600' : 'bg-amber-500'
                 )}>
-                  {selectedUserForTracking.email.charAt(0).toLowerCase()}
+                  {safeInitial(selectedUserForTracking.email || selectedUserForTracking.displayName || selectedUserForTracking.name, 'U')}
                 </div>
                 <div>
-                  <div className="font-black text-slate-900 lowercase text-lg">{selectedUserForTracking.email}</div>
+                  <div className="font-black text-slate-900 lowercase text-lg">{selectedUserForTracking.email || selectedUserForTracking.displayName || selectedUserForTracking.name || 'User'}</div>
                   <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                     {getRoleLabel(selectedUserForTracking.role)} Node
                   </div>

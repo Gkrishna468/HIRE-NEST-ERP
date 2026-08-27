@@ -1,5 +1,6 @@
 import { checkIsAdmin, checkIsClient, checkIsVendor, checkIsRecruiter, checkIsIndependent, checkIsCandidate } from "./lib/permissions";
 import React, { useState } from "react";
+import { HireNestBrandLogo } from "./components/brand/HireNestBrandLogo";
 import {
   BrowserRouter as Router,
   Routes,
@@ -378,12 +379,23 @@ const AppContent = () => {
 
   if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">
-            Syncing Node Identity...
-          </p>
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-900 text-white relative overflow-hidden">
+        {/* Ambient subtle backdrop */}
+        <div className="absolute w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center gap-6 p-8 max-w-sm text-center">
+          <div className="p-4 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/60 shadow-2xl">
+            <HireNestBrandLogo size="lg" theme="dark" showSubtitle showTagline={false} />
+          </div>
+          <div className="flex flex-col items-center gap-2 mt-2">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-bounce" />
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.4s]" />
+            </div>
+            <p className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
+              Connecting Workforce Intelligence...
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -496,20 +508,8 @@ const AppContent = () => {
             : "-translate-x-full lg:translate-x-0",
         )}
       >
-        <div className="flex items-center justify-between mb-10 px-2">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl rotate-3">
-              <ShieldCheck size={24} />
-            </div>
-            <div>
-              <h1 className="text-lg font-black text-slate-900 tracking-tighter">
-                HireNest<span className="text-indigo-600">OS</span>
-              </h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                Enterprise Core
-              </p>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-8 px-1">
+          <HireNestBrandLogo size="md" theme="light" showSubtitle />
           <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="lg:hidden text-slate-400 hover:text-slate-900"

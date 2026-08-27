@@ -15,6 +15,7 @@ export default function InboxTab() {
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'inbox' | 'sent'>('inbox');
+  const [connectionStatus, setConnectionStatus] = useState<string>('CONNECTING');
 
   const fetchInbox = async () => {
     setLoading(true);
@@ -23,27 +24,56 @@ export default function InboxTab() {
       const token = await auth.currentUser?.getIdToken();
       if (!token) return;
 
-      const [metricsRes, messagesRes] = await Promise.all([
-        fetch('/api/workspace/intake/metrics', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/google/gmail/messages', { headers: { Authorization: `Bearer ${token}` } })
+      const [metricsRes, messagesRes, statusRes] = await Promise.all([
+        fetch('/api/workspace/intake/metrics', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        fetch('/api/google/gmail/messages', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        fetch('/api/workspace/status', { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
       ]);
 
-      const [metricsData, messagesData] = await Promise.all([
-        metricsRes.json(),
-        messagesRes.json()
-      ]);
+      let metricsData: any = {};
+      let messagesData: any = {};
+      let statusData: any = {};
 
-      if (!messagesRes.ok) {
-          if (messagesData.error && messagesData.error.includes("No Google workspace connection found")) {
-              throw new Error("No Google Workspace connection found. Please connect your account in Settings > Integrations.");
-          }
-          throw new Error(messagesData.error || 'Failed to fetch messages');
+      if (metricsRes && metricsRes.ok) {
+        try {
+          metricsData = await metricsRes.json();
+        } catch {
+          metricsData = {};
+        }
       }
 
-      setMetrics(metricsData.metrics || {});
-      setMessages(messagesData.messages || []);
+      if (statusRes && statusRes.ok) {
+        try {
+          statusData = await statusRes.json();
+          setConnectionStatus(statusData.status || (statusData.connected ? 'CONNECTED' : 'NOT_CONNECTED'));
+        } catch {
+          setConnectionStatus('ERROR');
+        }
+      } else {
+        setConnectionStatus('NOT_CONNECTED');
+      }
+
+      if (messagesRes) {
+        try {
+          messagesData = await messagesRes.json();
+        } catch {
+          messagesData = { messages: [] };
+        }
+
+        if (!messagesRes.ok) {
+          if (messagesData.error && typeof messagesData.error === 'string' && messagesData.error.includes("No Google workspace connection found")) {
+            // Managed via connectionStatus state banner
+          } else if (messagesData.error) {
+            setError(typeof messagesData.error === 'string' ? messagesData.error : 'Failed to fetch messages');
+          }
+        }
+      }
+
+      setMetrics(metricsData?.metrics || {});
+      setMessages(messagesData?.messages || []);
     } catch (e: any) {
-      setError(e.message);
+      console.warn("[InboxTab] Fetch error:", e);
+      setError(e?.message || 'Failed to fetch messages');
     } finally {
       setLoading(false);
     }
@@ -130,12 +160,12 @@ export default function InboxTab() {
              <div className="flex items-center gap-6">
                 <Button 
                     onClick={handleSync} 
-                    disabled={syncing}
+                    disabled={syncing || connectionStatus !== 'CONNECTED'}
                     variant="outline" 
                     className="font-bold gap-2"
                 >
                     <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
-                    {syncing ? 'Syncing...' : 'Sync Gmail'}
+                    {syncing ? 'Syncing...' : connectionStatus === 'CONNECTED' ? 'Sync Gmail' : 'Not Connected'}
                 </Button>
                 <div className="flex gap-4 items-center mr-4">
                   <div className="text-center">
@@ -160,6 +190,31 @@ export default function InboxTab() {
              </div>
          </div>
       </header>
+
+      {connectionStatus === 'NOT_CONFIGURED' && (
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-800 p-3 flex items-center gap-3 shrink-0">
+              <AlertCircle size={18} className="text-amber-600" />
+              <span className="font-semibold text-sm">Google Workspace Integration is not configured in this environment (needs client credentials in Settings).</span>
+          </div>
+      )}
+      {connectionStatus === 'NOT_CONNECTED' && (
+          <div className="bg-indigo-50 border-b border-indigo-200 text-indigo-800 p-3 flex items-center gap-3 shrink-0">
+              <AlertCircle size={18} className="text-indigo-600" />
+              <span className="font-semibold text-sm">Google account is not connected. Please connect your Google account in Settings &gt; Integrations.</span>
+          </div>
+      )}
+      {connectionStatus === 'TOKEN_EXPIRED' && (
+          <div className="bg-rose-50 border-b border-rose-200 text-rose-800 p-3 flex items-center gap-3 shrink-0">
+              <AlertCircle size={18} className="text-rose-600" />
+              <span className="font-semibold text-sm">Google connection has expired or been revoked. Please reconnect in Settings &gt; Integrations.</span>
+          </div>
+      )}
+      {connectionStatus === 'ERROR' && (
+          <div className="bg-rose-50 border-b border-rose-200 text-rose-800 p-3 flex items-center gap-3 shrink-0">
+              <AlertCircle size={18} className="text-rose-600" />
+              <span className="font-semibold text-sm">Error communicating with Google integration services.</span>
+          </div>
+      )}
 
       {error && (
           <div className="bg-red-50 border-b border-red-200 text-red-700 p-3 flex items-center gap-3 shrink-0">

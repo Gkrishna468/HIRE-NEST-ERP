@@ -1,21 +1,29 @@
 import opentelemetry from '@opentelemetry/api';
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-node';
 
-// Initialize OpenTelemetry
-const sdk = new NodeSDK({
-  traceExporter: new ConsoleSpanExporter(),
-  instrumentations: [getNodeAutoInstrumentations()]
-});
+let sdk: any = null;
 
 export const startTracing = () => {
-    try {
-        sdk.start();
-        console.log('[Telemetry] OpenTelemetry initialized with Console Exporter');
-    } catch (error) {
-        console.error('[Telemetry] Error initializing OpenTelemetry', error);
-    }
+  try {
+    const { NodeSDK } = require('@opentelemetry/sdk-node');
+    const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+    
+    sdk = new NodeSDK({
+      instrumentations: [getNodeAutoInstrumentations()]
+    });
+    sdk.start();
+    console.log('[Telemetry] OpenTelemetry initialized');
+  } catch (error: any) {
+    console.warn('[Telemetry] OpenTelemetry skipped or not initialized:', error?.message);
+  }
 };
 
-export const getTracer = (name: string) => opentelemetry.trace.getTracer(name);
+export const getTracer = (name: string) => {
+  try {
+    return opentelemetry.trace.getTracer(name);
+  } catch {
+    return {
+      startSpan: () => ({ end: () => {} }),
+      startActiveSpan: (_name: string, fn: (span: any) => any) => fn({ end: () => {} })
+    } as any;
+  }
+};

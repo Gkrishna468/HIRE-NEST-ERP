@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { HireNestBrandLogo } from "../components/brand/HireNestBrandLogo";
 import { auth, db, storage } from "../lib/firebase";
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -317,10 +318,20 @@ export default function Onboarding({ onComplete }: { onComplete: (orgData: any) 
 
   if (loading && step === 1) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-mono text-xs">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="h-6 w-6 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-          <p className="tracking-widest uppercase">Syncing Node Identity...</p>
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
+        <div className="relative z-10 flex flex-col items-center gap-6 p-8 max-w-sm text-center">
+          <div className="p-4 bg-slate-800/80 backdrop-blur-md rounded-2xl border border-slate-700/60 shadow-2xl">
+            <HireNestBrandLogo size="lg" theme="dark" showSubtitle showTagline={false} />
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-bounce" />
+            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:0.2s]" />
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.4s]" />
+          </div>
+          <p className="text-xs font-semibold text-slate-400 tracking-wider uppercase">
+            Verifying Organization Profile...
+          </p>
         </div>
       </div>
     );

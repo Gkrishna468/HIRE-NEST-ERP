@@ -14,7 +14,7 @@ import '../agents/BDMAgent/index';
 import '../agents/ExecutiveDashboardAgent/index';
 import '../agents/RecruitmentAgentTeam';
 import '../agents/AccountIntelligenceAgent';
-import '../agents/AICOOExceptionEngine';
+import '../agents/AICOOResolutionEngine';
 
 import { GovernanceExecutionGate } from './GovernanceExecutionGate';
 import { AgentExecutionLedger } from './AgentExecutionLedger';

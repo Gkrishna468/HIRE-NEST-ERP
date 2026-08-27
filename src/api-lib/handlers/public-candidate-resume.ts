@@ -74,8 +74,9 @@ export default async function publicCandidateResumeHandler(
 ) {
   if (req.method !== "POST") {
     return res.status(405).json({
+      ok: false,
       success: false,
-      error: "METHOD_NOT_ALLOWED",
+      error: { code: "METHOD_NOT_ALLOWED", message: "Method not allowed. Use POST." },
       message: "Method not allowed. Use POST.",
     });
   }
@@ -83,16 +84,18 @@ export default async function publicCandidateResumeHandler(
   upload(req, res, async (err: any) => {
     if (err) {
       return res.status(400).json({
+        ok: false,
         success: false,
-        error: "UPLOAD_VALIDATION_ERROR",
+        error: { code: "UPLOAD_VALIDATION_ERROR", message: err.message || "File upload validation failed" },
         message: err.message || "File upload validation failed",
       });
     }
 
     if (!req.file) {
       return res.status(400).json({
+        ok: false,
         success: false,
-        error: "MISSING_FILE",
+        error: { code: "MISSING_FILE", message: "No resume file was provided in the request payload" },
         message: "No resume file was provided in the request payload",
       });
     }
@@ -167,8 +170,12 @@ export default async function publicCandidateResumeHandler(
           `[PUBLIC_RESUME] File "${originalname}" contained no extractable text characters.`,
         );
         return res.status(422).json({
+          ok: false,
           success: false,
-          error: "EMPTY_EXTRACTION",
+          error: {
+            code: "EMPTY_EXTRACTION",
+            message: "No readable text could be extracted from the uploaded document. Please upload a standard text or PDF resume.",
+          },
           message:
             "No readable text could be extracted from the uploaded document. Please upload a standard text or PDF resume.",
           filename: originalname,
@@ -186,6 +193,7 @@ export default async function publicCandidateResumeHandler(
       );
 
       return res.status(200).json({
+        ok: true,
         success: true,
         candidateProfile: {
           candidateName: parsedProfile.candidateName || "",
@@ -215,6 +223,15 @@ export default async function publicCandidateResumeHandler(
           portfolio: parsedProfile.portfolio || "",
           resumeText: normalizedText,
         },
+        data: {
+          candidateName: parsedProfile.candidateName || "",
+          email: parsedProfile.email || "",
+          phone: parsedProfile.phone || "",
+          skills: parsedProfile.normalizedSkills || [],
+          experienceYears: parsedProfile.totalExperience || 0,
+          currentRole: parsedProfile.currentRole || "Software Specialist",
+          summary: parsedProfile.summary || "",
+        },
         text: normalizedText,
         rawText: normalizedText,
         skills: parsedProfile.normalizedSkills || [],
@@ -236,8 +253,12 @@ export default async function publicCandidateResumeHandler(
         parseErr?.message || parseErr,
       );
       return res.status(422).json({
+        ok: false,
         success: false,
-        error: "PARSING_FAILED",
+        error: {
+          code: "PARSING_FAILED",
+          message: parseErr?.message || "Failed to extract and parse document structure.",
+        },
         message:
           parseErr?.message ||
           "Failed to extract and parse document structure.",

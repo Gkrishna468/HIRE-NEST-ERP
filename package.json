@@ -48,6 +48,7 @@
     "pdfjs-dist": "^6.2.108",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-is": "^19.2.8",
     "react-joyride": "^3.2.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.2",
