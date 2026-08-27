@@ -3,7 +3,6 @@
  * Uses mammoth for native document extraction with embedded image OCR fallback.
  */
 
-import mammoth from "mammoth";
 import { performOCR } from "./ocr.js";
 import { ExtractionMethod } from "../types.js";
 
@@ -45,6 +44,11 @@ export async function extractTextFromDOCX(buffer: Buffer): Promise<{
   let confidence = 0.95;
 
   try {
+    // Imported lazily (inside this try/catch) rather than at module load
+    // time so a failure loading mammoth can't take down every request to
+    // this handler, including ones uploading a file type that never needed
+    // it — the same defensive pattern applied to the PDF extractor.
+    const mammoth = (await import("mammoth")).default;
     const parsed = await mammoth.extractRawText({ buffer });
     text = (parsed?.value || "").trim();
 

@@ -214,7 +214,8 @@ export default function SettingsTab() {
                                 let data: any = {};
                                 try { data = await res.json(); } catch { data = {}; }
                                 if (data.url) window.location.href = data.url;
-                                else if (data.error) alert(data.error);
+                                else if (data.error) alert(typeof data.error === 'string' ? data.error : (data.error.message || data.error.code || 'Unable to reconnect Google account.'));
+                                else alert("Google OAuth is not configured in this environment.");
                               } catch (e) { console.error(e); }
                             }}
                             className="px-4 py-2 font-bold text-xs uppercase tracking-widest rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
@@ -244,7 +245,7 @@ export default function SettingsTab() {
                              if (data.url) {
                                window.location.href = data.url;
                              } else if (data.error) {
-                               alert(data.error);
+                               alert(typeof data.error === 'string' ? data.error : (data.error.message || data.error.code || 'Google OAuth is not configured in this environment.'));
                              } else {
                                alert("Google OAuth is not configured in this environment.");
                              }

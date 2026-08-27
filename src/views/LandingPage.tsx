@@ -78,9 +78,22 @@ export default function LandingPage() {
         body: JSON.stringify(formData)
       });
 
+      // Read the body as text first — the server (or a proxy in front of
+      // it) can occasionally return a non-JSON error body, and calling
+      // response.json() directly on that throws a confusing SyntaxError
+      // instead of the actual failure reason.
+      const rawBody = await response.text();
+      let payload: any = {};
+      if (rawBody) {
+        try {
+          payload = JSON.parse(rawBody);
+        } catch {
+          console.warn("[LandingPage] Non-JSON response body:", rawBody.slice(0, 200));
+        }
+      }
+
       if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Failed to submit via server');
+        throw new Error(payload.error || `Failed to submit via server (status ${response.status})`);
       }
 
       console.log("[LandingPage] Lead submitted successfully!");

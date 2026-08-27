@@ -201,6 +201,23 @@ import { CRMEventBridge } from './src/integrations/crm/CRMEventBridge.js';
 
 const __dirname = process.cwd();
 
+/**
+ * Races a promise against a timeout so a slow/hanging downstream dependency
+ * (e.g. Firestore calls made with stale or misconfigured credentials) can
+ * never leave a request open long enough to be cut off by an upstream
+ * proxy/load balancer, which would otherwise return its own non-JSON error
+ * page to the client instead of our JSON error response.
+ */
+function withTimeout<T = any>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 async function createServer() {
   // Initialize CRM to HireNestOS Event Bridge
   CRMEventBridge.initialize();
@@ -346,7 +363,12 @@ hirenest_active_requests 0
           // vendors get higher limits or different limits
           return `${req.user.uid}-${req.user.role || 'guest'}`;
       }
-      return req.ip || req.headers['x-forwarded-for'] || 'anonymous';
+      // Use the ipKeyGenerator helper so IPv6 addresses are normalized to a
+      // subnet before being used as a rate-limit key (raw IPv6 addresses
+      // would otherwise let a single client cycle through addresses to
+      // bypass the limit, and express-rate-limit logs a validation error
+      // on every request if this helper isn't used).
+      return ipKeyGenerator(req.ip) || (req.headers['x-forwarded-for'] as string) || 'anonymous';
   };
 
   const standardLimiter = rateLimit({
@@ -468,12 +490,18 @@ hirenest_active_requests 0
         return res.json({ success: true, message: 'Lead logged (Offline mode)' });
       }
 
-      // Check for existing duplicate by email
+      // Check for existing duplicate by email. Bounded by a timeout so that
+      // a Firestore call stuck retrying against bad/expired credentials
+      // can't hold this request open indefinitely.
       try {
-        const existingLeads = await adminDb.collection('landing_page_leads_v1')
-          .where('email', '==', email)
-          .limit(1)
-          .get();
+        const existingLeads = await withTimeout(
+          adminDb.collection('landing_page_leads_v1')
+            .where('email', '==', email)
+            .limit(1)
+            .get(),
+          8000,
+          'Duplicate lead lookup'
+        );
 
         if (!existingLeads.empty) {
           console.warn(`[PublicAPI] Lead already exists for email: ${email}. Recorded duplicate attempt.`);
@@ -482,19 +510,32 @@ hirenest_active_requests 0
       } catch (dbCheckErr: any) {
         console.warn('[PublicAPI] Failed to check duplicate email in Firestore:', dbCheckErr.message);
       }
-      
-      await adminDb.collection('landing_page_leads_v1').add({
-        fullName,
-        company,
-        email,
-        phone,
-        plan,
-        timestamp: new Date().toISOString(),
-        status: 'new',
-        source: 'landing_page_v1_api'
-      });
-      
-      console.log(`[PublicAPI] Lead saved to Firestore for: ${email}`);
+
+      try {
+        await withTimeout(
+          adminDb.collection('landing_page_leads_v1').add({
+            fullName,
+            company,
+            email,
+            phone,
+            plan,
+            timestamp: new Date().toISOString(),
+            status: 'new',
+            source: 'landing_page_v1_api'
+          }),
+          8000,
+          'Lead save'
+        );
+        console.log(`[PublicAPI] Lead saved to Firestore for: ${email}`);
+      } catch (saveErr: any) {
+        // The lead has already been logged above (console + alert log), so
+        // don't fail the visitor's submission just because the Firestore
+        // write itself is slow/unavailable (e.g. stale credentials) — treat
+        // it the same as offline mode instead of surfacing a 500.
+        console.error('[PublicAPI] Failed to persist lead to Firestore, falling back to logged-only:', saveErr.message);
+        return res.json({ success: true, message: 'Lead logged (fallback mode)' });
+      }
+
       return res.json({ success: true });
     } catch (err: any) {
       console.error('[PublicAPI] Lead processing failed:', err);

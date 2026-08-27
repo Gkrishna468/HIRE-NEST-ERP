@@ -53,11 +53,22 @@ export default function HiringManagerWorkspace({
       where("clientId", "==", orgId)
     );
     
-    const unsub = onSnapshot(qAll, snap => {
-      if (!active) return;
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setInterviews(data);
-    });
+    const unsub = onSnapshot(
+      qAll,
+      snap => {
+        if (!active) return;
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setInterviews(data);
+      },
+      err => {
+        // Without this handler, a permission-denied here (e.g. the session
+        // signing out/expiring while this listener is still live, or the
+        // listener not having torn down yet on unmount) surfaces as an
+        // uncaught Firestore error in the console instead of being handled.
+        if (!active) return;
+        console.warn("[HiringManagerWorkspace] interviews listener error:", err?.message || err);
+      }
+    );
 
     return () => {
       active = false;

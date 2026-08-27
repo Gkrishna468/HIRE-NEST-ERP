@@ -382,6 +382,15 @@ export default function CandidatesTab() {
     userRole === "hq_admin" ||
     userRole === "hq";
 
+  // Direct (Candidate Portal) candidates are Admin-only. Bounce non-admins
+  // back to the default view if they somehow land on the DIRECT category
+  // (e.g. stale state) so vendors never see it.
+  useEffect(() => {
+    if (candidateCategory === "DIRECT" && !isAdmin) {
+      setCandidateCategory("ALL");
+    }
+  }, [candidateCategory, isAdmin]);
+
   const handleCleanupSyntheticCandidates = async () => {
     if (!window.confirm("Are you sure you want to clean up all synthetic 'CAND_P6D_FAIL...' and failed parsing candidate records? This will delete them permanently from Firestore.")) {
       return;
@@ -1855,7 +1864,10 @@ ${extText}`;
           {[
             { id: "ALL", label: "All Candidates Pool" },
             { id: "VENDOR", label: "🏢 Vendor Bench Candidates" },
-            { id: "DIRECT", label: "⭐ Direct Candidates (Candidate Portal)" },
+            // Direct (Candidate Portal) candidates are an Admin-only concept —
+            // vendors submit their own bench candidates and should never see
+            // or navigate into the direct-applicant pool.
+            ...(isAdmin ? [{ id: "DIRECT", label: "⭐ Direct Candidates (Candidate Portal)" }] : []),
           ].map((cat) => (
             <button
               key={cat.id}

@@ -92,6 +92,14 @@ export default function DirectCandidatesWorkspace({
   const [conflictResolutionNotes, setConflictResolutionNotes] = useState("");
 
   useEffect(() => {
+    // Direct (Candidate Portal) candidates are Admin-only data. Vendors and
+    // other non-admin roles should never trigger these reads, even if this
+    // component were somehow mounted for them.
+    if (!isAdmin) {
+      setIsLoading(false);
+      return;
+    }
+
     // 1. Fetch Direct Candidates from candidatePool
     const qCandidates = query(
       collection(db, "candidatePool"),
@@ -148,7 +156,7 @@ export default function DirectCandidatesWorkspace({
       unsubApps();
       unsubJobs();
     };
-  }, []);
+  }, [isAdmin]);
 
   // Update Status helper
   const handleUpdateStatus = async (
@@ -345,6 +353,17 @@ export default function DirectCandidatesWorkspace({
     ).length,
     conflicts: candidates.filter((c) => c.ownershipConflict).length,
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center gap-3">
+        <Lock className="w-8 h-8 text-slate-300" />
+        <p className="text-sm font-bold text-slate-500">
+          Direct Candidates (Candidate Portal) is an Admin-only workspace.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

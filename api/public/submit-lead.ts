@@ -1,5 +1,15 @@
 import { adminDb } from "../../src/lib/firebase-admin.js";
 
+function withTimeout<T = any>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
 export default async function submitLeadHandler(req: any, res: any) {
   console.log("=== PUBLIC SUBMIT LEAD HANDLER EXECUTED ===");
   console.log("Method:", req.method);
@@ -51,12 +61,18 @@ export default async function submitLeadHandler(req: any, res: any) {
       return res.json({ success: true, message: 'Lead logged (Offline mode)' });
     }
 
-    // Check for existing duplicate by email
+    // Check for existing duplicate by email. Bounded by a timeout so a
+    // Firestore call stuck on bad/expired credentials can't hold this
+    // request open indefinitely.
     try {
-      const existingLeads = await adminDb.collection('landing_page_leads_v1')
-        .where('email', '==', email)
-        .limit(1)
-        .get();
+      const existingLeads = await withTimeout(
+        adminDb.collection('landing_page_leads_v1')
+          .where('email', '==', email)
+          .limit(1)
+          .get(),
+        8000,
+        'Duplicate lead lookup'
+      );
 
       if (!existingLeads.empty) {
         console.warn(`[PublicAPI] Lead already exists for email: ${email}. Recorded duplicate attempt.`);
@@ -65,17 +81,28 @@ export default async function submitLeadHandler(req: any, res: any) {
     } catch (dbCheckErr: any) {
       console.warn('[PublicAPI] Failed to check duplicate email in Firestore:', dbCheckErr.message);
     }
-    
-    await adminDb.collection('landing_page_leads_v1').add({
-      fullName,
-      company,
-      email,
-      phone,
-      plan,
-      status: "NEW",
-      source: 'landing_page_v1',
-      createdAt: new Date().toISOString()
-    });
+
+    try {
+      await withTimeout(
+        adminDb.collection('landing_page_leads_v1').add({
+          fullName,
+          company,
+          email,
+          phone,
+          plan,
+          status: "NEW",
+          source: 'landing_page_v1',
+          createdAt: new Date().toISOString()
+        }),
+        8000,
+        'Lead save'
+      );
+    } catch (saveErr: any) {
+      // Lead is already logged above; don't fail the visitor's submission
+      // just because the Firestore write itself is slow/unavailable.
+      console.error('[PublicAPI] Failed to persist lead to Firestore, falling back to logged-only:', saveErr.message);
+      return res.json({ success: true, message: 'Lead logged (fallback mode)' });
+    }
 
     return res.json({ success: true });
   } catch (err: any) {

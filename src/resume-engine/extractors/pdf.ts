@@ -3,10 +3,7 @@
  * Uses pdf-parse for native text extraction with automatic fallback to page screenshot OCR.
  */
 
-import * as pdfParseModule from "pdf-parse";
 import { ExtractionMethod } from "../types.js";
-
-const pdf = (pdfParseModule as any).default || pdfParseModule;
 
 export interface PDFExtractionResult {
   text: string;
@@ -23,12 +20,26 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<PDFExtractionR
   let method: ExtractionMethod = "PDF_TEXT";
   let confidence = 0.95;
 
+  // pdf-parse (and its pdfjs-dist dependency) is imported lazily, inside this
+  // try/catch, rather than at module load time. pdf-parse 2.x also ships a
+  // completely different API (a PDFParse class, not a callable default
+  // export) from the 1.x API this code originally targeted — importing it
+  // eagerly at the top of the module meant a failure here (or the previous
+  // "pdf is not a function" mismatch) could take down every request to this
+  // handler, including ones uploading non-PDF files that never needed it.
+  let parser: any = null;
   try {
-    const data = await pdf(buffer);
-    rawText = (data?.text || "").trim();
-    pageCount = data?.numpages || 1;
+    const { PDFParse } = await import("pdf-parse");
+    parser = new PDFParse({ data: buffer });
+    const result = await parser.getText();
+    rawText = (result?.text || "").trim();
+    pageCount = result?.pages?.length || result?.total || 1;
   } catch (pdfErr: any) {
     console.warn("[PDF_EXTRACTOR] Primary pdf-parse failed:", pdfErr?.message || pdfErr);
+  } finally {
+    if (parser) {
+      try { await parser.destroy(); } catch { /* ignore */ }
+    }
   }
 
   // Final fallback: printable ASCII extraction if still empty
