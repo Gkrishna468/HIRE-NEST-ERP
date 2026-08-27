@@ -30,17 +30,19 @@ export async function getAuthHeaders() {
 
 export interface CandidateMatchResult {
   matchScore: number;
+  tier?: "High Confidence" | "Strong Potential" | "Partial Match" | "Weak Match";
   breakdown?: {
     skillsScore: number;
     experienceScore: number;
     domainScore: number;
     locationScore: number;
-    bonusScore: number;
+    bonusScore?: number;
     totalScore: number;
   };
   summary: string;
   strengths: string[];
   gaps: string[];
+  skillsMatched?: string[];
   missingSkills?: string[];
   recruiterAssessment?: string;
   recommendation?: 'STRONG_FIT' | 'CONSIDER' | 'NOT_SUITABLE';
@@ -51,15 +53,32 @@ export interface CandidateMatchResult {
     executive: string;
     warm: string;
   };
+  cached?: boolean;
+  cacheHash?: string;
+  analyzedAt?: string;
 }
 
-export async function analyzeCandidateMatch(jd: string, candidateProfile: string): Promise<CandidateMatchResult> {
+export async function analyzeCandidateMatch(
+  jd: string,
+  candidateProfile: string,
+  options?: {
+    candidateId?: string;
+    requirementId?: string;
+    forceRefresh?: boolean;
+  }
+): Promise<CandidateMatchResult> {
   try {
     const headers = await getAuthHeaders();
     const response = await fetch("/api/match-candidates-detailed", {
       method: "POST",
       headers,
-      body: JSON.stringify({ jd, candidateProfile }),
+      body: JSON.stringify({
+        jd,
+        candidateProfile,
+        candidateId: options?.candidateId,
+        requirementId: options?.requirementId,
+        forceRefresh: options?.forceRefresh
+      }),
     });
     if (!response.ok) throw new Error(`Server returned ${response.status}`);
     return await response.json();

@@ -57,6 +57,8 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
   const [results, setResults] = useState<ProcessingResultItem[]>([]);
   const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(0);
   const [selectedResultIndex, setSelectedResultIndex] = useState<number>(0);
+  const [forceRescan, setForceRescan] = useState<boolean>(false);
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -79,6 +81,128 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const processFileItem = async (file: File, index: number, isForce: boolean): Promise<ProcessingResultItem> => {
+    // Update UI stage to EXTRACTING
+    setResults(prev => prev.map((r, idx) => idx === index ? {
+      ...r,
+      status: "EXTRACTING",
+      stage: "EXTRACTING",
+      timeline: [
+        ...r.timeline,
+        { stage: "EXTRACTING", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: `Extracting text from ${file.name}...` }
+      ]
+    } : r));
+
+    const formData = new FormData();
+    formData.append("file", file);
+    if (isForce) {
+      formData.append("forceRescan", "true");
+    }
+    formData.append("orgId", userOrgId);
+
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/extract-text", {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const isManual = data.status === "MANUAL_REVIEW" || data.requiresManualReview || !data.candidateName;
+
+        const itemResult: ProcessingResultItem = {
+          id: index,
+          originalFile: file,
+          fileName: file.name,
+          fileSize: file.size,
+          processingId: data.processingId || data.ledgerId,
+          candidateId: data.candidateId,
+          status: isManual ? "MANUAL_REVIEW" : (data.status || "COMPLETED"),
+          stage: data.stage || (isManual ? "MANUAL_REVIEW" : "COMPLETED"),
+          name: data.candidateName || "",
+          email: data.email || "",
+          phone: data.phone || "",
+          location: data.location || "Remote / Flexible",
+          skills: data.skills || [],
+          experienceYears: data.experienceYears || 0,
+          currentRole: data.currentRole || "Candidate",
+          extractionMethod: data.extractionMethod || "TEXT_UTF8",
+          ocrUsed: data.ocrUsed || false,
+          textLength: data.textLength || 0,
+          parserVersion: data.parserVersion || "2.5.0",
+          startedAt: data.startedAt,
+          completedAt: data.completedAt || new Date().toISOString(),
+          timeline: data.timeline || [
+            { stage: "COMPLETED", status: "SUCCESS", timestamp: new Date().toLocaleTimeString(), message: "Processed deterministically." }
+          ],
+          missingName: !data.candidateName,
+          candidateProfile: data.candidateProfile,
+        };
+
+        setResults(prev => prev.map((r, idx) => idx === index ? itemResult : r));
+        return itemResult;
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const failedItem: ProcessingResultItem = {
+          id: index,
+          originalFile: file,
+          fileName: file.name,
+          fileSize: file.size,
+          status: "FAILED",
+          stage: "FAILED",
+          name: "",
+          email: "",
+          phone: "",
+          location: "",
+          skills: [],
+          experienceYears: 0,
+          currentRole: "",
+          extractionMethod: "FAILED",
+          ocrUsed: false,
+          textLength: 0,
+          parserVersion: "2.5.0",
+          timeline: [
+            { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: errData.message || "Extraction failed." }
+          ],
+          error: errData.message || "Failed to process resume.",
+        };
+        setResults(prev => prev.map((r, idx) => idx === index ? failedItem : r));
+        return failedItem;
+      }
+    } catch (err: any) {
+      const errorItem: ProcessingResultItem = {
+        id: index,
+        originalFile: file,
+        fileName: file.name,
+        fileSize: file.size,
+        status: "FAILED",
+        stage: "FAILED",
+        name: "",
+        email: "",
+        phone: "",
+        location: "",
+        skills: [],
+        experienceYears: 0,
+        currentRole: "",
+        extractionMethod: "FAILED",
+        ocrUsed: false,
+        textLength: 0,
+        parserVersion: "2.5.0",
+        timeline: [
+          { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: err.message || "Connection error." }
+        ],
+        error: err.message || "Network or server failure.",
+      };
+      setResults(prev => prev.map((r, idx) => idx === index ? errorItem : r));
+      return errorItem;
+    }
   };
 
   const startPipeline = async () => {
@@ -108,132 +232,26 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
 
     setResults(initialResults);
 
-    const processedList: ProcessingResultItem[] = [];
-
+    // Controlled sequential / batch processing with isolated failures
     for (let i = 0; i < files.length; i++) {
       setCurrentProcessingIndex(i);
-      const file = files[i];
-
-      // Update UI stage to EXTRACTING
-      setResults(prev => prev.map((r, idx) => idx === i ? {
-        ...r,
-        status: "EXTRACTING",
-        stage: "EXTRACTING",
-        timeline: [
-          ...r.timeline,
-          { stage: "EXTRACTING", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: `Extracting text from ${file.name}...` }
-        ]
-      } : r));
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("forceRescan", "true");
-      formData.append("orgId", userOrgId);
-
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        const headers: Record<string, string> = {};
-        if (token) headers["Authorization"] = `Bearer ${token}`;
-
-        const res = await fetch("/api/extract-text", {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const isManual = data.status === "MANUAL_REVIEW" || data.requiresManualReview || !data.candidateName;
-
-          const itemResult: ProcessingResultItem = {
-            id: i,
-            originalFile: file,
-            fileName: file.name,
-            fileSize: file.size,
-            processingId: data.processingId || data.ledgerId,
-            candidateId: data.candidateId,
-            status: isManual ? "MANUAL_REVIEW" : (data.status || "COMPLETED"),
-            stage: data.stage || (isManual ? "MANUAL_REVIEW" : "COMPLETED"),
-            name: data.candidateName || "",
-            email: data.email || "",
-            phone: data.phone || "",
-            location: data.location || "Remote / Flexible",
-            skills: data.skills || [],
-            experienceYears: data.experienceYears || 0,
-            currentRole: data.currentRole || "Candidate",
-            extractionMethod: data.extractionMethod || "TEXT_UTF8",
-            ocrUsed: data.ocrUsed || false,
-            textLength: data.textLength || 0,
-            parserVersion: data.parserVersion || "2.5.0",
-            startedAt: data.startedAt,
-            completedAt: data.completedAt || new Date().toISOString(),
-            timeline: data.timeline || [
-              { stage: "COMPLETED", status: "SUCCESS", timestamp: new Date().toLocaleTimeString(), message: "Processed deterministically." }
-            ],
-            missingName: !data.candidateName,
-            candidateProfile: data.candidateProfile,
-          };
-
-          processedList.push(itemResult);
-          setResults(prev => prev.map((r, idx) => idx === i ? itemResult : r));
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          const failedItem: ProcessingResultItem = {
-            id: i,
-            originalFile: file,
-            fileName: file.name,
-            fileSize: file.size,
-            status: "FAILED",
-            stage: "FAILED",
-            name: "",
-            email: "",
-            phone: "",
-            location: "",
-            skills: [],
-            experienceYears: 0,
-            currentRole: "",
-            extractionMethod: "FAILED",
-            ocrUsed: false,
-            textLength: 0,
-            parserVersion: "2.5.0",
-            timeline: [
-              { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: errData.message || "Extraction failed." }
-            ],
-            error: errData.message || "Failed to process resume.",
-          };
-          processedList.push(failedItem);
-          setResults(prev => prev.map((r, idx) => idx === i ? failedItem : r));
-        }
-      } catch (err: any) {
-        const errorItem: ProcessingResultItem = {
-          id: i,
-          originalFile: file,
-          fileName: file.name,
-          fileSize: file.size,
-          status: "FAILED",
-          stage: "FAILED",
-          name: "",
-          email: "",
-          phone: "",
-          location: "",
-          skills: [],
-          experienceYears: 0,
-          currentRole: "",
-          extractionMethod: "FAILED",
-          ocrUsed: false,
-          textLength: 0,
-          parserVersion: "2.5.0",
-          timeline: [
-            { stage: "FAILED", status: "FAILED", timestamp: new Date().toLocaleTimeString(), message: err.message }
-          ],
-          error: err.message,
-        };
-        processedList.push(errorItem);
-        setResults(prev => prev.map((r, idx) => idx === i ? errorItem : r));
-      }
+      await processFileItem(files[i], i, forceRescan);
     }
 
     setStep("RESULTS");
+  };
+
+  const retryFailedFiles = async () => {
+    setIsRetrying(true);
+    const failedIndices = results
+      .map((item, idx) => item.status === "FAILED" ? idx : -1)
+      .filter(idx => idx !== -1);
+
+    for (const idx of failedIndices) {
+      setCurrentProcessingIndex(idx);
+      await processFileItem(files[idx], idx, true); // force fresh retry on failed items
+    }
+    setIsRetrying(false);
   };
 
   const updateCandidateName = (id: number, newName: string) => {
@@ -312,8 +330,8 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
               </div>
 
               {files.length > 0 && (
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
                     <h4 className="font-semibold text-sm text-slate-700">{files.length} document{files.length > 1 ? "s" : ""} queued for ingestion</h4>
                     <button onClick={() => setFiles([])} className="text-xs text-rose-500 hover:text-rose-700 font-medium">Clear All</button>
                   </div>
@@ -330,6 +348,20 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
                         </button>
                       </div>
                     ))}
+                  </div>
+                  
+                  {/* Deduplication Cache Option (Default OFF) */}
+                  <div className="pt-2 border-t border-slate-200 flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="force-rescan-toggle"
+                      checked={forceRescan}
+                      onChange={(e) => setForceRescan(e.target.checked)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="force-rescan-toggle" className="text-xs text-slate-600 cursor-pointer font-medium">
+                      Force re-scan (bypass deduplication cache & re-extract existing hashes)
+                    </label>
                   </div>
                 </div>
               )}
@@ -540,13 +572,26 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
           )}
 
           {step === "RESULTS" && (
-            <Button 
-              onClick={handleConfirmImport}
-              disabled={completedCount === 0 && manualCount === 0}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm"
-            >
-              Complete Import ({completedCount + (manualCount > 0 ? results.filter(r => r.status === "MANUAL_REVIEW" && r.name).length : 0)} Candidates)
-            </Button>
+            <div className="flex items-center gap-2">
+              {failedCount > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={retryFailedFiles}
+                  disabled={isRetrying}
+                  className="border-rose-300 text-rose-700 hover:bg-rose-50 rounded-xl text-xs font-bold"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRetrying ? "animate-spin" : ""}`} />
+                  {isRetrying ? "Retrying..." : `Retry Failed (${failedCount})`}
+                </Button>
+              )}
+              <Button 
+                onClick={handleConfirmImport}
+                disabled={completedCount === 0 && manualCount === 0}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm"
+              >
+                Complete Import ({completedCount + (manualCount > 0 ? results.filter(r => r.status === "MANUAL_REVIEW" && r.name).length : 0)} Candidates)
+              </Button>
+            </div>
           )}
         </div>
       </div>

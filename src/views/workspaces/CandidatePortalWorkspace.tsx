@@ -38,8 +38,10 @@ import {
   Flame,
   Check,
   Crosshair,
-  Bell
+  Bell,
+  LogOut
 } from "lucide-react";
+import { signOut } from "firebase/auth";
 import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
 import { auth, db } from "../../lib/firebase";
@@ -121,13 +123,13 @@ export default function CandidatePortalWorkspace({
     name: userName,
     email: "",
     phone: "",
-    location: "Bengaluru, India",
-    headline: "Full Stack Developer",
-    skills: ["React", "TypeScript", "Node.js", "Java", "SQL"],
-    targetRoles: ["Full Stack Engineer", "Frontend Specialist"],
-    experienceYears: 4,
+    location: "Remote / Flexible",
+    headline: "Candidate Profile",
+    skills: [] as string[],
+    targetRoles: [] as string[],
+    experienceYears: 0,
     preferredWorkMode: "Hybrid",
-    noticePeriodDays: 15,
+    noticePeriodDays: 30,
     resumeText: "",
     resumeFileName: ""
   });
@@ -195,14 +197,16 @@ export default function CandidatePortalWorkspace({
             userId: user.uid,
             name: user.displayName || userName,
             email: user.email || "",
-            location: "Bengaluru, India",
-            headline: "Software Engineer",
-            skills: ["React", "TypeScript", "Node.js", "Java", "SQL"],
-            targetRoles: ["Full Stack Engineer", "Software Developer"],
-            experienceYears: 4,
+            location: "Remote / Flexible",
+            headline: "Candidate Profile",
+            skills: [] as string[],
+            targetRoles: [] as string[],
+            experienceYears: 0,
             preferredWorkMode: "Hybrid",
-            noticePeriodDays: 15,
-            sourceType: "DIRECT_CANDIDATE", ownershipType: "DIRECT", vendorId: null,
+            noticePeriodDays: 30,
+            sourceType: "DIRECT_CANDIDATE",
+            ownershipType: "DIRECT",
+            vendorId: null,
             ownerType: "HIRENEST",
             ownerId: "GLOBAL_HQ",
             createdVia: "CANDIDATE_PORTAL",
@@ -327,47 +331,39 @@ export default function CandidatePortalWorkspace({
       const formData = new FormData();
       formData.append("file", file);
 
-      // Extract text via API
-      const res = await fetch("/api/extract-text", {
+      // Extract text and deterministic profile via dedicated public resume parser
+      const res = await fetch("/api/public-candidate-resume", {
         method: "POST",
         body: formData
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const extractedText = data.text || "";
-
-        // Parse extracted skills & attributes
-        const skillsFound: string[] = [];
-        const commonTech = ["React", "TypeScript", "Node.js", "Java", "Python", "C++", "AWS", "SQL", "Docker", "Kubernetes", "Angular", "Go", "Embedded", "Linux", "REST", "Microservices"];
-        commonTech.forEach(tech => {
-          if (new RegExp(`\\b${tech}\\b`, "i").test(extractedText)) {
-            skillsFound.push(tech);
-          }
-        });
-
-        setExtractedResumeData({
-          fileName: file.name,
-          rawText: extractedText,
-          detectedSkills: skillsFound.length > 0 ? skillsFound : profile.skills,
-          extractedSummary: extractedText.slice(0, 300) + "..."
-        });
-      } else {
-        // Fallback simulated parsing
-        setExtractedResumeData({
-          fileName: file.name,
-          rawText: `Resume of ${profile.name}. Skills: ${profile.skills.join(", ")}`,
-          detectedSkills: profile.skills,
-          extractedSummary: `Resume successfully loaded for ${profile.name}.`
-        });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || "Failed to extract resume contents.");
       }
-    } catch (err) {
-      console.warn("Resume extraction fallback:", err);
+
+      const data = await res.json();
+      const extractedText = data.text || data.candidateProfile?.resumeText || "";
+      const skillsFound = (data.candidateProfile?.skills && Array.isArray(data.candidateProfile.skills) && data.candidateProfile.skills.length > 0)
+        ? data.candidateProfile.skills
+        : (data.skills && Array.isArray(data.skills) && data.skills.length > 0)
+          ? data.skills
+          : profile.skills;
+
       setExtractedResumeData({
         fileName: file.name,
-        rawText: `Resume of ${profile.name}`,
+        rawText: extractedText,
+        detectedSkills: skillsFound,
+        extractedSummary: data.candidateProfile?.summary || (extractedText ? extractedText.slice(0, 300) + "..." : "Resume processed successfully.")
+      });
+    } catch (err: any) {
+      console.warn("Resume extraction error:", err);
+      setExtractedResumeData({
+        fileName: file.name,
+        rawText: "",
         detectedSkills: profile.skills,
-        extractedSummary: `Resume loaded.`
+        extractedSummary: err.message || "Failed to parse resume document.",
+        hasError: true
       });
     } finally {
       setIsExtractingResume(false);
@@ -739,6 +735,22 @@ export default function CandidatePortalWorkspace({
               <span>AI Coach</span>
             </button>
           </nav>
+
+          {/* Candidate Profile & Sign Out */}
+          <div className="hidden md:flex items-center gap-3 pl-4 border-l border-slate-200">
+            <div className="flex flex-col items-end">
+              <span className="text-xs font-bold text-slate-800">{userName || "Candidate"}</span>
+              <span className="text-[10px] text-slate-500 font-medium">{currentUser?.email || "Direct Candidate"}</span>
+            </div>
+            <button
+              onClick={() => signOut(auth)}
+              title="Sign Out"
+              className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all flex items-center gap-1 text-xs font-bold"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden lg:inline">Sign Out</span>
+            </button>
+          </div>
         </div>
       </header>
 

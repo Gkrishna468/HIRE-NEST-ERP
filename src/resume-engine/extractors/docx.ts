@@ -70,7 +70,12 @@ export async function extractTextFromDOCX(buffer: Buffer): Promise<{
     } else {
       // Fallback to printable ascii
       const raw = buffer.toString("utf-8");
-      text = raw.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim().slice(0, 15000);
+      text = raw
+        .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n\s*\n+/g, "\n")
+        .trim()
+        .slice(0, 15000);
       method = "TEXT_UTF8";
       confidence = 0.4;
     }

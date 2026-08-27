@@ -158,6 +158,7 @@ import matchingGlobalHandler from './src/api-lib/handlers/matching-global';
 import intelHandler from './src/api-lib/handlers/intel';
 import parseJdHandler from './src/api-lib/handlers/parse-jd';
 import extractTextHandler from './src/api-lib/handlers/extract-text';
+import publicCandidateResumeHandler from './src/api-lib/handlers/public-candidate-resume';
 import matchDetailedHandler from './src/api-lib/handlers/match-candidates-detailed';
 import bulkParseHandler from './src/api-lib/handlers/bulk-parse-resumes';
 import workflowsHandler from './src/api-lib/handlers/workflows';
@@ -409,6 +410,21 @@ hirenest_active_requests 0
   app.use('/api/rebuild-matrix', aiLimiter);
   app.use('/api/ai', aiLimiter);
 
+  const publicResumeLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // Max 10 parses per minute per IP
+    keyGenerator,
+    message: { error: 'Rate limit exceeded. Please wait a minute before uploading another resume.' }
+  });
+
+  // Public candidate resume parsing endpoints (no auth required)
+  app.post('/api/public-candidate-resume', publicResumeLimiter, async (req: any, res: any) => {
+    return await publicCandidateResumeHandler(req, res);
+  });
+  app.post('/api/public/candidate-resume', publicResumeLimiter, async (req: any, res: any) => {
+    return await publicCandidateResumeHandler(req, res);
+  });
+
   // Public endpoints (no auth)
   app.post('/api/public/submit-lead', async (req: any, res: any) => {
     try {
@@ -558,6 +574,11 @@ hirenest_active_requests 0
           if (extractTextHandler) return await extractTextHandler(req, res);
           break;
           
+        case 'public-candidate-resume':
+        case 'public/candidate-resume':
+          if (publicCandidateResumeHandler) return await publicCandidateResumeHandler(req, res);
+          break;
+
         case 'match-candidates-detailed':
           if (matchDetailedHandler) return await matchDetailedHandler(req, res);
           break;
@@ -743,9 +764,9 @@ hirenest_active_requests 0
   const serveStaticFiles = () => {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
-      const url = req.originalUrl;
-      if (url.startsWith('/api') || req.path.startsWith('/api')) {
+    app.use((req, res) => {
+      const url = req.originalUrl || req.url;
+      if (url.startsWith('/api') || req.path?.startsWith('/api')) {
         return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
       }
       if (fs.existsSync(distIndexPath)) {
@@ -766,8 +787,8 @@ hirenest_active_requests 0
       app.use(vite.middlewares);
       
       app.use(async (req, res, next) => {
-        const url = req.originalUrl;
-        if (url.startsWith('/api') || req.path.startsWith('/api')) {
+        const url = req.originalUrl || req.url;
+        if (url.startsWith('/api') || req.path?.startsWith('/api')) {
           return res.status(404).json({ success: false, error: `API endpoint ${url} not found` });
         }
         try {
@@ -790,7 +811,7 @@ hirenest_active_requests 0
   const PORT = 3000;
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`Server running at http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -1,4 +1,4 @@
-import { checkIsAdmin, checkIsClient, checkIsVendor, checkIsRecruiter, checkIsIndependent } from "./lib/permissions";
+import { checkIsAdmin, checkIsClient, checkIsVendor, checkIsRecruiter, checkIsIndependent, checkIsCandidate } from "./lib/permissions";
 import React, { useState } from "react";
 import {
   BrowserRouter as Router,
@@ -50,7 +50,11 @@ import {
   CheckCircle2,
   Globe,
   MessageCircle,
-  Store
+  Store,
+  ChevronDown,
+  ChevronUp,
+  Mail,
+  UserRound
 } from "lucide-react";
 import { cn } from "./lib/utils";
 
@@ -126,6 +130,7 @@ import CustomerSuccessDashboard from "./views/CustomerSuccessDashboard";
 import AILearningLoopTab from "./views/AILearningLoopTab";
 import EvidenceDashboard from "./views/EvidenceDashboard";
 import FounderControlTower from "./views/FounderControlTower";
+import CandidatePortalWorkspace from "./views/workspaces/CandidatePortalWorkspace";
 
 const SidebarItem = ({
   to,
@@ -163,6 +168,136 @@ const SidebarItem = ({
     {active && <ChevronRight size={14} className="ml-auto" />}
   </Link>
 );
+
+const SubSidebarItem = ({
+  to,
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  to: string;
+  icon: any;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className={cn(
+      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group text-[13px] font-semibold tracking-wide",
+      active
+        ? "bg-indigo-50 text-indigo-700 font-bold"
+        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900",
+    )}
+  >
+    <Icon
+      size={16}
+      className={cn(
+        active ? "text-indigo-600" : "text-slate-400 group-hover:text-indigo-600",
+      )}
+    />
+    <span>{label}</span>
+  </Link>
+);
+
+const AdminGlobalHQNav = ({
+  location,
+  closeMobileMenu,
+}: {
+  location: any;
+  closeMobileMenu: () => void;
+}) => {
+  const adminRoutes = [
+    '/emails',
+    '/client-360',
+    '/vendor-360',
+    '/admin/candidate-360',
+    '/admin/requirement-360'
+  ];
+  
+  const isChildActive = adminRoutes.some(r => location.pathname === r);
+  const [isExpanded, setIsExpanded] = React.useState(isChildActive);
+  
+  React.useEffect(() => {
+    if (isChildActive) {
+      setIsExpanded(true);
+    }
+  }, [isChildActive]);
+
+  return (
+    <div className="flex flex-col">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        aria-controls="admin-global-hq-menu"
+        aria-label="Toggle Global HQ menu"
+        className={cn(
+          "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group text-sm font-bold uppercase tracking-wider w-full text-left",
+          isChildActive && !isExpanded
+            ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200"
+            : "text-slate-400 hover:bg-slate-50 hover:text-slate-900"
+        )}
+      >
+        <Globe
+          size={18}
+          className={cn(
+            isChildActive && !isExpanded ? "text-white" : "text-slate-400 group-hover:text-indigo-600"
+          )}
+        />
+        <span>Global HQ</span>
+        <div className="ml-auto">
+          {isExpanded ? (
+            <ChevronUp size={16} className={isChildActive && !isExpanded ? "text-white" : "text-slate-400 group-hover:text-indigo-600"} />
+          ) : (
+            <ChevronDown size={16} className={isChildActive && !isExpanded ? "text-white" : "text-slate-400 group-hover:text-indigo-600"} />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div id="admin-global-hq-menu" className="mt-2 flex flex-col gap-1 pl-4 border-l-2 border-slate-100 ml-6 overflow-hidden">
+          <SubSidebarItem
+            to="/emails"
+            icon={Mail}
+            label="Mail OS"
+            active={location.pathname === "/emails"}
+            onClick={closeMobileMenu}
+          />
+          <SubSidebarItem
+            to="/client-360"
+            icon={Building2}
+            label="Client 360"
+            active={location.pathname === "/client-360"}
+            onClick={closeMobileMenu}
+          />
+          <SubSidebarItem
+            to="/vendor-360"
+            icon={Store}
+            label="Vendor 360"
+            active={location.pathname === "/vendor-360"}
+            onClick={closeMobileMenu}
+          />
+          <SubSidebarItem
+            to="/admin/candidate-360"
+            icon={UserRound}
+            label="Candidate 360"
+            active={location.pathname === "/admin/candidate-360"}
+            onClick={closeMobileMenu}
+          />
+          <SubSidebarItem
+            to="/admin/requirement-360"
+            icon={FileText}
+            label="Requirement 360"
+            active={location.pathname === "/admin/requirement-360"}
+            onClick={closeMobileMenu}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const AppContent = () => {
   const location = useLocation();
@@ -283,6 +418,20 @@ const AppContent = () => {
   const isVendor = checkIsVendor(role);
   const isRecruiter = checkIsRecruiter(role);
   const isIndependent = checkIsIndependent(role);
+  const isCandidate = checkIsCandidate(role);
+
+  // Strictly route candidate users directly to their isolated Candidate Portal Workspace
+  if (isCandidate) {
+    return (
+      <div className="min-h-screen bg-slate-50 font-sans">
+        <CandidatePortalWorkspace
+          userName={userData?.displayName || userData?.name || user?.displayName || "Candidate"}
+          orgId={userData?.organizationId || "ORG-CANDIDATE-COMMUNITY"}
+          metrics={null}
+        />
+      </div>
+    );
+  }
 
   const hasCompletedOnboarding =
     userData?.onboardingCompleted === true ||
@@ -618,12 +767,9 @@ const AppContent = () => {
                 active={location.pathname === "/ops"}
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <SidebarItem
-                to="/network"
-                icon={Globe}
-                label="Global HQ"
-                active={location.pathname === "/network"}
-                onClick={() => setIsMobileMenuOpen(false)}
+              <AdminGlobalHQNav 
+                location={location} 
+                closeMobileMenu={() => setIsMobileMenuOpen(false)} 
               />
               <SidebarItem
                 to="/users"
@@ -977,6 +1123,8 @@ const AppContent = () => {
             {isAdmin && <Route path="/contracts" element={<ContractsTab />} />}
             <Route path="/timesheets" element={<TimesheetsTab />} />
             <Route path="/invoices" element={<InvoicesTab />} />
+            {isAdmin && <Route path="/admin/candidate-360" element={<CandidatesTab />} />}
+            {isAdmin && <Route path="/admin/requirement-360" element={<JobsTab />} />}
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route

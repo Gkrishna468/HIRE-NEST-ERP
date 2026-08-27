@@ -98,7 +98,11 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<PDFExtractionR
   // Final fallback: printable ASCII extraction if still empty
   if (!rawText || rawText.length < 5) {
     const raw = buffer.toString("utf-8");
-    const printable = raw.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s+/g, " ").trim();
+    const printable = raw
+      .replace(/[^\x20-\x7E\n\r\t]/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n\s*\n+/g, "\n")
+      .trim();
     if (printable.length >= 20) {
       rawText = printable.slice(0, 15000);
       method = "TEXT_UTF8";

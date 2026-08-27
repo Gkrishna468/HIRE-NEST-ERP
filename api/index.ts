@@ -145,7 +145,10 @@ export default async function handler(req: any, res: any) {
     const urlStr = req.url || '';
     
     const isPublic = 
-      urlStr.includes('/api/public') || urlStr.includes('/api/workspace/gmail/webhook') || 
+      urlStr.includes('/api/public') || 
+      urlStr.includes('/api/public-candidate-resume') ||
+      urlStr.includes('/api/workspace/gmail/webhook') || 
+      path === 'public-candidate-resume' ||
       path?.startsWith('public');
       
     if (isPublic) {
@@ -187,6 +190,7 @@ export default async function handler(req: any, res: any) {
     else if (path === 'validate-submission') targetHandler = (await import('../src/api-lib/handlers/validate-submission.js')).default;
     else if (path === 'parse-jd')          targetHandler = (await import('../src/api-lib/handlers/parse-jd.js')).default;
     else if (path === 'extract-text')      targetHandler = (await import('../src/api-lib/handlers/extract-text.js')).default;
+    else if (path === 'public-candidate-resume' || path === 'public/candidate-resume') targetHandler = (await import('../src/api-lib/handlers/public-candidate-resume.js')).default;
     else if (path === 'match-detailed')    targetHandler = (await import('../src/api-lib/handlers/match-candidates-detailed.js')).default;
     else if (path === 'bulk-parse' || path === 'bulk-parse-resumes')        targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default;
     else if (path === 'interviews')        targetHandler = (await import('../src/api-lib/handlers/interviews.js')).default;
@@ -208,6 +212,7 @@ export default async function handler(req: any, res: any) {
         case 'validate-submission': targetHandler = (await import('../src/api-lib/handlers/validate-submission.js')).default; break;
         case 'parse-jd': targetHandler = (await import('../src/api-lib/handlers/parse-jd.js')).default; break;
         case 'extract-text': targetHandler = (await import('../src/api-lib/handlers/extract-text.js')).default; break;
+        case 'public-candidate-resume': targetHandler = (await import('../src/api-lib/handlers/public-candidate-resume.js')).default; break;
         case 'match-detailed': targetHandler = (await import('../src/api-lib/handlers/match-candidates-detailed.js')).default; break;
         case 'bulk-parse':
         case 'bulk-parse-resumes': targetHandler = (await import('../src/api-lib/handlers/bulk-parse-resumes.js')).default; break;

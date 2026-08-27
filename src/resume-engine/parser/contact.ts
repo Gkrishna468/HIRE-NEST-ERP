@@ -24,7 +24,10 @@ const KNOWN_LOCATIONS = [
 
 // Noise words to strip when identifying candidate name from top lines
 const NON_NAME_PATTERNS = [
+  /^\[.*\]$/,
   /curriculum\s+vitae/i,
+  /summary\s+of\s+qualifications/i,
+  /professional\s+summary/i,
   /resume/i,
   /profile/i,
   /summary/i,
@@ -114,24 +117,45 @@ export function extractLocation(text: string): string {
 export function extractCandidateName(text: string, filename?: string): string {
   if (!text) return "";
 
-  // 1. Scan the first 10 non-empty lines of the resume text
+  // 1. Scan the first 15 non-empty lines of the resume text
   const lines = text.split("\n")
     .map(l => l.trim())
     .filter(l => l.length > 0)
-    .slice(0, 12);
+    .slice(0, 15);
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    // Skip noise/bracket tags like [OCR_EXTRACTED_LAYER_START]
+    if (/^\[.*\]$/.test(rawLine)) continue;
+
     // Check if line contains any blacklist pattern
-    const isExcluded = NON_NAME_PATTERNS.some(pat => pat.test(line));
+    const isExcluded = NON_NAME_PATTERNS.some(pat => pat.test(rawLine));
     if (isExcluded) continue;
 
-    // Check if line looks like a human name (2-4 words, 3-35 chars, only letters and spaces/dots)
-    const words = line.split(/\s+/).filter(w => w.length > 0);
-    if (words.length >= 2 && words.length <= 4 && line.length >= 3 && line.length <= 40) {
-      const isNameLike = /^[a-zA-Z\s.'-]+$/.test(line);
-      if (isNameLike) {
-        // Clean up formatting
-        return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    // Support lines with roles/titles like "John Doe | Senior Software Engineer" or "Dr. Elena Rostova, Ph.D."
+    const candidatesToTest = [
+      rawLine,
+      rawLine.split("|")[0].trim(),
+      rawLine.split(",")[0].trim(),
+      rawLine.split(" - ")[0].trim()
+    ];
+
+    for (const testStr of candidatesToTest) {
+      if (!testStr || testStr.length < 3 || testStr.length > 45) continue;
+      if (NON_NAME_PATTERNS.some(pat => pat.test(testStr))) continue;
+
+      // Clean prefix/suffix honorifics for check
+      const cleaned = testStr
+        .replace(/^(dr\.|mr\.|ms\.|mrs\.|prof\.)\s+/i, "")
+        .replace(/,\s*(ph\.d\.|m\.s\.|b\.s\.|mba|cpa|md)$/i, "")
+        .trim();
+
+      const words = cleaned.split(/\s+/).filter(w => w.length > 0);
+      if (words.length >= 2 && words.length <= 4) {
+        const isNameLike = /^[a-zA-Z\s.'-]+$/.test(cleaned);
+        if (isNameLike) {
+          // Clean up formatting
+          return words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+        }
       }
     }
   }
@@ -140,7 +164,7 @@ export function extractCandidateName(text: string, filename?: string): string {
   if (filename) {
     const baseName = filename.replace(/\.[^/.]+$/, "")
       .replace(/[-_]/g, " ")
-      .replace(/\b(resume|cv|latest|updated|profile|final|\d{4})\b/gi, "")
+      .replace(/\b(resume|cv|latest|updated|profile|final|\d{4}|missing|name|unknown|sample|test|candidate|unnamed|file|document|doc|upload|fixed)\b/gi, "")
       .replace(/\s+/g, " ")
       .trim();
 

@@ -99,44 +99,46 @@ export function CandidateRegisterModal({
     setLoadingState("Extracting CV text & parsing technical skills...");
 
     try {
-      // 1. EXTRACT RESUME TEXT
-      let extractedText = "";
-      let detectedSkills: string[] = ["React", "TypeScript", "Node.js", "Java", "SQL"];
+      // 1. CALL DEDICATED PUBLIC RESUME PARSER (NO AUTH REQUIRED, ZERO FAKE DATA)
+      const formData = new FormData();
+      formData.append("file", resumeFile);
       
-      try {
-        const formData = new FormData();
-        formData.append("file", resumeFile);
-        const res = await fetch("/api/extract-text", {
-          method: "POST",
-          body: formData
-        });
-        if (res.ok) {
-          const data = await res.json();
-          extractedText = data.text || "";
-          
-          // Detect skills from text
-          const commonTech = [
-            "React", "TypeScript", "JavaScript", "Node.js", "Java", "Python", 
-            "C++", "C++17", "C++14", "C++20", "Linux", "Embedded", "RTOS",
-            "AWS", "SQL", "PostgreSQL", "Docker", "Kubernetes", "Angular", 
-            "Go", "Golang", "Microservices", "REST", "Spring Boot", "Kafka"
-          ];
-          const found: string[] = [];
-          commonTech.forEach(tech => {
-            if (new RegExp(`\\b${tech.replace("+", "\\+")}\\b`, "i").test(extractedText)) {
-              found.push(tech);
-            }
-          });
-          if (found.length > 0) detectedSkills = found;
-          setParsedSummary(extractedText.slice(0, 250) + "...");
-        }
-      } catch (extractErr) {
-        console.warn("Extraction note:", extractErr);
+      const res = await fetch("/api/public-candidate-resume", {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || errData.error || `Resume parsing failed (Status ${res.status}). Please upload a valid PDF or DOCX file.`);
       }
 
+      const parseResult = await res.json();
+      if (!parseResult.success) {
+        throw new Error(parseResult.message || parseResult.error || "Could not extract readable text from this file.");
+      }
+
+      const profile = parseResult.candidateProfile || {};
+      const extractedText = parseResult.text || profile.resumeText || "";
+      const detectedSkills: string[] = (profile.skills && Array.isArray(profile.skills) && profile.skills.length > 0)
+        ? profile.skills
+        : (parseResult.skills && Array.isArray(parseResult.skills) && parseResult.skills.length > 0)
+          ? parseResult.skills
+          : [];
+
+      const parsedExpYears = (typeof profile.experienceYears === 'number' && profile.experienceYears > 0)
+        ? profile.experienceYears
+        : experienceYears;
+
+      const candidateHeadline = profile.currentRole || preferredRole || "Software Specialist";
+      const candidateLocation = location.trim() || profile.location || "Remote / Flexible";
+      const candidatePhone = phone.trim() || profile.phone || "Not provided";
+      const parsedSummaryText = profile.summary || (extractedText ? extractedText.slice(0, 300) + "..." : "");
+
+      setParsedSummary(parsedSummaryText);
       setExtractedSkills(detectedSkills);
 
-      // 2. CREATE AUTHENTICATION ACCOUNT IN FIREBASE
+      // 2. CREATE AUTHENTICATION ACCOUNT IN FIREBASE (ONLY ON SUCCESSFUL PARSE)
       setLoadingState("Creating candidate identity & security profile...");
       const userCred = await createUserWithEmailAndPassword(auth, email.trim(), password);
       const user = userCred.user;
@@ -153,7 +155,7 @@ export function CandidateRegisterModal({
         email: email.trim(),
         name: name.trim(),
         displayName: name.trim(),
-        phone: phone.trim() || null,
+        phone: candidatePhone,
         role: "candidate",
         organizationId: "ORG-CANDIDATE-COMMUNITY",
         status: "ACTIVE",
@@ -169,13 +171,15 @@ export function CandidateRegisterModal({
         uid: candidateUid,
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim() || "Not provided",
-        location: location.trim(),
-        headline: preferredRole || "Software Specialist",
+        phone: candidatePhone,
+        location: candidateLocation,
+        headline: candidateHeadline,
         skills: detectedSkills,
-        experience: `${experienceYears} Years`,
-        experienceYears: experienceYears,
-        sourceType: "DIRECT_CANDIDATE", ownershipType: "DIRECT", vendorId: null,
+        experience: `${parsedExpYears} Years`,
+        experienceYears: parsedExpYears,
+        sourceType: "DIRECT_CANDIDATE",
+        ownershipType: "DIRECT",
+        vendorId: null,
         ownerType: "HIRENEST",
         ownerId: "GLOBAL_HQ",
         createdVia: "CANDIDATE_PORTAL",
@@ -192,17 +196,19 @@ export function CandidateRegisterModal({
         userId: candidateUid,
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim(),
-        location: location.trim(),
-        headline: preferredRole,
+        phone: candidatePhone,
+        location: candidateLocation,
+        headline: candidateHeadline,
         skills: detectedSkills,
-        targetRoles: [preferredRole],
-        experienceYears: experienceYears,
+        targetRoles: [preferredRole || candidateHeadline],
+        experienceYears: parsedExpYears,
         preferredWorkMode: "Hybrid",
-        noticePeriodDays: 15,
+        noticePeriodDays: profile.noticePeriod ? 15 : 30,
         resumeFileName: resumeFile.name,
-        resumeText: extractedText.slice(0, 2000),
-        sourceType: "DIRECT_CANDIDATE", ownershipType: "DIRECT", vendorId: null,
+        resumeText: extractedText.slice(0, 3000),
+        sourceType: "DIRECT_CANDIDATE",
+        ownershipType: "DIRECT",
+        vendorId: null,
         ownerType: "HIRENEST",
         ownerId: "GLOBAL_HQ",
         createdAt: new Date().toISOString(),
@@ -215,10 +221,10 @@ export function CandidateRegisterModal({
         id: candidateUid,
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim(),
+        phone: candidatePhone,
         skills: detectedSkills,
-        experienceYears: experienceYears,
-        location: location.trim(),
+        experienceYears: parsedExpYears,
+        location: candidateLocation,
         preferredWorkMode: "Hybrid"
       });
 

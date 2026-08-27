@@ -87,3 +87,8 @@ export function parseResumeDeterministically(params: {
     parsedAt: new Date().toISOString(),
   };
 }
+
+export const DeterministicResumeParser = {
+  parse: (text: string, filename?: string, documentHash?: string) =>
+    parseResumeDeterministically({ text, filename, documentHash })
+};

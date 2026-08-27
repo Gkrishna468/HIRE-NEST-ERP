@@ -43,9 +43,17 @@ export async function performOCR(imageBuffer: Buffer, timeoutMs: number = 15000)
       worker = await createWorker("eng", 1, {
         langPath: langPathOption,
         cachePath: resolvedCachePath,
+        errorHandler: (err) => console.warn("[OCR_WORKER_ERROR]", err),
       });
 
-      const res = await worker.recognize(imageBuffer);
+      if (worker && typeof worker.on === "function") {
+        worker.on("error", (err: any) => console.warn("[OCR_WORKER_EMIT]", err?.message || err));
+      }
+
+      const res = await worker.recognize(imageBuffer).catch((err: any) => {
+        console.warn("[OCR_RECOGNIZE_ERROR]", err?.message || err);
+        return null;
+      });
       const text = res?.data?.text || "";
       const confidence = typeof res?.data?.confidence === "number" ? res.data.confidence / 100 : 0.85;
       return { text: text.trim(), confidence };
