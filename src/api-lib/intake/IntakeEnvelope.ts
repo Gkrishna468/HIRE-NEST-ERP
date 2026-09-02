@@ -5,6 +5,7 @@ export type IntakeSource =
   | "api"
   | "csv"
   | "mailos"
+  | "whatsapp"
   | "unknown";
 
 export interface IntakeAttachment {

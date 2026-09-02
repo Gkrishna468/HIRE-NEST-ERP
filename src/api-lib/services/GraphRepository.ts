@@ -32,6 +32,12 @@ export class GraphRepository {
         return results.length > 0 ? results[0] : null;
     }
 
+    static async findVendorByEmail(tenantId: string, email: string): Promise<GraphNode | null> {
+        if (!email) return null;
+        const results = await BusinessGraphService.findByMetadata(tenantId, 'VENDOR', 'contactEmail', email);
+        return results.length > 0 ? results[0] : null;
+    }
+
     static async createCandidate(tenantId: string, data: any, actorId: string, owner?: string): Promise<GraphNode> {
         const existing = await this.findCandidateByEmail(tenantId, data.email);
         if (existing) return existing;
@@ -44,6 +50,13 @@ export class GraphRepository {
         if (existing) return existing;
 
         return await BusinessGraphService.createNode('REQUIREMENT', tenantId, data, actorId, owner);
+    }
+
+    static async createVendor(tenantId: string, data: any, actorId: string, owner?: string): Promise<GraphNode> {
+        const existing = await this.findVendorByEmail(tenantId, data.contactEmail);
+        if (existing) return existing;
+
+        return await BusinessGraphService.createNode('VENDOR', tenantId, data, actorId, owner);
     }
 
     static async linkCandidateToRequirement(candidateId: string, requirementId: string, metadata: any, actorId: string): Promise<void> {

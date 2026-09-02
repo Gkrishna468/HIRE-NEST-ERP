@@ -144,10 +144,11 @@ export default async function handler(req: any, res: any) {
     // --- Authentication ---
     const urlStr = req.url || '';
     
-    const isPublic = 
-      urlStr.includes('/api/public') || 
+    const isPublic =
+      urlStr.includes('/api/public') ||
       urlStr.includes('/api/public-candidate-resume') ||
-      urlStr.includes('/api/workspace/gmail/webhook') || 
+      urlStr.includes('/api/workspace/gmail/webhook') ||
+      urlStr.includes('/api/workspace/whatsapp/webhook') ||
       path === 'public-candidate-resume' ||
       path?.startsWith('public');
       
@@ -155,7 +156,22 @@ export default async function handler(req: any, res: any) {
       console.log("PUBLIC ROUTE BYPASS ACTIVATED");
     }
 
-    if (path !== 'audit' && !urlStr.includes('/oauth/callback') && !urlStr.includes('/oauth/url') && !urlStr.includes('/api/oauth/url') && !isPublic) {
+    // Vercel Cron Jobs (configured via vercel.json's `crons` key) invoke their
+    // target URL directly with `Authorization: Bearer $CRON_SECRET` (Vercel's
+    // own convention) — they have no Firebase user to sign in as, so they can
+    // never satisfy the normal Bearer-ID-token check below. Recognize that
+    // specific header value as an authorized system caller for cron routes
+    // only, while leaving manual/interactive calls to those same routes
+    // (e.g. an admin clicking "Refresh" in the UI) to authenticate normally
+    // with their real Firebase ID token as before.
+    const cronSecret = process.env.CRON_SECRET;
+    const cronAuthHeader = req.headers.authorization;
+    const isAuthorizedCronCall =
+      !!cronSecret &&
+      path?.startsWith('cron') &&
+      cronAuthHeader === `Bearer ${cronSecret}`;
+
+    if (path !== 'audit' && !urlStr.includes('/oauth/callback') && !urlStr.includes('/oauth/url') && !urlStr.includes('/api/oauth/url') && !isPublic && !isAuthorizedCronCall) {
       const token = req.headers.authorization?.split('Bearer ')[1];
       if (!token) {
         console.log("AUTH MIDDLEWARE REJECTING - No token provided", { url: req.url, path });
@@ -171,6 +187,8 @@ export default async function handler(req: any, res: any) {
       } else {
          req.user = { uid: 'dev-mode' };
       }
+    } else if (isAuthorizedCronCall) {
+      req.user = { uid: 'system-cron' };
     }
 
     console.log({
@@ -203,6 +221,19 @@ export default async function handler(req: any, res: any) {
     else if (path?.startsWith('workspace')) targetHandler = (await import('../src/api-lib/handlers/workspace.js')).default;
     else if (path?.startsWith('cron'))      targetHandler = (await import('../src/api-lib/handlers/cron.js')).default;
     else if (path?.startsWith('public'))    targetHandler = (await import('../src/api-lib/handlers/public.js')).default;
+    else if (path?.startsWith('communication')) targetHandler = (await import('../src/api-lib/handlers/communication.js')).default;
+    else if (path === 'agents' || path?.startsWith('agents/')) targetHandler = (await import('../src/api-lib/handlers/agents-execute.js')).default;
+    else if (path === 'ops' || path?.startsWith('ops/')) {
+      // ops.ts is a plain handler (not an Express Router) that reads req.path
+      // directly rather than req.query.path, since it was originally only ever
+      // invoked from server.ts's `app.use('/api', ...)` middleware where Express
+      // computes req.path relative to that mount point automatically. This
+      // serverless entrypoint uses a raw request object with no such getter, so
+      // req.path is undefined here unless we set it ourselves to match what
+      // Express would have produced (e.g. "/ops/runtime/status").
+      req.path = '/' + path;
+      targetHandler = (await import('../src/api-lib/handlers/ops.js')).default;
+    }
     else {
       // Provide fallback based on `action` parameter if `path` is not exactly one of the above.
       switch (action) {
@@ -221,7 +252,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (targetHandler) {
-      const expressRouters = ['oauth', 'google', 'workspace', 'cron'];
+      const expressRouters = ['oauth', 'google', 'workspace', 'cron', 'communication'];
       const matchedRouter = expressRouters.find(r => path?.startsWith(r));
       if (matchedRouter) {
         // Rewrite req.url so the Express Router matches it

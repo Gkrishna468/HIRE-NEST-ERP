@@ -2,8 +2,27 @@ import express from "express";
 import { db } from "../../lib/firebase-admin.js";
 import { MailOSService } from "../services/MailOSService.js";
 import { AgentOrchestrator } from "../services/AgentOrchestrator.js";
+import { renewExpiringGmailWatches } from "./workspace.js";
 
 const cronHandler = express.Router();
+
+// Defense in depth: api/index.ts already gates every /api/cron/* request
+// behind either a valid Firebase user token or a matching CRON_SECRET
+// Bearer header before it ever reaches this router (see the
+// isAuthorizedCronCall check there). This second check just makes sure that
+// invariant holds even if this router is ever mounted somewhere else
+// (e.g. directly in server.ts, which does not have that same gate) — it's a
+// no-op when CRON_SECRET isn't set, matching this codebase's existing
+// pattern of graceful degradation rather than hard-failing local/dev setups
+// that haven't configured it yet.
+cronHandler.use((req: any, res, next) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return next(); // not configured yet — don't lock anyone out
+  if (req.user?.uid) return next(); // already authenticated as a real user upstream
+  const authHeader = req.headers.authorization;
+  if (authHeader === `Bearer ${cronSecret}`) return next();
+  return res.status(401).json({ error: "Unauthorized" });
+});
 
 cronHandler.get("/orchestrator/reset", async (req, res) => {
   try {
@@ -111,12 +130,21 @@ cronHandler.get("/os/coo-review", async (req, res) => {
   }
 });
 
+cronHandler.get("/gmail-watch-renew", async (req, res) => {
+  if (!db) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+  try {
+    console.log("[CRON] Renewing Gmail watches expiring within 48h");
+    const results = await renewExpiringGmailWatches();
+    res.json({ success: true, renewed: results.length, details: results });
+  } catch (e: any) {
+    console.error("[CRON] Gmail watch renewal failed:", e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 cronHandler.get("/mailos-sync", async (req, res) => {
-  // In production, verify cron auth token here
-  // const authHeader = req.headers.authorization;
-  // if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-  //     return res.status(401).json({ error: 'Unauthorized' });
-  // }
 
   if (!db) {
     return res.status(500).json({ error: "Database not initialized" });

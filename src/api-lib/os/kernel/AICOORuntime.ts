@@ -27,13 +27,20 @@ export class AICOORuntime {
   }
 
   private static async triggerProcessing() {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/api/ops?action=process_coo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    }).catch(() => {
-      /* ignore */
-    });
+    // This used to fire an HTTP self-request to /api/ops?action=process_coo,
+    // but in a serverless deployment there is no listener at
+    // NEXT_PUBLIC_API_URL (usually unset, defaulting to a dead
+    // http://localhost:3000) and that route also requires an auth bearer
+    // token this background trigger never had — so the request always
+    // failed silently and coo_inbox items sat PENDING forever. Since this
+    // runs in the same process as the caller, just invoke the work directly.
+    try {
+      const { OutboxDispatcher } = await import("./OutboxDispatcher.js");
+      await OutboxDispatcher.dispatchOutbox();
+      await this.processInbox();
+    } catch (e) {
+      console.error("[AICOORuntime] trigger failed", e);
+    }
   }
 
   /**
@@ -149,12 +156,26 @@ export class AICOORuntime {
   }
 
   private static async triggerOfficeProcessing() {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-    fetch(`${baseUrl}/api/ops?action=process_offices`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    }).catch(() => {
-      /* ignore */
-    });
+    // Same self-fetch problem as triggerProcessing() above — replaced with a
+    // direct in-process call to each office's queue processor.
+    try {
+      const officeModules = [
+        { mod: "./MatchingOffice.js", cls: "MatchingOffice" },
+        { mod: "./RecruitmentOffice.js", cls: "RecruitmentOffice" },
+        { mod: "./IntakeOffice.js", cls: "IntakeOffice" },
+        { mod: "./VendorOffice.js", cls: "VendorOffice" },
+        { mod: "./SubmissionOffice.js", cls: "SubmissionOffice" },
+        { mod: "./ClientOffice.js", cls: "ClientOffice" },
+        { mod: "./FounderOffice.js", cls: "FounderOffice" },
+      ];
+      for (const { mod, cls } of officeModules) {
+        const imported: any = await import(mod);
+        const OfficeClass = imported[cls];
+        const office = new OfficeClass();
+        await office.processQueue();
+      }
+    } catch (e) {
+      console.error("[AICOORuntime] trigger office failed", e);
+    }
   }
 }

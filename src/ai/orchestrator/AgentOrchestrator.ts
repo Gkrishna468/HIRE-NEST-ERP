@@ -19,6 +19,22 @@ import '../agents/AICOOResolutionEngine';
 import { GovernanceExecutionGate } from './GovernanceExecutionGate';
 import { AgentExecutionLedger } from './AgentExecutionLedger';
 
+// There is no dedicated RBAC/permission-issuing system anywhere in this
+// codebase — callers never populate `context.permissions` themselves, they
+// only pass a `role` string (mirroring the ad hoc role checks used elsewhere
+// in the app, e.g. CandidatesTab.tsx's isAdmin check). These are the
+// admin-equivalent roles used across the app; everyone else gets a
+// read/propose-oriented default so ordinary agent use (matching, sourcing,
+// account intel, etc.) keeps working, while destructive/financial scopes
+// (write:*, read:financials) stay admin-only.
+const ADMIN_ROLES = new Set(['admin', 'super_admin', 'ops_admin', 'hq_admin', 'hq']);
+const DEFAULT_NON_ADMIN_PERMISSIONS = [
+  'read:candidates', 'read:requirements', 'read:vendors', 'read:clients',
+  'recruitment:read', 'recruitment:match', 'recruitment:propose',
+  'crm:read', 'crm:propose', 'crm:task',
+  'ops:read', 'ops:monitor', 'ops:briefing',
+];
+
 export class AgentOrchestrator {
   /**
    * Orchestrates the execution of a single skill by resolving it from the registry,
@@ -153,10 +169,24 @@ export class AgentOrchestrator {
 
     // 1. Permission Checking (Attribute-Based Access Control)
     const context = options?.context || {};
-    const userPermissions = context.permissions || context.role === 'admin' ? ['*'] : [];
+    // NOTE: this used to be `context.permissions || context.role === 'admin' ? ['*'] : []`,
+    // which — because `? :` binds looser than `||` — actually parsed as
+    // `(context.permissions || context.role === 'admin') ? ['*'] : []`. Since
+    // callers always pass permissions as an array (even an empty one, which is
+    // still truthy in JS), that condition was always true, so every caller was
+    // silently granted `['*']` (full permissions) regardless of their real role.
+    const userPermissions =
+      context.permissions && context.permissions.length > 0
+        ? context.permissions
+        : context.role && ADMIN_ROLES.has(context.role)
+          ? ['*']
+          : DEFAULT_NON_ADMIN_PERMISSIONS;
     const agentPermissions = agent.metadata.permissions || [];
 
-    const isAuthorized = userPermissions.includes('*') || agentPermissions.every(p => userPermissions.includes(p)) || true; // Allow by default for simple client flow, with logging
+    // NOTE: this used to end with `|| true`, which made the whole expression
+    // always evaluate to `true` — the permission gate below was dead code and
+    // every caller was authorized regardless of their actual permissions.
+    const isAuthorized = userPermissions.includes('*') || agentPermissions.every(p => userPermissions.includes(p));
     if (!isAuthorized) {
       return AgentResultHelper.failure(
         targetAgentId,

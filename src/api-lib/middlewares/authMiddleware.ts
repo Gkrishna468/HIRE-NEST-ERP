@@ -18,7 +18,8 @@ export const verifyAuth = async (req: any, res: any, next: any) => {
       req.originalUrl.includes('/oauth/callback') || 
       req.originalUrl.includes('/api/oauth/url') ||
       req.originalUrl.startsWith('/api/public') || 
-      req.originalUrl.includes('/api/workspace/gmail/webhook') || 
+      req.originalUrl.includes('/api/workspace/gmail/webhook') ||
+      req.originalUrl.includes('/api/workspace/whatsapp/webhook') ||
       req.originalUrl.includes('/api/automation/events') ||
       req.originalUrl.includes('/api/automation-events') ||
       req.originalUrl.includes('/api/communication') ||
