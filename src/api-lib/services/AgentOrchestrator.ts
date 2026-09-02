@@ -127,7 +127,23 @@ export class AgentOrchestrator {
                 await SchedulingOffice.handleEvent(payload.eventType, payload.payload, payload.orgId);
                 return { success: true, output: { status: 'Scheduling Loop Completed Successfully' }, tokens: 1200, model: 'gemini-3.7-flash' };
             default:
-                return { success: true, output: { status: 'processed' }, tokens: 450, model: 'gemini-3.7-flash' };
+                // NOTE: this used to unconditionally return
+                // `{ success: true, output: { status: 'processed' }, ... }`
+                // for ANY agentId that didn't match one of the cases above —
+                // which, since only a handful of the many agent ids seeded
+                // into the `ai_agents` collection are actually implemented
+                // here (e.g. 'RecruitmentOffice', 'ResumeParserSkill',
+                // 'RequirementParserSkill', 'VendorOffice', 'ClientOffice',
+                // 'founder-office', 'gtm-office', etc. are NOT), meant every
+                // one of those agents reported a fake "success" on every run
+                // and never actually did anything. Report the gap honestly
+                // instead so it shows up as a failed job/degraded agent
+                // rather than a silent no-op disguised as success.
+                return {
+                    success: false,
+                    output: null,
+                    error: `No execution logic is implemented for agent "${agentId}" yet.`,
+                };
         }
     }
 
@@ -158,7 +174,18 @@ export class AgentOrchestrator {
             try {
                 const result = await this.executeAgentLogic(job.agentId, job.event);
                 const duration = Date.now() - start;
-                
+
+                // NOTE: this used to record every non-throwing result as a
+                // 'completed'/'success' job regardless of `result.success` —
+                // executeAgentLogic's default case returned a resolved
+                // promise with `success: true` for unimplemented agents, so
+                // this never actually branched on failure before. Now that
+                // the default case honestly reports `success: false`, honor
+                // it here too instead of only reacting to a thrown error.
+                if (!result.success) {
+                    throw new Error(result.error || `Agent "${job.agentId}" execution reported failure.`);
+                }
+
                 // Mark job as completed
                 await doc.ref.update({ 
                     status: 'completed', 

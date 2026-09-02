@@ -1,5 +1,15 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron",
+      "schedule": "*/5 * * * *"
+    }
+  ],
   "rewrites": [
+    {
+      "source": "/api/cron",
+      "destination": "/api/index?path=cron"
+    },
     {
       "source": "/api/user/:path*",
       "destination": "/api/index?path=user&action=:path"

@@ -429,6 +429,20 @@ export class CommunicationGuardService {
         throw new Error(request.metadata.simulatedProviderError);
       }
 
+      // NOTE: this used to unconditionally set dispatchResponse to
+      // {status:'DELIVERED', ...} above and never actually call any
+      // provider's API for any channel — every WhatsApp/SMS/Email send
+      // reported success to the caller (and to the audit trail) without a
+      // single real message ever leaving this system. WhatsApp now makes a
+      // real call to Meta's Cloud API when it's configured, and reports
+      // NOT_CONFIGURED honestly (not a fake DELIVERED) when it isn't.
+      if (request.channel === 'WHATSAPP') {
+        dispatchResponse = await this.dispatchWhatsApp(cleanRecipient, request.content || '');
+        if (dispatchResponse.status !== 'DELIVERED') {
+          throw new Error(dispatchResponse.error || 'WhatsApp dispatch failed');
+        }
+      }
+
       // Update Audit log status to DISPATCHED
       if (adminDb) {
         await adminDb.collection(this.COLLECTION_AUDIT).doc(decision.auditId).set({
@@ -499,6 +513,62 @@ export class CommunicationGuardService {
     } catch (err: any) {
       console.warn("[CommunicationGuardService] Failed to query audit logs:", err.message);
       return [];
+    }
+  }
+
+  /**
+   * Sends a text message via Meta's WhatsApp Cloud API. Requires
+   * WHATSAPP_CLOUD_API_TOKEN and WHATSAPP_PHONE_NUMBER_ID to be set (see
+   * .env.example) — these were previously declared there but never read by
+   * any code anywhere in the repo. `to` should be a phone number in
+   * international format (digits only, no leading +).
+   */
+  private static async dispatchWhatsApp(to: string, body: string): Promise<{ status: string; provider: string; messageId?: string; error?: string }> {
+    const token = process.env.WHATSAPP_CLOUD_API_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+    const apiVersion = process.env.WHATSAPP_API_VERSION || 'v20.0';
+
+    if (!token || !phoneNumberId) {
+      return {
+        status: 'NOT_CONFIGURED',
+        provider: 'WHATSAPP_CLOUD_API',
+        error: 'WHATSAPP_CLOUD_API_TOKEN / WHATSAPP_PHONE_NUMBER_ID are not set — see .env.example.',
+      };
+    }
+
+    const toNumber = to.replace(/[^\d]/g, '');
+    if (!toNumber) {
+      return { status: 'FAILED', provider: 'WHATSAPP_CLOUD_API', error: `Recipient "${to}" is not a usable phone number.` };
+    }
+
+    try {
+      const res = await fetch(`https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: toNumber,
+          type: 'text',
+          text: { body: body || '' },
+        }),
+      });
+
+      const json: any = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const errMsg = json?.error?.message || `Meta API returned HTTP ${res.status}`;
+        console.error('[CommunicationGuardService] WhatsApp dispatch failed:', errMsg, json);
+        return { status: 'FAILED', provider: 'WHATSAPP_CLOUD_API', error: errMsg };
+      }
+
+      const messageId = json?.messages?.[0]?.id;
+      return { status: 'DELIVERED', provider: 'WHATSAPP_CLOUD_API', messageId };
+    } catch (err: any) {
+      console.error('[CommunicationGuardService] WhatsApp dispatch threw:', err?.message || err);
+      return { status: 'FAILED', provider: 'WHATSAPP_CLOUD_API', error: err?.message || String(err) };
     }
   }
 }

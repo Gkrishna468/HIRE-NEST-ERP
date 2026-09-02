@@ -549,6 +549,22 @@ export class MailOSService {
         return node.id;
     }
 
+    private static async createVendorPartnership(data: any, orgId: string, createdBy: string, from: string, senderName?: string) {
+        const node = await GraphRepository.createVendor(orgId, {
+            companyName: data.companyName || data.vendorName || data.company || senderName || from.split('@')[0],
+            contactEmail: data.contactEmail || from,
+            contactName: data.contactName || senderName || '',
+            specialization: data.specialization || data.skills || [],
+            location: data.location || 'Unknown',
+            status: 'PENDING_REVIEW',
+            source: 'GMAIL',
+            sourceEmail: from,
+            notes: data.summary || '',
+        }, createdBy);
+
+        return node.id;
+    }
+
     static async analyzeMessage(uid: string, orgId: string, messageId: string, forceIntent?: string) {
         if (!db) throw new Error("Database not initialized");
 
@@ -746,6 +762,20 @@ export class MailOSService {
                         }
                     }
                 }
+            } else if (entityType === 'Vendor Partnership') {
+                try {
+                    primaryEntityId = await this.createVendorPartnership(classification.data || {}, orgId, uid, from, senderName);
+
+                    await db.collection('mail_entities').add({
+                        messageId,
+                        entityId: primaryEntityId,
+                        entityType: 'VENDOR',
+                        workspaceId: orgId,
+                        createdAt: new Date()
+                    });
+                } catch (vendorErr) {
+                    console.error("[MailOS] Vendor partnership extraction failed:", vendorErr);
+                }
             }
 
             entityId = primaryEntityId;
@@ -768,17 +798,25 @@ export class MailOSService {
             // Publish high-level business event for AI Workforce
             if (primaryEntityId) {
                 try {
-                    await EventBus.publish(entityType === 'Requirement' ? 'REQUIREMENT_CREATED' : 'CANDIDATE_CREATED', {
+                    let publishEventName = 'CANDIDATE_CREATED';
+                    if (entityType === 'Requirement') {
+                        publishEventName = 'REQUIREMENT_CREATED';
+                    } else if (entityType === 'Vendor Partnership') {
+                        publishEventName = 'VENDOR_CREATED';
+                    }
+
+                    await EventBus.publish(publishEventName, {
                         id: primaryEntityId,
                         entityId: primaryEntityId,
                         candidateId: entityType === 'Candidate Submission' ? primaryEntityId : undefined,
                         requirementId: entityType === 'Requirement' ? primaryEntityId : undefined,
+                        vendorId: entityType === 'Vendor Partnership' ? primaryEntityId : undefined,
                         type: entityType,
                         workspaceId: orgId,
                         source: 'MAILOS_AUTO_INTAKE',
                         metadata: classification.data
                     }, 'MAILOS_SERVICE', orgId);
-                    console.log(`[MailOS] Published ${entityType} creation event to EventBus.`);
+                    console.log(`[MailOS] Published ${entityType} creation event (${publishEventName}) to EventBus.`);
                 } catch (busErr) {
                     console.error("[MailOS] Failed to publish entity creation event:", busErr);
                 }

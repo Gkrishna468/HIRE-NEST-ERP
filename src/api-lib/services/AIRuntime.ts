@@ -26,6 +26,16 @@ export interface AIRuntimeResponse {
     compressionRatio?: number;
     originalTokens?: number;
     errorMessage?: string;
+    // True when this response came from AIGateway's deterministic rule-engine
+    // fallback (e.g. the model tier requested via modelPreference is
+    // disabled, or the live model call failed and a fallbackRuleEngine ran
+    // instead) rather than a real model call. `outcome` alone can't signal
+    // this — it stays "success" either way so existing callers that just
+    // check `outcome === "success"` keep working — but callers that care
+    // about response quality (e.g. anything shown to a human as an
+    // AI-generated analysis) should check this before treating the response
+    // as a real model output.
+    degraded?: boolean;
 }
 
 export class AIRuntime {
@@ -76,7 +86,12 @@ export class AIRuntime {
             return {
                 provider: gatewayRes.provider,
                 model: gatewayRes.model,
-                confidence: parsedData?.confidence || 95,
+                // NOTE: this used to be `parsedData?.confidence || 95`, which
+                // silently replaced an explicit confidence of 0 (e.g. the
+                // fallback executive_summary response, which sets
+                // confidence: 0 specifically to signal "don't trust this")
+                // with a falsely-reassuring 95, since 0 is falsy in JS.
+                confidence: parsedData?.confidence ?? 95,
                 data: parsedData,
                 latency: Date.now() - startTime,
                 cacheHit: gatewayRes.cached,
@@ -84,7 +99,8 @@ export class AIRuntime {
                 retryCount: 0,
                 tokensSaved: gatewayRes.tokensSaved || 0,
                 compressionRatio: gatewayRes.compressionRatio || 1.0,
-                originalTokens: gatewayRes.originalTokens || 0
+                originalTokens: gatewayRes.originalTokens || 0,
+                degraded: gatewayRes.provider === "RuleEngine",
             };
         } catch (error: any) {
             console.error("[AIRuntime] Gateway analysis failed:", error);

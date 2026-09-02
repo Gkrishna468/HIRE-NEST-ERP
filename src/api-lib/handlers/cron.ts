@@ -24,6 +24,100 @@ cronHandler.use((req: any, res, next) => {
   return res.status(401).json({ error: "Unauthorized" });
 });
 
+// Root cron orchestration endpoint triggered every 5 minutes by Vercel Cron.
+// Dispatches all periodic background routines sequentially with failure isolation.
+cronHandler.get("/", async (req, res) => {
+  console.log("[CRON] Root cron run started");
+  const report: Record<string, any> = {
+    timestamp: new Date().toISOString(),
+    results: {},
+  };
+
+  if (!db) {
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+
+  // 1. Process AI Agent Queue
+  try {
+    await AgentOrchestrator.processQueue();
+    report.results.agentQueue = "processed";
+  } catch (err: any) {
+    console.error("[CRON] Agent queue processing failed:", err.message);
+    report.results.agentQueue = `failed: ${err.message}`;
+  }
+
+  // 2. Trigger Scheduled Routines
+  try {
+    await EnterpriseScheduler.triggerScheduledRoutines();
+    report.results.scheduler = "triggered";
+  } catch (err: any) {
+    console.error("[CRON] Enterprise scheduler routines failed:", err.message);
+    report.results.scheduler = `failed: ${err.message}`;
+  }
+
+  // 3. Continuous Matching Engine Cycle
+  try {
+    const matchRes = await ContinuousMatchingEngine.executeNetworkMatchCycle();
+    report.results.continuousMatching = matchRes || "completed";
+  } catch (err: any) {
+    console.error("[CRON] Continuous matching cycle failed:", err.message);
+    report.results.continuousMatching = `failed: ${err.message}`;
+  }
+
+  // 4. Renew Expiring Gmail Watches
+  try {
+    const renewed = await renewExpiringGmailWatches();
+    report.results.gmailWatches = { count: renewed.length, details: renewed };
+  } catch (err: any) {
+    console.error("[CRON] Gmail watch renewal failed:", err.message);
+    report.results.gmailWatches = `failed: ${err.message}`;
+  }
+
+  // 5. MailOS Sync for Active Connections
+  try {
+    const connectionsSnap = await db
+      .collection("workspace_connections")
+      .where("gmail", "==", true)
+      .limit(50)
+      .get();
+
+    const mailSyncResults: any[] = [];
+    await Promise.all(
+      connectionsSnap.docs.map(async (doc) => {
+        const uid = doc.id;
+        const userDoc = await db.collection("users").doc(uid).get();
+        const orgId = userDoc.data()?.organizationId || userDoc.data()?.orgId;
+
+        if (orgId) {
+          try {
+            const processed = await MailOSService.syncInbox(uid, orgId);
+            mailSyncResults.push({ uid, orgId, processedCount: processed.length });
+
+            if (processed.length > 0) {
+              await db.collection("mailos_executions").add({
+                uid,
+                orgId,
+                timestamp: new Date().toISOString(),
+                processedCount: processed.length,
+                details: processed,
+              });
+            }
+          } catch (e: any) {
+            console.error(`[CRON] Inbox sync failed for ${uid}:`, e.message);
+            mailSyncResults.push({ uid, orgId, error: e.message });
+          }
+        }
+      })
+    );
+    report.results.mailSync = mailSyncResults;
+  } catch (err: any) {
+    console.error("[CRON] MailOS sync routine failed:", err.message);
+    report.results.mailSync = `failed: ${err.message}`;
+  }
+
+  res.json({ success: true, report });
+});
+
 cronHandler.get("/orchestrator/reset", async (req, res) => {
   try {
     if (!db) throw new Error("Database not initialized");

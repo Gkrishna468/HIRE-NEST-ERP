@@ -836,15 +836,21 @@ export class AIGateway {
                 }
             });
         } else if (feature === "executive_summary") {
+            // NOTE: this used to hardcode revenueProjection: "$145,000" and
+            // activePipelineCount: 18 — invented numbers with no connection
+            // to any real data, presented to a founder/exec as if they were
+            // an actual briefing. Report the degraded state honestly instead
+            // of fabricating financials.
             defaultFallbackText = JSON.stringify({
-                briefing: "Good morning! Platform operations are running cleanly under deterministic rule mode.",
+                briefing: "AI briefing generation is currently unavailable (running under deterministic fallback mode). Figures below could not be computed — check pipeline/revenue dashboards directly for current numbers.",
                 actionItems: [
                     { id: "act-1", title: "Review pending candidates in queue", type: "review" }
                 ],
-                summary: "Executive Briefing: Operations nominal.",
-                revenueProjection: "$145,000",
-                activePipelineCount: 18,
-                confidence: 85
+                summary: "Executive Briefing unavailable: AI Gateway is in fallback mode, no live analysis was performed.",
+                revenueProjection: null,
+                activePipelineCount: null,
+                degraded: true,
+                confidence: 0
             });
         } else if (request.schema) {
             defaultFallbackText = JSON.stringify({
