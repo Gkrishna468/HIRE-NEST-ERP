@@ -222,6 +222,13 @@ export default async function handler(req: any, res: any) {
     else if (path?.startsWith('cron'))      targetHandler = (await import('../src/api-lib/handlers/cron.js')).default;
     else if (path?.startsWith('public'))    targetHandler = (await import('../src/api-lib/handlers/public.js')).default;
     else if (path?.startsWith('communication')) targetHandler = (await import('../src/api-lib/handlers/communication.js')).default;
+    else if (path?.startsWith('billing'))   targetHandler = (await import('../src/api-lib/handlers/billing.js')).default;
+    else if (path?.startsWith('events'))    targetHandler = (await import('../src/api-lib/handlers/events.js')).default;
+    else if (path?.startsWith('ruflo'))     targetHandler = (await import('../src/api-lib/handlers/ruflo.js')).default;
+    else if (path?.startsWith('kill-switch')) targetHandler = (await import('../src/api-lib/handlers/kill-switch.js')).default;
+    else if (path?.startsWith('recruiter-os')) targetHandler = (await import('../src/api-lib/handlers/recruiter-os.js')).default;
+    else if (path?.startsWith('executive-metrics')) targetHandler = (await import('../src/api-lib/handlers/executive-metrics.js')).default;
+    else if (path?.startsWith('daily-briefing')) targetHandler = (await import('../src/api-lib/handlers/daily-briefing.js')).default;
     else if (path === 'agents' || path?.startsWith('agents/')) targetHandler = (await import('../src/api-lib/handlers/agents-execute.js')).default;
     else if (path === 'ops' || path?.startsWith('ops/')) {
       // ops.ts is a plain handler (not an Express Router) that reads req.path
@@ -252,7 +259,20 @@ export default async function handler(req: any, res: any) {
     }
 
     if (targetHandler) {
-      const expressRouters = ['oauth', 'google', 'workspace', 'cron', 'communication'];
+      const expressRouters = [
+        'oauth', 
+        'google', 
+        'workspace', 
+        'cron', 
+        'communication',
+        'billing',
+        'events',
+        'ruflo',
+        'kill-switch',
+        'recruiter-os',
+        'executive-metrics',
+        'daily-briefing'
+      ];
       const matchedRouter = expressRouters.find(r => path?.startsWith(r));
       if (matchedRouter) {
         // Rewrite req.url so the Express Router matches it
