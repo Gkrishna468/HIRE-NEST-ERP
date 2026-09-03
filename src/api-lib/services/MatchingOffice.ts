@@ -227,6 +227,10 @@ export class MatchingOffice {
         
         // Update requirement match index
         await this.updateRequirementMatchIndex(requirementId);
+
+        // Publish MATCH_COMPLETED event
+        const effectiveOrgId = orgId || reqObj.orgId || reqObj.tenantId || "GLOBAL";
+        await EventBus.publish('MATCH_COMPLETED', reqObj, 'MATCHING_OFFICE', effectiveOrgId);
     }
 
     static async matchCandidate(candidateId: string, orgId?: string) {
@@ -244,7 +248,7 @@ export class MatchingOffice {
         
         // Fetch all active/open requirements
         const reqSnapshot = await db.collection("requirements_public")
-            .where("status", "==", "OPEN")
+            .where("status", "in", ["PUBLISHED", "ACTIVE", "OPEN"])
             .get();
             
         const requirements = reqSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -253,6 +257,10 @@ export class MatchingOffice {
             await this.computeAndSaveMatch(candObj, reqObj);
             // Update requirement match index
             await this.updateRequirementMatchIndex(reqObj.id);
+
+            // Publish MATCH_COMPLETED event for this requirement
+            const effectiveOrgId = orgId || reqObj.orgId || reqObj.tenantId || "GLOBAL";
+            await EventBus.publish('MATCH_COMPLETED', reqObj, 'MATCHING_OFFICE', effectiveOrgId);
         }
     }
 

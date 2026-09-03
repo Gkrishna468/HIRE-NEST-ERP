@@ -9,11 +9,6 @@ export class EventBus {
     private static async ensureDefaultSubscriptions() {
         if (!db) return;
         
-        const subSnap = await db.collection('event_subscriptions').limit(1).get();
-        if (!subSnap.empty) return; // Already seeded
-        
-        console.log('[EventBus] No event subscriptions found. Seeding default subscription registry...');
-        
         const defaultSubs = [
             { id: 'sub-coo-all', eventType: '*', subscriber: 'AICOORuntime', priority: 100, enabled: true },
             { id: 'sub-graph-all', eventType: '*', subscriber: 'GraphProjectionWorker', priority: 90, enabled: true },
@@ -27,6 +22,7 @@ export class EventBus {
             { id: 'sub-cand-recruitment', eventType: 'CANDIDATE_CREATED', subscriber: 'RecruitmentOffice', priority: 8, enabled: true },
             { id: 'sub-match-recruitment', eventType: 'MATCH_COMPLETED', subscriber: 'RecruitmentOffice', priority: 10, enabled: true },
             { id: 'sub-match-client', eventType: 'MATCH_COMPLETED', subscriber: 'ClientOffice', priority: 8, enabled: true },
+            { id: 'sub-match-completed-vendor', eventType: 'MATCH_COMPLETED', subscriber: 'VendorOffice', priority: 8, enabled: true },
             { id: 'sub-req-matching-created', eventType: 'REQUIREMENT_CREATED', subscriber: 'matching-office', priority: 10, enabled: true },
             { id: 'sub-req-matching-updated', eventType: 'REQUIREMENT_UPDATED', subscriber: 'matching-office', priority: 10, enabled: true },
             { id: 'sub-req-matching-closed', eventType: 'REQUIREMENT_CLOSED', subscriber: 'matching-office', priority: 10, enabled: true },
@@ -37,13 +33,21 @@ export class EventBus {
             { id: 'sub-cand-matched', eventType: 'CANDIDATE_MATCHED', subscriber: 'ClientOffice', priority: 10, enabled: true },
             { id: 'sub-cand-shortlisted', eventType: 'CANDIDATE_SHORTLISTED', subscriber: 'RecruitmentOffice', priority: 10, enabled: true },
             { id: 'sub-cand-submitted', eventType: 'CANDIDATE_SUBMITTED', subscriber: 'SubmissionOrchestrator', priority: 10, enabled: true },
-            { id: 'sub-interview-scheduling', eventType: 'INTERVIEW_REQUESTED', subscriber: 'scheduling-office', priority: 10, enabled: true }
+            { id: 'sub-interview-scheduling', eventType: 'INTERVIEW_REQUESTED', subscriber: 'scheduling-office', priority: 10, enabled: true },
+            { id: 'sub-match-created-recruitment', eventType: 'MATCH_CREATED', subscriber: 'RecruitmentOffice', priority: 10, enabled: true },
+            { id: 'sub-match-updated-recruitment', eventType: 'MATCH_UPDATED', subscriber: 'RecruitmentOffice', priority: 10, enabled: true },
+            { id: 'sub-match-created-client', eventType: 'MATCH_CREATED', subscriber: 'ClientOffice', priority: 8, enabled: true },
+            { id: 'sub-match-updated-client', eventType: 'MATCH_UPDATED', subscriber: 'ClientOffice', priority: 8, enabled: true }
         ];
         
         for (const sub of defaultSubs) {
-            await db.collection('event_subscriptions').doc(sub.id).set(sub);
+            const docRef = db.collection('event_subscriptions').doc(sub.id);
+            const docSnap = await docRef.get();
+            if (!docSnap.exists) {
+                await docRef.set(sub);
+                console.log(`[EventBus] Seeded missing default subscription: ${sub.id}`);
+            }
         }
-        console.log('[EventBus] Successfully seeded event subscription registry.');
     }
 
     // Register business events and route to appropriate agents
