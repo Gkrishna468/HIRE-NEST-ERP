@@ -27,6 +27,8 @@ export interface ProcessResumeOptions {
   userId?: string;
   forceRescan?: boolean;
   adminDb?: any;
+  resumeUrl?: string;
+  resumeFileName?: string;
 }
 
 export interface ProcessResumeResponse {
@@ -72,6 +74,8 @@ export class ResumeProcessingPipeline {
       userId = "system",
       forceRescan = false,
       adminDb,
+      resumeUrl,
+      resumeFileName,
     } = options;
 
     const startedAt = new Date().toISOString();
@@ -337,46 +341,74 @@ export class ResumeProcessingPipeline {
     const resolvedCandidateId = inputCandidateId || `HN-CAN-${crypto.randomBytes(4).toString("hex")}`;
     const nowIso = new Date().toISOString();
 
+    // Resolve identity aliases: name / full_name / candidateName, email / emailAddress, phone / mobile / mobileNumber / phoneNumber
+    const rawName = candidateProfile.candidateName || candidateProfile.name || "Unnamed Candidate";
+    const rawEmail = candidateProfile.email || "";
+    const rawPhone = candidateProfile.phone || "";
+
+    // Normalize empty/null explicitly. Do NOT use fake pending@ or placeholder emails
+    const finalEmail = (rawEmail.includes("pending@") || rawEmail.includes("mock@") || rawEmail.trim() === "")
+      ? null
+      : rawEmail.trim();
+
+    const finalPhone = (rawPhone.trim() === "")
+      ? null
+      : rawPhone.trim();
+
+    // Determine parsing quality
+    const hasEmailPhone = Boolean(finalEmail && finalPhone);
+    const parsingQuality = hasEmailPhone && candidateProfile.normalizedSkills.length > 5 ? "HIGH" : "MEDIUM";
+
     const candidateDoc = {
       candidateId: resolvedCandidateId,
       id: resolvedCandidateId,
-      fullName: candidateProfile.candidateName,
-      name: candidateProfile.candidateName,
-      primaryEmail: candidateProfile.email || null,
-      email: candidateProfile.email || null,
-      phone: candidateProfile.phone || null,
-      phoneHash: candidateProfile.phone || null,
+      fullName: rawName,
+      name: rawName,
+      primaryEmail: finalEmail,
+      email: finalEmail,
+      phone: finalPhone,
+      phoneHash: finalPhone,
+      ownerUserId: userId || "system",
+      ownerId: userId || "system",
+      ownerType: userRole === "vendor" ? "Vendor" : "Internal Recruiter",
+      organizationId: orgId,
+      vendorId: orgId,
+      sourceOrganizations: [orgId],
+      candidateHash: documentHash,
+      resumeHash: documentHash,
+      resumeUrl: resumeUrl || null,
+      resumeFileName: resumeFileName || filename,
+      fileName: resumeFileName || filename,
+      currentTitle: candidateProfile.currentRole || candidateProfile.designations?.[0] || "Software Engineer",
+      currentRole: candidateProfile.currentRole || candidateProfile.designations?.[0] || "Software Engineer",
+      skills: candidateProfile.normalizedSkills || [],
+      rawSkills: candidateProfile.skills || [],
+      experience: `${candidateProfile.totalExperience} Years`,
+      totalExperience: candidateProfile.totalExperience,
       location: candidateProfile.location || "Remote / Flexible",
       currentLocation: candidateProfile.currentLocation || candidateProfile.location || "Remote / Flexible",
-      totalExperience: candidateProfile.totalExperience,
-      experience: `${candidateProfile.totalExperience} Years`,
-      skills: candidateProfile.normalizedSkills,
-      rawSkills: candidateProfile.skills,
-      companies: candidateProfile.companies,
-      designations: candidateProfile.designations,
-      employmentHistory: candidateProfile.employmentHistory,
-      currentRole: candidateProfile.currentRole,
-      currentCompany: candidateProfile.currentCompany,
-      education: candidateProfile.education,
-      certifications: candidateProfile.certifications,
-      noticePeriod: candidateProfile.noticePeriod,
-      summary: candidateProfile.summary,
-      linkedin: candidateProfile.linkedin,
-      github: candidateProfile.github,
-      portfolio: candidateProfile.portfolio,
+      parsingStatus: "COMPLETED",
+      parsingQuality: parsingQuality,
+      source: "resume_upload",
+      
+      companies: candidateProfile.companies || [],
+      designations: candidateProfile.designations || [],
+      employmentHistory: candidateProfile.employmentHistory || [],
+      currentCompany: candidateProfile.currentCompany || "",
+      education: candidateProfile.education || [],
+      certifications: candidateProfile.certifications || [],
+      noticePeriod: candidateProfile.noticePeriod || "",
+      summary: candidateProfile.summary || "",
+      linkedin: candidateProfile.linkedin || "",
+      github: candidateProfile.github || "",
+      portfolio: candidateProfile.portfolio || "",
       resumeText: extractedText,
-      resumeHash: documentHash,
       resumeProcessingId: ledgerEntry.resumeProcessingId,
       resumeProcessingStatus: "COMPLETED",
       status: "COMPLETED",
       distillationStatus: "COMPLETED",
       pipelineStage: "Candidate Added",
       requiresManualReview: false,
-      vendorId: orgId,
-      sourceOrganizations: [orgId],
-      ownerId: userId || orgId,
-      ownerType: userRole === "vendor" ? "VENDOR" : "RECRUITER",
-      ownerName: userRole === "vendor" ? "Vendor Partner" : "Internal Recruiter",
       createdFrom: userRole === "vendor" ? "VENDOR" : "RECRUITER",
       createdVia: "IMPORT",
       createdByRole: (userRole || "recruiter").toUpperCase(),
@@ -392,7 +424,39 @@ export class ResumeProcessingPipeline {
     if (adminDb) {
       try {
         await adminDb.collection("candidatePool").doc(resolvedCandidateId).set(candidateDoc, { merge: true });
-        console.log(`[PIPELINE] Successfully persisted candidate ${resolvedCandidateId} ("${candidateProfile.candidateName}")`);
+        console.log(`[PIPELINE] Successfully persisted canonical candidate ${resolvedCandidateId} ("${rawName}")`);
+
+        // Save candidate versions snapshot referencing candidateId
+        const versionPayload = {
+          candidateId: resolvedCandidateId,
+          name: rawName,
+          email: finalEmail,
+          phone: finalPhone,
+          title: candidateDoc.currentTitle,
+          skills: candidateDoc.skills,
+          createdAt: nowIso
+        };
+        await adminDb.collection("candidate_versions").doc().set(versionPayload);
+        console.log(`[PIPELINE] Saved candidate snapshot in candidate_versions for ${resolvedCandidateId}`);
+
+        // Publish CANDIDATE_PARSED event only after Firestore persistence succeeds
+        try {
+          const eventPayload = {
+            candidateId: resolvedCandidateId,
+            candidateName: rawName,
+            email: finalEmail || "Not provided",
+            phone: finalPhone || "Not provided",
+            ownerUserId: userId,
+            ownerType: userRole === "vendor" ? "Vendor" : "Internal Recruiter",
+            organizationId: orgId
+          };
+          const { EventBus } = await import("../../api-lib/services/EventBus.js");
+          await EventBus.publish("CANDIDATE_PARSED", eventPayload, "RESUME_INGESTION_PIPELINE", orgId);
+          console.log(`[PIPELINE] Published CANDIDATE_PARSED event successfully for ${resolvedCandidateId}`);
+        } catch (evErr) {
+          console.error(`[PIPELINE] Event publishing for CANDIDATE_PARSED failed:`, evErr);
+        }
+
       } catch (dbErr: any) {
         console.warn(`[PIPELINE] Firestore candidate write warning (will still complete pipeline):`, dbErr?.message || dbErr);
       }

@@ -72,8 +72,8 @@ export default async function handler(req: any, res: any) {
     const requestId = `ext_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const forceRescan = req.query.forceRescan === "true" || req.body?.forceRescan === "true" || req.body?.forceRescan === true;
     const orgId = req.headers["x-org-id"] || req.body?.orgId || "HQ";
-    const userRole = req.user?.role || "recruiter";
-    const userId = req.user?.uid || "system";
+    const userRole = req.user?.role || req.body?.userRole || "recruiter";
+    const userId = req.user?.uid || req.body?.userId || "system";
 
     console.log(
       `[EXTRACTION] [${requestId}] Ingesting "${originalname}" (${mimetype}, ${fileSize} bytes, forceRescan: ${forceRescan})...`,
@@ -102,6 +102,8 @@ export default async function handler(req: any, res: any) {
         userId,
         forceRescan,
         adminDb,
+        resumeUrl: req.body?.resumeUrl || null,
+        resumeFileName: req.body?.resumeFileName || originalname,
       });
 
       if (!pipelineResult.success) {

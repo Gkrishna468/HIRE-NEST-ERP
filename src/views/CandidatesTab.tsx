@@ -1159,121 +1159,55 @@ export default function CandidatesTab() {
       const file = files[i];
 
       try {
-        const candId = "CAND-" + Math.random().toString(36).substr(2, 9);
+        const candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
         const tempName = file.name
           .replace(/\.[^/.]+$/, "")
           .replace(/[-_]/g, " ");
 
-        // Simulate Front-end Extraction so user sees immediate results in the textarea
-        // Because Firebase Storage might block unauthorized uploads, we bypass it,
-        // and instead post directly to our backend extraction pipeline to read the text.
-        const formData = new FormData();
-        formData.append("file", file);
-        let extText = `[Parse Failure Fallback]
-The resume text for ${tempName} could not be fully extracted. Please review the original document manually.`;
-
-        try {
-          const res = await fetch("/api/extract-text", {
-            method: "POST",
-            body: formData,
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.text) extText = data.text;
-          }
-        } catch (e) {
-          console.warn("Extraction failed, skipping text extraction", e);
-        }
-
-        // --- ADD DEDUPLICATION BEFORE SAVING ---
-        const encoder = new TextEncoder();
-        const hashBuffer = await crypto.subtle.digest(
-          "SHA-256",
-          encoder.encode(extText),
-        );
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const resumeHash = hashArray
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("");
-
-        try {
-          const { getDocs, query, collection, where } =
-            await import("firebase/firestore");
-          
-          let existingUserQ;
-          if (userRole === "admin" || userRole === "super_admin" || userRole === "ops_admin" || userRole === "hq_admin") {
-            existingUserQ = query(
-              collection(db, "candidatePool"),
-              where("resumeHash", "==", resumeHash),
-            );
-          } else {
-            existingUserQ = query(
-              collection(db, "candidatePool"),
-              where("resumeHash", "==", resumeHash),
-              where("vendorId", "==", userOrgId),
-            );
-          }
-          
-          const existingDocs = await getDocs(existingUserQ);
-          if (!existingDocs.empty) {
-            console.warn(
-              `File ${file.name} is a duplicate submission (resume matched exactly). Skipping.`,
-            );
-            continue; // Skip this duplicate fully
-          }
-        } catch (e) {
-            console.warn("Duplicate check failed:", e);
-        }
-        // ----------------------------------------
-        
         let storagePath = "";
+        let resumeUrl = "";
         try {
-            const { ref, uploadBytes } = await import("firebase/storage");
+            const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
             const { storage } = await import("../lib/firebase");
             const fileRef = ref(storage, `resumes/${userOrgId}/${candId}/${file.name}`);
             await uploadBytes(fileRef, file);
             storagePath = fileRef.fullPath;
+            try {
+              resumeUrl = await getDownloadURL(fileRef);
+            } catch (urlErr) {
+              console.warn("getDownloadURL failed", urlErr);
+            }
         } catch (storageErr) {
             console.warn("Storage upload failed, continuing without storage:", storageErr);
         }
 
-        if (combinedExtractedText)
-          combinedExtractedText += `
+        // Call our robust backend extraction and deterministic parsing pipeline
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("candidateId", candId);
+        formData.append("resumeUrl", resumeUrl);
+        formData.append("resumeFileName", file.name);
+        formData.append("orgId", userOrgId);
+        formData.append("userId", auth.currentUser?.uid || "system");
+        formData.append("userRole", userRole || "recruiter");
 
----
-
-${extText}`;
-        else combinedExtractedText = extText;
-
-        // Create lightweight QUEUED candidate in Firestore
-        await setDoc(doc(db, "candidatePool", candId), {
-          fullName: tempName,
-          name: tempName,
-          primaryEmail: null,
-          email: null,
-          candidateId: candId,
-          vendorId: userOrgId,
-          sourceOrganizations: [userOrgId],
-          pipelineStage: "Candidate Added",
-          source: "Bulk Upload",
-          resumeText: extText,
-          resumeHash: resumeHash,
-          fileName: file.name,
-          storagePath: storagePath,
-          uploadedBy: auth.currentUser?.uid || "SYSTEM",
-          status: "QUEUED",
-          distillationStatus: "PROCESSING",
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          createdFrom: userRole === "vendor" ? "VENDOR" : "RECRUITER",
-          createdVia: "IMPORT",
-          createdByRole: (userRole || "vendor").toUpperCase() as any,
-          ownerType: userRole === "vendor" ? "VENDOR" : "RECRUITER",
-          ownerId: userOrgId || auth.currentUser?.uid || "system",
-          ownerName: userRole === "vendor" ? "Vendor Partner" : "Internal Recruiter",
-          acquiredAt: new Date().toISOString(),
-          acquisitionMethod: "IMPORT" as any,
+        const res = await fetch("/api/extract-text", {
+          method: "POST",
+          body: formData,
         });
+
+        if (!res.ok) {
+          throw new Error(`Extraction failed with status ${res.status}`);
+        }
+
+        const data = await res.json();
+        const extText = data.text || "";
+
+        if (combinedExtractedText) {
+          combinedExtractedText += `\n\n---\n\n${extText}`;
+        } else {
+          combinedExtractedText = extText;
+        }
 
         await emitEvent(
           "CandidateUploaded",
@@ -1282,19 +1216,27 @@ ${extText}`;
           auth.currentUser?.uid || "system",
           userRole || "vendor",
           {
-            name: tempName,
+            name: data.candidateName || tempName,
             source: "File Upload",
             fileName: file.name,
             vendorId: userOrgId,
           }
         );
 
-        // Process inline using the AI proxy
-        enrichCandidate(candId, extText);
-
         successCount++;
+        
+        // Update stats to show parsing completion
+        setProcessingStats((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            processing: Math.max(0, prev.processing - 1),
+            parsed: (prev.parsed || 0) + 1,
+          };
+        });
+
       } catch (err: any) {
-        console.error("File upload failed", err);
+        console.error("File upload/extraction failed:", err);
         failCount++;
       }
     }

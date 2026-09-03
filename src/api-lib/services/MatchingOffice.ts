@@ -43,6 +43,7 @@ export class MatchingOffice {
                     break;
                 }
                     
+                case 'CANDIDATE_PARSED':
                 case 'CANDIDATE_CREATED':
                 case 'CANDIDATE_UPDATED': {
                     const candId = payload.candidateId || payload.id;
@@ -196,6 +197,15 @@ export class MatchingOffice {
                     summary: matchResult.summary
                 }, 'MATCHING_OFFICE', effectiveOrgId);
 
+                // Publish MATCH_COMPLETED event
+                await EventBus.publish('MATCH_COMPLETED', {
+                    candidateId: cand.id,
+                    requirementId: reqObj.id,
+                    matchId,
+                    score: mScore,
+                    matchStatus: matchResult.suggestedAction || "RECRUITER_REVIEW"
+                }, 'MATCHING_OFFICE', effectiveOrgId);
+
                 return matchPayload;
             }
         } catch (err) {
@@ -227,10 +237,6 @@ export class MatchingOffice {
         
         // Update requirement match index
         await this.updateRequirementMatchIndex(requirementId);
-
-        // Publish MATCH_COMPLETED event
-        const effectiveOrgId = orgId || reqObj.orgId || reqObj.tenantId || "GLOBAL";
-        await EventBus.publish('MATCH_COMPLETED', reqObj, 'MATCHING_OFFICE', effectiveOrgId);
     }
 
     static async matchCandidate(candidateId: string, orgId?: string) {
@@ -257,10 +263,6 @@ export class MatchingOffice {
             await this.computeAndSaveMatch(candObj, reqObj);
             // Update requirement match index
             await this.updateRequirementMatchIndex(reqObj.id);
-
-            // Publish MATCH_COMPLETED event for this requirement
-            const effectiveOrgId = orgId || reqObj.orgId || reqObj.tenantId || "GLOBAL";
-            await EventBus.publish('MATCH_COMPLETED', reqObj, 'MATCHING_OFFICE', effectiveOrgId);
         }
     }
 
