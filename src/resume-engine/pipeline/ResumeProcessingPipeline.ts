@@ -275,12 +275,93 @@ export class ResumeProcessingPipeline {
       candidateProfile.candidateName === "Unknown Candidate" ||
       candidateProfile.candidateName === "Local Mock Generated";
 
+    const resolvedCandidateId = inputCandidateId || `HN-CAN-${crypto.randomBytes(4).toString("hex")}`;
+    const nowIso = new Date().toISOString();
+
     if (isSynthetic || candidateProfile.status === "MANUAL_REVIEW_REQUIRED") {
-      console.warn(`[PIPELINE] Identity incomplete for "${filename}". Flagging as MANUAL_REVIEW.`);
+      console.warn(`[PIPELINE] Identity incomplete for "${filename}". Flagging as MANUAL_REVIEW and creating canonical document.`);
+      
+      const rawName = isSynthetic ? "Unnamed Candidate" : (candidateProfile.candidateName || "Unnamed Candidate");
+      const rawEmail = candidateProfile.email || "";
+      const rawPhone = candidateProfile.phone || "";
+      const finalEmail = (rawEmail.includes("pending@") || rawEmail.includes("mock@") || rawEmail.trim() === "") ? null : rawEmail.trim();
+      const finalPhone = (rawPhone.trim() === "") ? null : rawPhone.trim();
+
+      const candidateDoc = {
+        candidateId: resolvedCandidateId,
+        id: resolvedCandidateId,
+        fullName: rawName,
+        name: rawName,
+        primaryEmail: finalEmail,
+        email: finalEmail,
+        phone: finalPhone,
+        phoneHash: finalPhone,
+        ownerUserId: userId || "system",
+        ownerId: userId || "system",
+        ownerType: userRole === "vendor" ? "Vendor" : "Internal Recruiter",
+        organizationId: orgId,
+        vendorId: orgId,
+        sourceOrganizations: [orgId],
+        candidateHash: documentHash,
+        resumeHash: documentHash,
+        resumeUrl: resumeUrl || null,
+        resumeFileName: resumeFileName || filename,
+        fileName: resumeFileName || filename,
+        currentTitle: candidateProfile.currentRole || "Needs Manual Review",
+        currentRole: candidateProfile.currentRole || "Needs Manual Review",
+        skills: candidateProfile.normalizedSkills || [],
+        rawSkills: candidateProfile.skills || [],
+        experience: `${candidateProfile.totalExperience || 0} Years`,
+        totalExperience: candidateProfile.totalExperience || 0,
+        location: candidateProfile.location || "Remote / Flexible",
+        currentLocation: candidateProfile.location || "Remote / Flexible",
+        parsingStatus: "MANUAL_REVIEW",
+        parsingQuality: "LOW",
+        source: "resume_upload",
+        companies: candidateProfile.companies || [],
+        designations: candidateProfile.designations || [],
+        employmentHistory: candidateProfile.employmentHistory || [],
+        currentCompany: candidateProfile.currentCompany || "",
+        education: candidateProfile.education || [],
+        certifications: candidateProfile.certifications || [],
+        noticePeriod: candidateProfile.noticePeriod || "",
+        summary: candidateProfile.summary || "",
+        linkedin: candidateProfile.linkedin || "",
+        github: candidateProfile.github || "",
+        portfolio: candidateProfile.portfolio || "",
+        resumeText: extractedText,
+        resumeProcessingId: ledgerEntry.resumeProcessingId,
+        resumeProcessingStatus: "MANUAL_REVIEW",
+        status: "MANUAL_REVIEW",
+        distillationStatus: "MANUAL_REVIEW",
+        pipelineStage: "Manual Review",
+        requiresManualReview: true,
+        createdFrom: userRole === "vendor" ? "VENDOR" : "RECRUITER",
+        createdVia: "IMPORT",
+        createdByRole: (userRole || "recruiter").toUpperCase(),
+        acquiredAt: nowIso,
+        acquisitionMethod: "IMPORT",
+        resumeLastParsedAt: nowIso,
+        resumeParserVersion: ResumeLedgerService.PARSER_VERSION,
+        resumeSource: forceRescan ? "force_rescan" : "deterministic_pipeline",
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      if (adminDb) {
+        try {
+          await adminDb.collection("candidatePool").doc(resolvedCandidateId).set(candidateDoc, { merge: true });
+          console.log(`[PIPELINE] Created MANUAL_REVIEW document in candidatePool for ${resolvedCandidateId}`);
+        } catch (dbErr: any) {
+          console.error(`[PIPELINE] Critical: Failed to save manual review candidate to candidatePool:`, dbErr);
+          throw new Error(`Failed to save manual review candidate: ${dbErr?.message || dbErr}`);
+        }
+      }
+
       const finalized = await ResumeLedgerService.finalizeEntry(ledgerEntry.resumeProcessingId, {
         status: "MANUAL_REVIEW",
         stage: "MANUAL_REVIEW",
-        candidateId: inputCandidateId,
+        candidateId: resolvedCandidateId,
         candidateName: isSynthetic ? "" : candidateProfile.candidateName,
         email: candidateProfile.email || "",
         phone: candidateProfile.phone || "",
@@ -300,7 +381,7 @@ export class ResumeProcessingPipeline {
       return {
         success: true,
         processingId: ledgerEntry.resumeProcessingId,
-        candidateId: inputCandidateId,
+        candidateId: resolvedCandidateId,
         status: "MANUAL_REVIEW",
         stage: "MANUAL_REVIEW",
         candidateName: isSynthetic ? "Not detected" : candidateProfile.candidateName,
@@ -337,9 +418,6 @@ export class ResumeProcessingPipeline {
       },
       adminDb
     );
-
-    const resolvedCandidateId = inputCandidateId || `HN-CAN-${crypto.randomBytes(4).toString("hex")}`;
-    const nowIso = new Date().toISOString();
 
     // Resolve identity aliases: name / full_name / candidateName, email / emailAddress, phone / mobile / mobileNumber / phoneNumber
     const rawName = candidateProfile.candidateName || candidateProfile.name || "Unnamed Candidate";
@@ -458,7 +536,8 @@ export class ResumeProcessingPipeline {
         }
 
       } catch (dbErr: any) {
-        console.warn(`[PIPELINE] Firestore candidate write warning (will still complete pipeline):`, dbErr?.message || dbErr);
+        console.error(`[PIPELINE] Critical Firestore candidate write failed:`, dbErr?.message || dbErr);
+        throw new Error(`Candidate persistence failed: ${dbErr?.message || dbErr}`);
       }
     }
 

@@ -2205,14 +2205,14 @@ export default function CandidatesTab() {
                         
                         resolvedCandId = c.candidateId || resolvedCandId;
 
-                        // Only update the document since backend already created it
+                        // Ensure the document exists and update with storage path
                         try {
-                          await updateDoc(doc(db, "candidatePool", resolvedCandId), {
+                          await setDoc(doc(db, "candidatePool", resolvedCandId), {
                             storagePath: storagePath,
                             updatedAt: serverTimestamp(),
-                          });
+                          }, { merge: true });
                         } catch (e) {
-                          console.warn("Failed to update existing candidate document with storage path.", e);
+                          console.warn("Failed to update or set candidate document with storage path.", e);
                         }
 
                         // Trigger notifications & events
