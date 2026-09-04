@@ -59,6 +59,36 @@ export function parseResumeDeterministically(params: {
     status = "PARTIAL";
   }
 
+  // Determine field-specific extraction confidence details
+  const nameConfidence = contact.candidateName ? (text.indexOf(contact.candidateName) < 1000 ? "high" : "medium") : "low";
+  const emailConfidence = contact.email ? "high" : "low";
+  const phoneConfidence = contact.phone ? "high" : "low";
+  const locationConfidence = contact.location && contact.location !== "Remote / Flexible" ? "high" : "low";
+  
+  let experienceConfidence: "high" | "medium" | "low" = "low";
+  if (employment.history.length >= 2) {
+    experienceConfidence = "high";
+  } else if (employment.history.length === 1 || employment.totalExperience !== 3.5) {
+    experienceConfidence = "medium";
+  }
+  
+  let educationConfidence: "high" | "medium" | "low" = "low";
+  const firstEdu = education[0];
+  if (firstEdu && firstEdu.institution !== "Technological University" && firstEdu.degree !== "Bachelor of Technology") {
+    educationConfidence = "high";
+  } else if (education.length > 0 && firstEdu.institution !== "Technological University") {
+    educationConfidence = "medium";
+  }
+
+  const confidenceDetails = {
+    name: nameConfidence as "high" | "medium" | "low",
+    email: emailConfidence as "high" | "medium" | "low",
+    phone: phoneConfidence as "high" | "medium" | "low",
+    location: locationConfidence as "high" | "medium" | "low",
+    experience: experienceConfidence as "high" | "medium" | "low",
+    education: educationConfidence as "high" | "medium" | "low",
+  };
+
   return {
     name: contact.candidateName || "",
     candidateName: contact.candidateName || "",
@@ -85,6 +115,7 @@ export function parseResumeDeterministically(params: {
     summary,
     status,
     parsedAt: new Date().toISOString(),
+    confidenceDetails,
   };
 }
 

@@ -84,19 +84,41 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
   };
 
   const processFileItem = async (file: File, index: number, isForce: boolean): Promise<ProcessingResultItem> => {
+    // Generate canonical candidateId on frontend
+    const candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
+    
     // Update UI stage to EXTRACTING
     setResults(prev => prev.map((r, idx) => idx === index ? {
       ...r,
+      candidateId: candId,
       status: "EXTRACTING",
       stage: "EXTRACTING",
       timeline: [
         ...r.timeline,
-        { stage: "EXTRACTING", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: `Extracting text from ${file.name}...` }
+        { stage: "EXTRACTING", status: "IN_PROGRESS", timestamp: new Date().toLocaleTimeString(), message: `Uploading & extracting text from ${file.name}...` }
       ]
     } : r));
 
+    // Upload file to Firebase Storage first to preserve physical file and get canonical download URL
+    let resumeUrl = "";
+    try {
+      const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
+      const { storage } = await import("../lib/firebase");
+      const resolvedOrgId = (userOrgId === "HQ" || !userOrgId) ? "ORG-GLOBAL-HQ" : userOrgId;
+      const fileRef = ref(storage, `resumes/${resolvedOrgId}/${candId}/${file.name}`);
+      await uploadBytes(fileRef, file);
+      resumeUrl = await getDownloadURL(fileRef);
+    } catch (storageErr) {
+      console.warn("Storage upload failed in bulk import, proceeding with direct file ingestion:", storageErr);
+    }
+
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("candidateId", candId);
+    if (resumeUrl) {
+      formData.append("resumeUrl", resumeUrl);
+    }
+    formData.append("resumeFileName", file.name);
     if (isForce) {
       formData.append("forceRescan", "true");
     }
@@ -123,7 +145,7 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
           fileName: file.name,
           fileSize: file.size,
           processingId: data.processingId || data.ledgerId,
-          candidateId: data.candidateId,
+          candidateId: data.candidateId || candId,
           status: isManual ? "MANUAL_REVIEW" : (data.status || "COMPLETED"),
           stage: data.stage || (isManual ? "MANUAL_REVIEW" : "COMPLETED"),
           name: data.candidateName || "",
@@ -232,11 +254,24 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
 
     setResults(initialResults);
 
-    // Controlled sequential / batch processing with isolated failures
-    for (let i = 0; i < files.length; i++) {
-      setCurrentProcessingIndex(i);
-      await processFileItem(files[i], i, forceRescan);
-    }
+    // Controlled concurrent processing with isolated failures (concurrency limit = 4)
+    const concurrencyLimit = 4;
+    const queue = Array.from({ length: files.length }, (_, i) => i);
+    
+    const worker = async () => {
+      while (queue.length > 0) {
+        const nextIdx = queue.shift();
+        if (nextIdx === undefined) break;
+        setCurrentProcessingIndex(nextIdx);
+        await processFileItem(files[nextIdx], nextIdx, forceRescan);
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(concurrencyLimit, files.length) },
+      () => worker()
+    );
+    await Promise.all(workers);
 
     setStep("RESULTS");
   };
@@ -247,10 +282,23 @@ export function BulkUploadProcess({ onClose, onImport, userOrgId }: BulkUploadPr
       .map((item, idx) => item.status === "FAILED" ? idx : -1)
       .filter(idx => idx !== -1);
 
-    for (const idx of failedIndices) {
-      setCurrentProcessingIndex(idx);
-      await processFileItem(files[idx], idx, true); // force fresh retry on failed items
-    }
+    const concurrencyLimit = 4;
+    const queue = [...failedIndices];
+    
+    const worker = async () => {
+      while (queue.length > 0) {
+        const nextIdx = queue.shift();
+        if (nextIdx === undefined) break;
+        setCurrentProcessingIndex(nextIdx);
+        await processFileItem(files[nextIdx], nextIdx, true); // force fresh retry on failed items
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(concurrencyLimit, failedIndices.length) },
+      () => worker()
+    );
+    await Promise.all(workers);
     setIsRetrying(false);
   };
 

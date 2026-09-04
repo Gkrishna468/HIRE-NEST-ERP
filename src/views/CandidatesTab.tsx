@@ -1169,7 +1169,8 @@ export default function CandidatesTab() {
         try {
             const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
             const { storage } = await import("../lib/firebase");
-            const fileRef = ref(storage, `resumes/${userOrgId}/${candId}/${file.name}`);
+            const resolvedOrgId = (userOrgId === "HQ" || !userOrgId) ? "ORG-GLOBAL-HQ" : userOrgId;
+            const fileRef = ref(storage, `resumes/${resolvedOrgId}/${candId}/${file.name}`);
             await uploadBytes(fileRef, file);
             storagePath = fileRef.fullPath;
             try {
@@ -2025,272 +2026,44 @@ export default function CandidatesTab() {
              userOrgId={userOrgId || "HQ"}
              onImport={async (imported) => {
                  setShowBulkUpload(false);
-                 setProcessingStats({ show: true, processing: imported.length, total: imported.length, parsed: 0, failed: 0, matched: 0 });
-                 
+                 const count = imported.length;
+                 const failed = imported.filter((x: any) => x.status === "FAILED").length;
+                 const parsed = count - failed;
+
+                 setProcessingStats({
+                     show: true,
+                     processing: 0,
+                     total: count,
+                     parsed: parsed,
+                     failed: failed,
+                     matched: 0
+                 });
+
                  try {
-                     const { doc, setDoc, updateDoc, serverTimestamp, getDocs, query, collection, where } = await import("firebase/firestore");
-                     
-                     let count = 0;
-                     for(const c of imported) {
-                        let candId = "HN-CAN-" + Math.random().toString(36).substr(2, 9);
-                        const file = c.originalFile;
-                        
-                        // Compute resume text hash for deduplication
-                        let resumeHash = "";
-                        try {
-                          const encoder = new TextEncoder();
-                          const hashBuffer = await crypto.subtle.digest(
-                            "SHA-256",
-                            encoder.encode(c.extractedText || ""),
-                          );
-                          const hashArray = Array.from(new Uint8Array(hashBuffer));
-                          resumeHash = hashArray
-                            .map((b) => b.toString(16).padStart(2, "0"))
-                            .join("");
-                        } catch (hashErr) {
-                          console.warn("Hashing failed", hashErr);
-                        }
-
-                        // Deduplication check
-                        if (resumeHash) {
-                          try {
-                            let existingUserQ;
-                            if (userRole === "admin" || userRole === "super_admin" || userRole === "ops_admin" || userRole === "hq_admin") {
-                              existingUserQ = query(
-                                collection(db, "candidatePool"),
-                                where("resumeHash", "==", resumeHash),
-                              );
-                            } else {
-                              existingUserQ = query(
-                                collection(db, "candidatePool"),
-                                where("resumeHash", "==", resumeHash),
-                                where("vendorId", "==", userOrgId),
-                              );
-                            }
-                            
-                            const existingDocs = await getDocs(existingUserQ);
-                            if (!existingDocs.empty) {
-                              console.warn(`File ${c.fileName} is a duplicate submission (resume matched exactly). Skipping.`);
-                              setProcessingStats((prev) => {
-                                if (!prev) return null;
-                                return {
-                                  ...prev,
-                                  processing: Math.max(0, prev.processing - 1),
-                                  parsed: (prev.parsed || 0) + 1,
-                                };
-                              });
-                              continue;
-                            }
-                          } catch (dupErr) {
-                            console.warn("Duplicate check failed in bulk import:", dupErr);
-                          }
-                        }
-
-                        // Storage Upload
-                        let storagePath = "";
-                        if (file) {
-                          try {
-                              const { ref, uploadBytes } = await import("firebase/storage");
-                              const { storage } = await import("../lib/firebase");
-                              const fileRef = ref(storage, `resumes/${userOrgId || "HQ"}/${candId}/${c.fileName}`);
-                              await uploadBytes(fileRef, file);
-                              storagePath = fileRef.fullPath;
-                          } catch (storageErr) {
-                              console.warn("Storage upload failed in bulk import:", storageErr);
-                          }
-                        }
-
-                        let isDuplicate = false;
-                        let duplicateReason = "";
-                        let status = "COMPLETED";
-                        let distillationStatus = "COMPLETED";
-                        let pipelineStage = "Candidate Added";
-                        let resolvedCandId = candId;
-
-                        const email = c.parsedProfile?.email || "";
-                        const phone = c.parsedProfile?.phone || "";
-                        const name = c.name || c.parsedProfile?.name || "";
-
-                        if (email && email !== "No Email Provided" && !email.includes("pending@") && !email.includes("mock@")) {
-                          try {
-                            const candHash = await generateIdentityHash(
-                              email,
-                              phone !== "No Phone Provided" ? phone : "",
-                              name,
-                              c.parsedProfile?.linkedin || "",
-                              c.parsedProfile?.experience || ""
-                            );
-
-                            if (candHash) {
-                              const vaultResult = await checkAndClaimOwnership(
-                                candHash,
-                                userOrgId || "HQ",
-                                name,
-                                "Bulk Upload AI Parse",
-                                email,
-                                phone !== "No Phone Provided" ? phone : ""
-                              );
-
-                              if (!vaultResult.success) {
-                                isDuplicate = true;
-                                status = "DISPUTED";
-                                duplicateReason = `Ownership Vault: Active claim held by another vendor. Dispute ${vaultResult.disputeId} generated.`;
-                              } else {
-                                // check for local duplicates
-                                const q = query(
-                                  collection(db, "candidatePool"),
-                                  where("email", "==", email)
-                                );
-                                const snap = await getDocs(q);
-                                const incomingPhone = phone ? phone.replace(/\D/g, "") : "";
-                                const duplicates = snap.docs.filter((d) => {
-                                  const targetData = d.data();
-                                  if (targetData.vendorId !== (userOrgId || "HQ") && targetData.ownerVendorId !== (userOrgId || "HQ")) return false;
-                                  if (resumeHash && resumeHash === targetData.resumeHash) return true;
-                                  const existingPhone = targetData.phone ? targetData.phone.replace(/\D/g, "") : "";
-                                  if (existingPhone && incomingPhone && existingPhone === incomingPhone) return true;
-                                  return false;
-                                });
-
-                                if (duplicates.length > 0) {
-                                  const primary = duplicates[0];
-                                  resolvedCandId = primary.id;
-                                  console.log(`[IDENTITY RESOLUTION] Merging duplicate upload into existing primary ID: ${resolvedCandId}`);
-                                  await updateDoc(doc(db, "candidatePool", resolvedCandId), {
-                                    resumeText: c.extractedText || primary.data().resumeText,
-                                    updatedAt: serverTimestamp(),
-                                  });
-                                  // Skip creating new document since it is a duplicate
-                                  setProcessingStats((prev) => {
-                                    if (!prev) return null;
-                                    return {
-                                      ...prev,
-                                      processing: Math.max(0, prev.processing - 1),
-                                      parsed: (prev.parsed || 0) + 1,
-                                    };
-                                  });
-                                  continue;
-                                }
-                              }
-                            }
-                          } catch (vaultErr) {
-                            console.warn("Vault check failed in bulk import:", vaultErr);
-                          }
-                        }
-
-                        const isSyntheticName = !name || 
-                          name === "Candidate Missing Skill" || 
-                          name === "Needs Manual Review" || 
-                          name === "Parsing Pending" || 
-                          name === "Unknown Candidate" || 
-                          name === "Unnamed Candidate" || 
-                          name === "Candidate Unknown" || 
-                          name.startsWith("CAND_P6D_FAIL") ||
-                          name.includes("Needs Manual Review");
-
-                        const isFailed = c.status === "FAILED" || c.status === "MANUAL_REVIEW";
-
-                        if (isFailed || isSyntheticName) {
-                          console.warn(`Skipping candidate enrichment for failed/synthetic candidate: ${name || c.fileName}`);
-                          setProcessingStats((prev) => {
-                            if (!prev) return null;
-                            return {
-                              ...prev,
-                              processing: Math.max(0, prev.processing - 1),
-                              failed: (prev.failed || 0) + 1,
-                            };
-                          });
-                          continue;
-                        }
-                        
-                        resolvedCandId = c.candidateId || resolvedCandId;
-
-                        // Ensure the document exists and update with storage path
-                        try {
-                          await setDoc(doc(db, "candidatePool", resolvedCandId), {
-                            storagePath: storagePath,
-                            updatedAt: serverTimestamp(),
-                          }, { merge: true });
-                        } catch (e) {
-                          console.warn("Failed to update or set candidate document with storage path.", e);
-                        }
-
-                        // Trigger notifications & events
-                        try {
-                          await publishEvent({
-                            type: "success",
-                            title: "Candidate Parsed",
-                            message: `Intelligence extraction complete for ${name}`,
-                            recipients: ["GLOBAL_ADMIN", "GLOBAL_CLIENT", "GLOBAL_VENDOR"],
-                          });
-
-                          await emitEvent(
-                            "CandidateEnriched",
-                            "CANDIDATE",
-                            resolvedCandId,
-                            auth.currentUser?.uid || "system",
-                            userRole || "system",
-                            {
-                              name: name,
-                              score: 0,
-                              vendorId: userOrgId || "HQ",
-                            }
-                          );
-                        } catch (eventErr) {
-                          console.warn("Failed to publish event during bulk import:", eventErr);
-                        }
-                          
-                        count++;
-                     }
-
-                     // Trigger background matchmaking scan after successful batch parsing
-                     try {
-                       const idToken = await auth.currentUser?.getIdToken();
-                       fetch("/api/rescan-matches", {
-                         method: "POST",
-                         headers: {
-                           "Content-Type": "application/json",
-                           "Authorization": `Bearer ${idToken}`
-                         },
-                         body: JSON.stringify({ orgId: userOrgId || "HQ" })
-                       }).then(res => res.json())
-                         .then(data => {
-                           console.log("[MATCH_ENGINE_AUTO] Successful match scan:", data);
-                           setProcessingStats((prev) => {
-                             if (!prev) return null;
-                             return {
-                               ...prev,
-                               processing: 0,
-                               parsed: count,
-                               matched: data.matchUpdatesCount || 0
-                             };
-                           });
-                         })
-                         .catch(err => {
-                           console.error("[MATCH_ENGINE_AUTO] Match scan failed:", err);
-                           setProcessingStats((prev) => {
-                             if (!prev) return null;
-                             return {
-                               ...prev,
-                               processing: 0,
-                               parsed: count
-                             };
-                           });
+                     const idToken = await auth.currentUser?.getIdToken();
+                     fetch("/api/rescan-matches", {
+                       method: "POST",
+                       headers: {
+                         "Content-Type": "application/json",
+                         "Authorization": `Bearer ${idToken}`
+                       },
+                       body: JSON.stringify({ orgId: userOrgId || "HQ" })
+                     }).then(res => res.json())
+                       .then(data => {
+                         console.log("[MATCH_ENGINE_AUTO] Successful match scan:", data);
+                         setProcessingStats((prev) => {
+                           if (!prev) return null;
+                           return {
+                             ...prev,
+                             matched: data.matchUpdatesCount || 0
+                           };
                          });
-                     } catch (matchErr) {
-                       console.error("[MATCH_ENGINE_AUTO] Auth Token error:", matchErr);
-                       setProcessingStats((prev) => {
-                         if (!prev) return null;
-                         return {
-                           ...prev,
-                           processing: 0,
-                           parsed: count
-                         };
+                       })
+                       .catch(err => {
+                         console.error("[MATCH_ENGINE_AUTO] Match scan failed:", err);
                        });
-                     }
-
                  } catch (e) {
-                     console.error("Import error", e);
+                     console.error("Import matchmaking trigger error:", e);
                  }
              }}
           />

@@ -118,6 +118,14 @@ export interface CandidateProfile {
   summary: string;
   status: "PARSED" | "PARTIAL" | "MANUAL_REVIEW_REQUIRED";
   parsedAt: string;
+  confidenceDetails?: {
+    name: "high" | "medium" | "low";
+    email: "high" | "medium" | "low";
+    phone: "high" | "medium" | "low";
+    location: "high" | "medium" | "low";
+    experience: "high" | "medium" | "low";
+    education: "high" | "medium" | "low";
+  };
 }
 
 export interface SkillMatchDetail {
