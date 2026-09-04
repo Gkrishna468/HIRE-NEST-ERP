@@ -722,7 +722,10 @@ private static async _compute_getEnterpriseCommandCenterMetrics(): Promise<any> 
     requirements.forEach((r: any) => {
       if (r.status === "OPEN" && (r.matchCount || 0) < 3) {
         reqsAtRisk++;
-        revRisk += (Number(r.budget) || 200000) * 0.15; // roughly 15% platform margin
+        const rawAmt = typeof r.budget === "object" ? (r.budget?.amount || r.budget?.clientBudget) : r.budget;
+        const bAmt = Number(rawAmt);
+        const normalizedAmt = (bAmt && !isNaN(bAmt)) ? (bAmt <= 150 ? bAmt * 100000 : bAmt) : 200000;
+        revRisk += normalizedAmt * 0.15; // roughly 15% platform margin
       }
     });
 

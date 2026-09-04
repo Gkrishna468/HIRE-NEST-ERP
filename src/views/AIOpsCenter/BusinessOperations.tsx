@@ -10,6 +10,7 @@ import {
   UserCheck
 } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { formatINR } from "../../lib/currency";
 import { RequirementOwnership } from "./AIOpsTypes";
 
 interface BusinessOperationsProps {
@@ -31,27 +32,27 @@ export default function BusinessOperations({
   const reqDetailsMap: Record<string, { techStack: string[]; compensation: string; priority: "HIGH" | "MEDIUM" | "CRITICAL"; timezone: string }> = {
     "req-091": {
       techStack: ["Kubernetes", "Golang", "Docker", "AWS"],
-      compensation: "$150k - $175k Base",
+      compensation: "₹28 LPA - ₹35 LPA Base",
       priority: "CRITICAL",
-      timezone: "EST (New York)"
+      timezone: "IST / Hybrid"
     },
     "req-092": {
       techStack: ["TypeScript", "Next.js", "TailwindCSS", "Node.js"],
-      compensation: "$130k - $150k Base",
+      compensation: "₹22 LPA - ₹28 LPA Base",
       priority: "HIGH",
-      timezone: "PST (San Francisco)"
+      timezone: "IST / Remote"
     },
     "req-093": {
       techStack: ["Python", "PyTorch", "FastAPI", "PostgreSQL"],
-      compensation: "$180k - $210k Base",
+      compensation: "₹35 LPA - ₹45 LPA Base",
       priority: "CRITICAL",
-      timezone: "EST (Boston)"
+      timezone: "IST / Bengaluru"
     },
     "req-094": {
       techStack: ["Java", "Spring Boot", "Microservices", "GCP"],
-      compensation: "$140k - $165k Base",
+      compensation: "₹25 LPA - ₹32 LPA Base",
       priority: "MEDIUM",
-      timezone: "CST (Chicago)"
+      timezone: "IST / Hybrid"
     }
   };
 
@@ -370,7 +371,7 @@ function CustomerHealthDashboard() {
         <div className="bg-[#070A13] border border-slate-900 rounded-xl p-4 flex flex-col justify-between">
           <span className="text-[9px] uppercase font-bold text-slate-500 tracking-wider">Total Client ROI Saved</span>
           <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-xl font-black font-mono text-emerald-400">${stats.totalSavings.toLocaleString()}</span>
+            <span className="text-xl font-black font-mono text-emerald-400">{formatINR(stats.totalSavings)}</span>
             <span className="text-[9px] text-emerald-400 font-bold">Platform-wide</span>
           </div>
         </div>
@@ -446,7 +447,7 @@ function CustomerHealthDashboard() {
                     </span>
                   </td>
                   <td className="p-4 text-right font-mono font-bold text-emerald-400">
-                    ${client.estimatedSavings.toLocaleString()}
+                    {formatINR(client.estimatedSavings)}
                   </td>
                 </tr>
               ))}
@@ -520,7 +521,7 @@ function CustomerHealthDashboard() {
                 </div>
                 <div className="pt-2 border-t border-slate-900/60">
                   <span className="text-[8px] font-bold text-slate-500 uppercase block">Financial ROI (Est.)</span>
-                  <span className="text-sm font-black font-mono text-emerald-400">${selectedClient.estimatedSavings.toLocaleString()}</span>
+                  <span className="text-sm font-black font-mono text-emerald-400">{formatINR(selectedClient.estimatedSavings)}</span>
                 </div>
               </div>
             </div>

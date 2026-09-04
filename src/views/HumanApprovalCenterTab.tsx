@@ -51,7 +51,7 @@ export default function HumanApprovalCenterTab({ userRole }: { userRole: string 
       { 
         type: 'OFFER', 
         title: 'Offer Release: Jane Doe', 
-        desc: 'SDE II at Google - $145k Base', 
+        desc: 'SDE II at Google - ₹32 LPA Base', 
         requester: 'Autonomous Ops', 
         time: '10 mins ago', 
         risk: 'low', 
@@ -63,14 +63,14 @@ export default function HumanApprovalCenterTab({ userRole }: { userRole: string 
             graphNodes: ['Candidate-Jane-Doe', 'Requirement-SDE-II', 'Budget-2026-Q3'],
             experiences: ['Matched candidate salary expectations', 'Background check cleared', 'Interview scorecard: 4.5/5'],
             decisionFactors: ['Market rate parity verified', 'Budget allocation confirmed', 'Team capacity bottleneck identified'],
-            telemetrySnapshot: ['LATENCY: 12ms', 'COST: $0.05', 'MODEL: gemini-2.5-flash'],
+            telemetrySnapshot: ['LATENCY: 12ms', 'COST: ₹4.20', 'MODEL: gemini-2.5-flash'],
             version: '2.1.0'
         }
       },
       { 
         type: 'INVOICE', 
         title: 'Invoice Generation: PL-882', 
-        desc: '$25,000 Placement Fee for TechSource', 
+        desc: '₹2,50,000 Placement Fee for TechSource', 
         requester: 'Finance Agent', 
         time: '1 hour ago', 
         risk: 'low', 

@@ -842,7 +842,7 @@ export class MailOSService {
                             candidatePhone: classification.data?.Phone || '',
                             requirementId: reqDoc.id,
                             requirementTitle: reqData.title || reqData.Title || 'Strategic Role',
-                            clientId: reqData.clientId || resolvedClientId || 'ORG-CLIENT-ACME',
+                            clientId: reqData.clientId || resolvedClientId || 'ORG-CLIENT-APEX',
                             vendorId: identity.id || orgId || 'ORG-VENDOR-ALPHA',
                             status: 'submitted',
                             createdAt: new Date().toISOString(),

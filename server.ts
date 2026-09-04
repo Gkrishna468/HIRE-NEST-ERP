@@ -184,6 +184,7 @@ import automationEventsHandler from './src/api-lib/handlers/automation-events';
 import candidateScreenHandler from './src/api-lib/handlers/candidate-screen';
 import communicationHandler from './src/api-lib/handlers/communication';
 import killSwitchHandler from './src/api-lib/handlers/kill-switch';
+import syncRequirementsHandler from './src/api-lib/handlers/sync-requirements.js';
 
 import analyticsHandler from './src/api-lib/handlers/analytics';
 import opsHandler from './src/api-lib/handlers/ops';
@@ -553,6 +554,7 @@ hirenest_active_requests 0
   app.use('/api/ruflo', rufloHandler);
   app.use('/api/communication', communicationHandler);
   app.use('/api/kill-switch', killSwitchHandler);
+  app.use('/api/sync-requirements', syncRequirementsHandler);
   app.use('/api/recruiter-os', recruiterOsHandler);
   app.use('/api/executive-metrics', executiveMetricsHandler);
   app.use('/api/daily-briefing', dailyBriefingHandler);

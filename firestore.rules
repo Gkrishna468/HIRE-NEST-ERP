@@ -106,6 +106,7 @@ service cloud.firestore {
           'ops_admin',
 
           // CLIENT
+          'client',
           'client_admin',
           'client_hm',
           'client_finance',
@@ -113,13 +114,18 @@ service cloud.firestore {
           'client_ops',
 
           // VENDOR
+          'vendor',
           'vendor_admin',
           'vendor_agency',
           'vendor_manager',
           'vendor_recruiter',
           'vendor_sourcer',
 
-          // INDEPENDENT
+          // RECRUITER & INDEPENDENT
+          'recruiter',
+          'recruiter_admin',
+          'recruiter_conductor',
+          'staffing_recruiter',
           'freelancer_recruiter',
           'independent_recruiter',
           'freelancer_vendor',

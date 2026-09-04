@@ -18,7 +18,7 @@ export default async function copilotHandler(req: any, res: any) {
       if (!adminDb) {
           // Dev-mode fallback to prevent 500 errors when no admin credentials exist
           return res.json({
-            insight: `Candidates with Match Score >95%\n\n1. Sarah Jenkins\n96%\n\nSenior React\n\nRequirement:\nREQ-441\n\nReason:\nReact\nNode\nAWS\nLeadership`,
+            insight: `Candidates with Match Score >95%\n\n1. Priya Sharma\n96%\n\nSenior React\n\nRequirement:\nREQ-441\n\nReason:\nReact\nNode\nAWS\nLeadership`,
             reason: "Direct query from 'candidate_matches' collection where score >= 95.",
             sources: ["Firestore: candidate_matches"],
             confidence: 100,

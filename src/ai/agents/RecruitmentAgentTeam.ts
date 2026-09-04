@@ -39,7 +39,7 @@ export class RecruitmentAgentTeam implements HireNestAgent {
       mandatorySkills: ['React', 'TypeScript', 'Node.js', 'Firestore'],
       seniority: 'Senior (5+ yrs)',
       remotePolicy: 'Hybrid / Remote',
-      budgetRange: '$120k - $150k'
+      budgetRange: '₹24 LPA - ₹30 LPA'
     };
 
     // 2. Candidate Retrieval Worker

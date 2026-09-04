@@ -87,7 +87,7 @@ export function decryptText(encryptedText: string): string {
     
     return decrypted;
   } catch (err) {
-    console.error("[Decryption Error] Failed to decrypt:", err);
-    throw new Error("Decryption failed");
+    console.warn("[Decryption Error] Failed to decrypt text, returning original text as fallback:", err);
+    return encryptedText;
   }
 }

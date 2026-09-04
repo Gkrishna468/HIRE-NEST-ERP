@@ -16,7 +16,7 @@ import {
   Layers, 
   Mail, 
   FileText,
-  DollarSign,
+  IndianRupee,
   ArrowUpRight,
   Route,
   Zap,
@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { checkIsAdmin } from "../lib/permissions";
+import { formatINR } from "../lib/currency";
 
 interface OfficeHeartbeat {
   officeId: string;
@@ -368,13 +369,13 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
           <div className="bg-white p-5 rounded-2xl border border-slate-150 shadow-sm flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Realized Revenue</p>
-              <h3 className="text-2xl font-black text-emerald-600 font-mono mt-1">${totalAchievedRev.toLocaleString()}</h3>
+              <h3 className="text-2xl font-black text-emerald-600 font-mono mt-1">{formatINR(totalAchievedRev)}</h3>
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">
-                Forecast: ${totalForecastRev.toLocaleString()}
+                Forecast: {formatINR(totalForecastRev)}
               </p>
             </div>
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-slate-600">
-              <DollarSign size={22} className="text-emerald-500" />
+              <IndianRupee size={22} className="text-emerald-500" />
             </div>
           </div>
 
@@ -503,8 +504,8 @@ export default function OperationalIntelligenceTab({ userRole, orgId, userId }: 
                     <td className="px-6 py-3 font-bold text-slate-700">{t.totalQueueDepth} items</td>
                     <td className="px-6 py-3 text-slate-600">{t.avgLatencyMs} ms</td>
                     <td className="px-6 py-3 font-bold text-indigo-600">{t.slaCompliance}%</td>
-                    <td className="px-6 py-3 text-slate-600">${t.revenueForecast.toLocaleString()}</td>
-                    <td className="px-6 py-3 font-black text-emerald-600">${t.revenueAchieved.toLocaleString()}</td>
+                    <td className="px-6 py-3 text-slate-600">{formatINR(t.revenueForecast)}</td>
+                    <td className="px-6 py-3 font-black text-emerald-600">{formatINR(t.revenueAchieved)}</td>
                   </tr>
                 ))}
               </tbody>

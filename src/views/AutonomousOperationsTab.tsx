@@ -100,7 +100,7 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
 
   // Customer Health List SaaS states
   const [customerHealthList, setCustomerHealthList] = useState<any[]>([
-    { name: "Acme Corporation", health: 98, usage: "High", recruiters: 24, active: 21, requirements: 312, renewalRisk: "Low", expansion: "High" },
+    { name: "Apex Global Systems", health: 98, usage: "High", recruiters: 24, active: 21, requirements: 312, renewalRisk: "Low", expansion: "High" },
     { name: "Globex Corporation", health: 91, usage: "High", recruiters: 18, active: 15, requirements: 184, renewalRisk: "Low", expansion: "Medium" },
     { name: "Zenith Systems", health: 85, usage: "Medium", recruiters: 12, active: 10, requirements: 95, renewalRisk: "Medium", expansion: "Low" },
     { name: "Initech Staffing", health: 62, usage: "Low", recruiters: 8, active: 3, requirements: 42, renewalRisk: "High", expansion: "None" }
@@ -216,7 +216,7 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
   const [gdprChecked, setGdprChecked] = useState<boolean>(true);
   const [orgMembers, setOrgMembers] = useState<any[]>([
     { name: "Gopal Krishna", email: "gopalkrishna0046@gmail.com", role: "Primary Admin & Principal Architect", status: "ACTIVE" },
-    { name: "Sarah Jenkins", email: "sarah.j@hirenest.com", role: "Hiring Manager Lead", status: "ACTIVE" },
+    { name: "Priya Sharma", email: "priya.s@hirenest.com", role: "Hiring Manager Lead", status: "ACTIVE" },
     { name: "Alex Rivera", email: "alex.r@hirenest.com", role: "Vendor Agency Coordinator", status: "ACTIVE" }
   ]);
   const [newOrgMemberName, setNewOrgMemberName] = useState<string>("");
@@ -1678,7 +1678,7 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
                       <div className="flex flex-wrap gap-2">
                         <button 
                           onClick={async () => {
-                            addLog("Runtime", "Triggering Simulated Client JD Email Intake [Client: Acme Corp | Role: Java Architect]", "TR-INTAKE-SIM");
+                            addLog("Runtime", "Triggering Simulated Client JD Email Intake [Client: Apex Global Systems | Role: Java Architect]", "TR-INTAKE-SIM");
                             try {
                               await axios.post('/api/ops/runtime/simulate', { 
                                 eventType: 'UNIFIED_INTAKE', 
@@ -4168,7 +4168,7 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
                     <div className="bg-white/5 border border-white/10 p-5 rounded-2xl flex flex-col items-center justify-center text-center shrink-0 min-w-[180px]">
                       <span className="text-[10px] font-mono font-black uppercase tracking-widest text-sky-300">Monthly Run Rate</span>
                       <span className="text-3xl font-black text-white mt-1">
-                        $342,500
+                        ₹2,85,00,000
                       </span>
                       <span className="text-[9px] text-emerald-400 mt-2 block font-mono font-black">
                         +24.5% MoM Growth
@@ -4435,10 +4435,10 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
                       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
                         <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-700 text-sm">
-                            AC
+                            AG
                           </div>
                           <div>
-                            <h3 className="text-sm font-black text-slate-800">Acme Corp</h3>
+                            <h3 className="text-sm font-black text-slate-800">Apex Global Systems</h3>
                             <div className="flex items-center gap-2 text-[10px] font-mono">
                               <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 rounded font-bold">Health 98</span>
                               <span className="text-slate-400">|</span>
@@ -4623,8 +4623,8 @@ export default function AutonomousOperationsTab({ userRole }: { userRole: string
                         <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 font-mono">Invoice Settlement Logs</h4>
                         <div className="space-y-2">
                           {[
-                            { inv: "INV-2026-04", date: "June 01, 2026", amount: "$12,850.00", status: "SETTLED" },
-                            { inv: "INV-2026-03", date: "May 01, 2026", amount: "$12,620.00", status: "SETTLED" }
+                            { inv: "INV-2026-04", date: "June 01, 2026", amount: "₹10,75,000", status: "SETTLED" },
+                            { inv: "INV-2026-03", date: "May 01, 2026", amount: "₹10,50,000", status: "SETTLED" }
                           ].map((inv, idx) => (
                             <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 border border-slate-150 rounded-xl font-mono text-xs">
                               <div className="flex items-center gap-2">

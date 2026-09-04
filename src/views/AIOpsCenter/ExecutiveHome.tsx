@@ -50,7 +50,7 @@ export default function ExecutiveHome({
     { id: "agents", title: "Active AI Agents", value: agentsCount || 7, trend: "100% operational", trendColor: "text-emerald-400", icon: Bot, color: "text-indigo-400" },
     { id: "interviews", title: "Interviews Today", value: 4, trend: "3 completed", trendColor: "text-emerald-400", icon: Calendar, color: "text-amber-400" },
     { id: "placements", title: "Placements Week", value: 8, trend: "Avg cycle: 12d", trendColor: "text-indigo-400", icon: CheckCircle, color: "text-emerald-400" },
-    { id: "revenue", title: "Revenue Pipeline", value: "$425,000", trend: "+15% vs target", trendColor: "text-emerald-400", icon: TrendingUp, color: "text-emerald-400" },
+    { id: "revenue", title: "Revenue Pipeline", value: "₹3,50,00,000", trend: "+15% vs target", trendColor: "text-emerald-400", icon: TrendingUp, color: "text-emerald-400" },
     { id: "slas", title: "SLA Alerts", value: 3, trend: "1 breached, 2 warn", trendColor: "text-rose-400", icon: ShieldAlert, color: "text-rose-400" }
   ], [agentsCount, requirementsCount]);
 
@@ -86,7 +86,7 @@ CRITICAL DISCREPANCIES (Needs Attention):
 
 REVENUE PIPELINE FORECAST:
 ------------------------------------------------------------
-Current Weekly Revenue Target: $150,000. Pipeline influence stands at $425,000, tracking 15% above forecast with 8 active placements nearing final sign-off.`;
+Current Weekly Revenue Target: ₹1,25,00,000. Pipeline influence stands at ₹3,50,00,000, tracking 15% above forecast with 8 active placements nearing final sign-off.`;
   }, []);
 
   useEffect(() => {

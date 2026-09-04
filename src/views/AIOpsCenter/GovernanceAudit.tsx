@@ -762,9 +762,9 @@ export default function GovernanceAudit({
                     <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-900">
                       <span className="text-slate-500 block text-[8px] uppercase font-bold">Cost Factor per 1K Tx</span>
                       <span className="text-emerald-400 font-black font-mono mt-0.5 block">
-                        {selectedModelForSimulation === "gemini-3.1-pro-preview" ? "$0.015 (High Value)" :
-                         selectedModelForSimulation === "gemini-3.7-flash" ? "$0.002 (Highly Optimal)" :
-                         selectedModelForSimulation === "claude-3-5-sonnet" ? "$0.045 (Expensive)" : "$0.040 (Standard)"}
+                        {selectedModelForSimulation === "gemini-3.1-pro-preview" ? "₹1.25 (High Value)" :
+                         selectedModelForSimulation === "gemini-3.7-flash" ? "₹0.16 (Highly Optimal)" :
+                         selectedModelForSimulation === "claude-3-5-sonnet" ? "₹3.75 (Expensive)" : "₹3.30 (Standard)"}
                       </span>
                     </div>
                   </div>
@@ -823,7 +823,7 @@ export default function GovernanceAudit({
                       </div>
                       <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-900 text-center col-span-2 sm:col-span-1">
                         <span className="text-slate-500 uppercase block font-bold text-[8px]">Simulated Cost</span>
-                        <span className="text-emerald-400 font-bold mt-0.5 block">$4.25</span>
+                        <span className="text-emerald-400 font-bold mt-0.5 block">₹355.00</span>
                       </div>
                     </div>
                   )}

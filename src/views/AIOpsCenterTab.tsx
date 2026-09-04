@@ -118,7 +118,7 @@ export default function AIOpsCenterTab({ userRole }: { userRole: string }) {
       id: "policy-budget-03",
       title: "Gemini Model Budget Gate",
       category: "Cost Governance",
-      description: "Applies severe request circuit-breaking when daily tokens exceed 5,000,000 or individual agent cost exceeds $10.00.",
+      description: "Applies severe request circuit-breaking when daily tokens exceed 5,000,000 or individual agent cost exceeds ₹850.00.",
       status: "active",
       ruleCount: 4,
       severity: "medium",
@@ -136,7 +136,7 @@ export default function AIOpsCenterTab({ userRole }: { userRole: string }) {
       title: "Autonomous Placement Velocity Digest",
       content: `### Executive Daily Summary
 - **Overall Placement Health**: Nominal (98.4%)
-- **Strategic Pipeline Revenue**: $185,000 influenced
+- **Strategic Pipeline Revenue**: ₹1.5 Cr influenced
 - **Key Actions**: Successfully compiled daily recruiter activity. Cleared 4 strategic routing requests.
 - **Identified SLA Risk**: TechCorp systems integration is pending. BDM Diana Prince has been notified.`,
       status: "unread",
@@ -455,14 +455,14 @@ export default function AIOpsCenterTab({ userRole }: { userRole: string }) {
   // Set initial Business Events Feed
   useEffect(() => {
     setEventsFeed([
-      { id: "evt-001", type: "REQUIREMENT_CREATED", timestamp: new Date(Date.now() - 5 * 60000).toISOString(), origin: "Diana Prince (BDM)", status: "nominal", payload: { requirementId: "req-091", title: "Lead Cloud Platform Architect", client: "TechCorp Systems", budget: "$160,000" } },
+      { id: "evt-001", type: "REQUIREMENT_CREATED", timestamp: new Date(Date.now() - 5 * 60000).toISOString(), origin: "Diana Prince (BDM)", status: "nominal", payload: { requirementId: "req-091", title: "Lead Cloud Platform Architect", client: "TechCorp Systems", budget: "₹35,00,000" } },
       { id: "evt-002", type: "CANDIDATE_MATCHED", timestamp: new Date(Date.now() - 12 * 60000).toISOString(), origin: "Conrad (Recruitment AI)", status: "nominal", payload: { requirementId: "req-091", matchedIndex: "idx-2291", alignmentAttributes: ["Go", "Kubernetes", "gRPC"] } },
       { id: "evt-003", type: "SUBMISSION_SENT", timestamp: new Date(Date.now() - 25 * 60000).toISOString(), origin: "Bruce Wayne (Talent Director)", status: "nominal", payload: { submissionId: "sub-10219", candidateId: "cand-442", requirementId: "req-091", portalSent: "ClientPortalV1" } },
       { id: "evt-004", type: "INTERVIEW_SCHEDULED", timestamp: new Date(Date.now() - 40 * 60000).toISOString(), origin: "Sam (Scheduling AI)", status: "nominal", payload: { interviewId: "int-840", requirementId: "req-091", date: "July 08, 10:00 AM", attendees: ["Bruce Wayne", "TechCorp Eng Team"] } },
-      { id: "evt-005", type: "OFFER_RELEASED", timestamp: new Date(Date.now() - 120 * 60000).toISOString(), origin: "Tony Stark (GTM Lead)", status: "nominal", payload: { requirementId: "req-085", candidateId: "cand-998", salary: "$185,000", client: "InnovateLabs Ltd" } },
+      { id: "evt-005", type: "OFFER_RELEASED", timestamp: new Date(Date.now() - 120 * 60000).toISOString(), origin: "Tony Stark (GTM Lead)", status: "nominal", payload: { requirementId: "req-085", candidateId: "cand-998", salary: "₹38,00,000", client: "InnovateLabs Ltd" } },
       { id: "evt-006", type: "VENDOR_ADDED", timestamp: new Date(Date.now() - 180 * 60000).toISOString(), origin: "Clark Kent (Partner Mgr)", status: "nominal", payload: { vendorId: "vend-889", name: "Apex Staffing Network", trustBase: 90 } },
       { id: "evt-007", type: "CANDIDATE_JOINED", timestamp: new Date(Date.now() - 360 * 60000).toISOString(), origin: "System Engine", status: "nominal", payload: { requirementId: "req-042", candidateId: "cand-112", startDate: "2026-07-06" } },
-      { id: "evt-008", type: "INVOICE_RAISED", timestamp: new Date(Date.now() - 420 * 60000).toISOString(), origin: "Finance OS", status: "nominal", payload: { invoiceId: "inv-98122", amount: "$22,500", client: "InnovateLabs Ltd", feeStructure: "15% flat" } }
+      { id: "evt-008", type: "INVOICE_RAISED", timestamp: new Date(Date.now() - 420 * 60000).toISOString(), origin: "Finance OS", status: "nominal", payload: { invoiceId: "inv-98122", amount: "₹18,50,000", client: "InnovateLabs Ltd", feeStructure: "15% flat" } }
     ]);
   }, []);
 
@@ -795,7 +795,7 @@ SUMMARY ANALYSIS:
 * Platform Operations Status: NOMINAL (99.98% overall connectivity)
 * Workforce Alignment: 7 Active Digital Employees scoring 98.7% success rate
 * Requirements Tracked: ${fallbackRequirements.length} active pipelines under observatories
-* Estimated Placement Savings Influence: $4,500 (Today)
+* Estimated Placement Savings Influence: ₹3,75,000 (Today)
 
 ACTIVE SLA BOTTLENECKS:
 ==================================
@@ -808,7 +808,7 @@ WORKFORCE PERFORMANCE LEDGER:
 ==================================
 - Total AI Transactions Checked: ${totalExecs}
 - Mean Handshake: ${avgMs}ms RTT
-- Model Token Cost Ledger: $${costEst}
+- Model Token Cost Ledger: ₹${(Number(costEst) * 83.5).toFixed(2)}
 - Recruiter Productivity Multiplier: 9.4x`;
     } else if (type === "weekly" || type === "candidates") {
       content = `HIRENEST OS SYSTEM WEEKLY PERFORMANCE ROUNDUP
@@ -825,7 +825,7 @@ COGNITIVE STACK HEALTH:
 ==================================
 - Handshake handshakes completed: 42,000 nominal requests
 - Token usage: 489,122 processed tokens across Gemini model APIs
-- Total compute cost: $42.50
+- Total compute cost: ₹3,550.00
 - ABAC Security Compliance Policy violation flags: 0 (Strict ABAC policies verified)`;
     } else {
       content = `HIRENEST RECRUITER & BDM PRODUCTIVITY BRIEFING

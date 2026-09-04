@@ -142,11 +142,11 @@ export default function AIWorkforce({
   const orgChartNodes = useMemo(() => [
     // Level 1: Leadership & Strategic
     { id: "lead-01", name: "Bruce Wayne", type: "HUMAN" as const, role: "Talent Director / Owner", dept: "Founder Office", reportsTo: "The Board", kpis: "Net Placement Rate: 98%, SLA Violations: 0" },
-    { id: "lead-02", name: "Diana Prince", type: "HUMAN" as const, role: "VP Strategic Operations", dept: "Operations", reportsTo: "CEO", kpis: "Ecosystem Health: 98.4%, Strategic Revenue: $425K" },
+    { id: "lead-02", name: "Diana Prince", type: "HUMAN" as const, role: "VP Strategic Operations", dept: "Operations", reportsTo: "CEO", kpis: "Ecosystem Health: 98.4%, Strategic Revenue: ₹3.5 Cr" },
     { id: "ai-01", name: "Alpha Executive (AI)", type: "AI" as const, role: "Strategic Advisor / Liaison", dept: "Founder Office", reportsTo: "Bruce Wayne", kpis: "Confidence Score: 98.7%, Saved Recruiter Hours: 124h" },
     
     // Level 2: Growth & Ecosystem Managers
-    { id: "grow-01", name: "Tony Stark", type: "HUMAN" as const, role: "GTM Growth Lead", dept: "Growth & Sales", reportsTo: "Diana Prince", kpis: "Active Campaign Influence: $180K, Client Conversion: +18%" },
+    { id: "grow-01", name: "Tony Stark", type: "HUMAN" as const, role: "GTM Growth Lead", dept: "Growth & Sales", reportsTo: "Diana Prince", kpis: "Active Campaign Influence: ₹1.5 Cr, Client Conversion: +18%" },
     { id: "grow-02", name: "Clark Kent", type: "HUMAN" as const, role: "Ecosystem Partner Mgr", dept: "Ecosystem Core", reportsTo: "Diana Prince", kpis: "Active Vendors: 12, Average Vendor Trust Score: 98.2%" },
     { id: "ai-02", name: "Siri GTM (AI)", type: "AI" as const, role: "Growth Campaign Auto", dept: "Growth & Sales", reportsTo: "Tony Stark", kpis: "Email open-rate: 45%, Generated leads today: 4" },
     { id: "ai-03", name: "Vance Vendor (AI)", type: "AI" as const, role: "Vendor Trust Coordinator", dept: "Ecosystem Core", reportsTo: "Clark Kent", kpis: "Pending credentials verified: 14, Trust updates: Daily" },

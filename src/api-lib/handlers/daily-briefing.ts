@@ -19,13 +19,17 @@ dailyBriefingHandler.get("/", async (req: any, res: any) => {
       if (role === "admin" || role === "super_admin") {
         const [usersSnap, reqsSnap, candidatesSnap, submissionsSnap] = await Promise.all([
           adminDb.collection("users").count().get().catch(() => ({ data: () => ({ count: 0 }) })),
-          adminDb.collection("requirements_public").where("status", "==", "ACTIVE").count().get().catch(() => ({ data: () => ({ count: 0 }) })),
+          adminDb.collection("requirements_public").get().catch(() => ({ docs: [], size: 0 })),
           adminDb.collection("candidatePool").count().get().catch(() => ({ data: () => ({ count: 0 }) })),
           adminDb.collection("submissions").where("status", "in", ["SUBMITTED", "PENDING_REVIEW", "PENDING"]).count().get().catch(() => ({ data: () => ({ count: 0 }) }))
         ]);
 
         const userCount = usersSnap.data().count || 0;
-        const reqCount = reqsSnap.data().count || 0;
+        const reqDocs = reqsSnap.docs || [];
+        const reqCount = reqDocs.length > 0 ? reqDocs.filter((d: any) => {
+          const s = (d.data()?.status || "").toUpperCase();
+          return s !== "DELETED" && s !== "ARCHIVED" && s !== "CLOSED";
+        }).length : (reqsSnap.size || 0);
         const candidateCount = candidatesSnap.data().count || 0;
         pendingReviewsCount = submissionsSnap.data().count || 0;
         newCandidatesCount = candidateCount;
@@ -39,11 +43,15 @@ dailyBriefingHandler.get("/", async (req: any, res: any) => {
       } else if (role === "vendor") {
         const [candidatesSnap, reqsSnap] = await Promise.all([
           adminDb.collection("candidatePool").where("vendorId", "==", tenantId).count().get().catch(() => ({ data: () => ({ count: 0 }) })),
-          adminDb.collection("requirements_public").where("status", "==", "ACTIVE").count().get().catch(() => ({ data: () => ({ count: 0 }) }))
+          adminDb.collection("requirements_public").get().catch(() => ({ docs: [], size: 0 }))
         ]);
 
         const candidateCount = candidatesSnap.data().count || 0;
-        const activeReqsCount = reqsSnap.data().count || 0;
+        const reqDocs = reqsSnap.docs || [];
+        const activeReqsCount = reqDocs.length > 0 ? reqDocs.filter((d: any) => {
+          const s = (d.data()?.status || "").toUpperCase();
+          return s !== "DELETED" && s !== "ARCHIVED" && s !== "CLOSED";
+        }).length : (reqsSnap.size || 0);
         newCandidatesCount = candidateCount;
         pendingReviewsCount = Math.min(candidateCount, 3);
 
@@ -55,11 +63,15 @@ dailyBriefingHandler.get("/", async (req: any, res: any) => {
         ];
       } else if (role === "client" || role === "hiring_manager") {
         const [reqsSnap, submissionsSnap] = await Promise.all([
-          adminDb.collection("requirements_public").where("clientId", "==", tenantId).where("status", "==", "ACTIVE").count().get().catch(() => ({ data: () => ({ count: 0 }) })),
+          adminDb.collection("requirements_public").where("clientId", "==", tenantId).get().catch(() => ({ docs: [], size: 0 })),
           adminDb.collection("submissions").where("clientId", "==", tenantId).where("status", "in", ["SUBMITTED", "SHORTLISTED"]).count().get().catch(() => ({ data: () => ({ count: 0 }) }))
         ]);
 
-        const reqCount = reqsSnap.data().count || 0;
+        const reqDocs = reqsSnap.docs || [];
+        const reqCount = reqDocs.length > 0 ? reqDocs.filter((d: any) => {
+          const s = (d.data()?.status || "").toUpperCase();
+          return s !== "DELETED" && s !== "ARCHIVED" && s !== "CLOSED";
+        }).length : (reqsSnap.size || 0);
         pendingReviewsCount = submissionsSnap.data().count || 0;
 
         briefingText = `Good morning! You currently have ${reqCount} active requirements open with candidate submissions ready for evaluation.`;
@@ -72,11 +84,15 @@ dailyBriefingHandler.get("/", async (req: any, res: any) => {
         // Recruiter
         const [candidatesSnap, reqsSnap] = await Promise.all([
           adminDb.collection("candidatePool").where("assignedRecruiter", "==", userEmail).count().get().catch(() => ({ data: () => ({ count: 0 }) })),
-          adminDb.collection("requirements_public").where("status", "==", "ACTIVE").count().get().catch(() => ({ data: () => ({ count: 0 }) }))
+          adminDb.collection("requirements_public").get().catch(() => ({ docs: [], size: 0 }))
         ]);
 
         const candidateCount = candidatesSnap.data().count || 0;
-        const reqCount = reqsSnap.data().count || 0;
+        const reqDocs = reqsSnap.docs || [];
+        const reqCount = reqDocs.length > 0 ? reqDocs.filter((d: any) => {
+          const s = (d.data()?.status || "").toUpperCase();
+          return s !== "DELETED" && s !== "ARCHIVED" && s !== "CLOSED";
+        }).length : (reqsSnap.size || 0);
         pendingReviewsCount = Math.max(1, Math.min(candidateCount, 4));
 
         briefingText = `Good morning! You are actively tracking ${candidateCount} candidate profiles with ${reqCount} open requirements ready for screening and routing.`;

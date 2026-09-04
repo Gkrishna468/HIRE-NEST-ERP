@@ -9,7 +9,7 @@ export default function DLQViewer() {
       eventType: "INTERVIEW_FEEDBACK_OVERDUE",
       error: "Network timeout communicating with Mailgun API",
       retries: 3,
-      tenantId: "org-acme-123",
+      tenantId: "org-apex-123",
       timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
     },
     {

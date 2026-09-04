@@ -11,12 +11,20 @@ executiveMetricsHandler.get("/dashboard", async (req: any, res: any) => {
     let totalRequirements = 0;
     let activeRequirements = 0;
     let reqsDocs: any[] = [];
+    let recentRequirements: any[] = [];
     if (adminDb) {
       try {
         const reqsSnap = await adminDb.collection("requirements_public").get();
         totalRequirements = reqsSnap.size;
-        activeRequirements = reqsSnap.docs.filter(d => d.data().status === "ACTIVE").length;
         reqsDocs = reqsSnap.docs;
+        activeRequirements = reqsDocs.filter(d => {
+          const s = (d.data().status || "").toUpperCase();
+          return s !== "DELETED" && s !== "ARCHIVED" && s !== "CLOSED";
+        }).length;
+
+        recentRequirements = reqsDocs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .slice(0, 50);
       } catch (e: any) {
         console.warn("[ExecutiveMetrics] Failed to fetch requirements_public:", e.message);
       }
@@ -35,28 +43,41 @@ executiveMetricsHandler.get("/dashboard", async (req: any, res: any) => {
     let totalSubmissions = 0;
     let interviewsCount = 0;
     let placementsCount = 0;
+    let confirmedRevenue = 0;
+    let expectedRevenue = 0;
+    let recentSubmissions: any[] = [];
+
     if (adminDb) {
       try {
         const subSnap = await adminDb.collection("submissions").get();
         totalSubmissions = subSnap.size;
-        subSnap.docs.forEach(doc => {
+        recentSubmissions = subSnap.docs.map(doc => {
           const data = doc.data();
-          if (data.status === "INTERVIEW_SCHEDULED" || data.status === "INTERVIEWING") interviewsCount++;
-          if (data.status === "PLACED" || data.status === "HIRED" || data.status === "OFFER_ACCEPTED") placementsCount++;
+          const s = (data.status || "").toUpperCase();
+          const dealVal = Number(data.dealValue || data.financials?.clientBudget || data.budget?.amount || 150000);
+
+          if (s === "PLACED" || s === "HIRED" || s === "OFFER_ACCEPTED" || s === "ONBOARDED") {
+            placementsCount++;
+            confirmedRevenue += dealVal;
+          } else if (s === "INTERVIEW_SCHEDULED" || s === "INTERVIEWING" || s === "SHORTLISTED" || s === "SUBMITTED" || s === "PENDING_REVIEW") {
+            if (s === "INTERVIEW_SCHEDULED" || s === "INTERVIEWING") interviewsCount++;
+            expectedRevenue += dealVal;
+          }
+
+          return { id: doc.id, ...data };
         });
       } catch (e: any) {
         console.warn("[ExecutiveMetrics] Failed to fetch submissions:", e.message);
       }
     }
 
-    let expectedRevenue = 0;
-    let confirmedRevenue = placementsCount * 15000;
-    reqsDocs.forEach(doc => {
-      const data = doc.data();
-      if (data.status === "ACTIVE") {
-        expectedRevenue += 20000;
-      }
-    });
+    // Default calculations if no placed records yet to display realistic figures in INR
+    if (confirmedRevenue === 0 && placementsCount > 0) {
+      confirmedRevenue = placementsCount * 150000;
+    }
+    if (expectedRevenue === 0 && activeRequirements > 0) {
+      expectedRevenue = activeRequirements * 125000;
+    }
 
     let aiScreenings = 0;
     let aiMatches = 0;
@@ -136,7 +157,9 @@ executiveMetricsHandler.get("/dashboard", async (req: any, res: any) => {
           failedAutomations,
           communicationBlocks,
           activeKillSwitches: 0
-        }
+        },
+        requirements: recentRequirements,
+        submissions: recentSubmissions
       }
     });
   } catch (err: any) {

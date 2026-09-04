@@ -62,10 +62,10 @@ export function UniversalAIChatDrawer({
         name: "Candidates Pool",
         icon: User,
         suggestions: [
-          "Why wasn't Sarah Jenkins ranked first?",
+          "Why wasn't candidate ranked first?",
           "Show me candidates with >95% Match Score",
           "Explain candidate experience record metrics",
-          "Identify candidates matching Acme Corp open roles"
+          "Identify candidates matching open roles"
         ],
         description: "Review talent, resume structures, and active matching. AI specializes in alignment analysis."
       };

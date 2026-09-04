@@ -593,14 +593,6 @@ const AppContent = () => {
                 active={location.pathname === "/financials"}
                 onClick={() => setIsMobileMenuOpen(false)}
               />
-              <SidebarItem
-                to="/emails"
-                icon={MessageSquare}
-                label="Intake Dashboard"
-                active={location.pathname === "/emails"}
-                onClick={() => setIsMobileMenuOpen(false)}
-              />
-
             </>
           )}
 
@@ -930,8 +922,6 @@ const AppContent = () => {
             {(isAdmin || isRecruiter) && (
               <Route path="/network" element={<NetworkTab />} />
             )}
-            <Route path="/client-360" element={<Client360Tab userRole={role || ""} />} />
-            <Route path="/vendor-360" element={<Vendor360Tab userRole={role || ""} />} />
             {isAdmin && (
               <Route path="/benchmarks" element={<BenchmarkDashboard />} />
             )}
@@ -1087,7 +1077,7 @@ const AppContent = () => {
             <Route path="/marketplace" element={<MarketplaceTab />} />
             <Route path="/placements" element={<PlacementsTab />} />
             <Route path="/interviews" element={<InterviewsTab />} />
-            <Route path="/emails" element={<InboxTab />} />
+            {isAdmin && <Route path="/emails" element={<InboxTab />} />}
             {isAdmin && (
               <Route
                 path="/operations"

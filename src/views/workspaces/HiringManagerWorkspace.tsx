@@ -27,6 +27,7 @@ import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
 import { ProgressTracker } from "../../components/ProgressTracker";
 import { ActivityFeed } from "../../components/ActivityFeed";
+import { SubmissionsLedgerExport } from "../../components/SubmissionsLedgerExport";
 import { auth, db } from "../../lib/firebase";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { useDailyBriefing } from "../../hooks/useDailyBriefing";
@@ -326,7 +327,7 @@ export default function HiringManagerWorkspace({
                           <UserCheck size={12} /> Pre-Evaluated Match
                        </div>
                        <h4 className="text-sm font-semibold text-slate-900 mb-1">Ananya Iyer</h4>
-                       <p className="text-xs text-slate-500 mb-4">React Developer - Acme Portfolio</p>
+                       <p className="text-xs text-slate-500 mb-4">React Developer - Apex Portfolio</p>
                        
                        <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 border border-slate-100">
                           <span className="font-semibold text-slate-700">Matching Proof:</span> 4+ Years Front-end. Strong in Tailwind CSS & React state management, matching exactly what you requested.
@@ -407,6 +408,11 @@ export default function HiringManagerWorkspace({
               </div>
 
             </div>
+          </div>
+
+          {/* Submissions & Candidate Pipeline Ledger */}
+          <div className="pt-8">
+            <SubmissionsLedgerExport role="client" orgId={orgId} />
           </div>
           
           {/* Recent Timeline */}

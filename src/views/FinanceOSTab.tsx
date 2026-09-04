@@ -3,6 +3,7 @@ import { TrendingUp, DollarSign, Receipt, CreditCard, PieChart, Activity, Buildi
 import { collection, query, limit, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { cn } from "../lib/utils";
+import { formatINR } from "../lib/currency";
 
 export default function FinanceOSTab({ userRole }: { userRole: string }) {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -11,8 +12,6 @@ export default function FinanceOSTab({ userRole }: { userRole: string }) {
   
   const [clients, setClients] = useState<Record<string, any>>({});
   const [vendors, setVendors] = useState<Record<string, any>>({});
-  
-  const [currency, setCurrency] = useState<'USD' | 'INR'>('INR');
 
   useEffect(() => {
     const unsubInvoices = onSnapshot(collection(db, "invoices"), (snap) => {
@@ -57,14 +56,10 @@ export default function FinanceOSTab({ userRole }: { userRole: string }) {
   const margin = totalRevenue - totalPayouts;
   const marginPercentage = totalRevenue > 0 ? ((margin / totalRevenue) * 100).toFixed(1) : "0.0";
   
-  const gstPayable = currency === 'INR' ? totalRevenue * 0.18 : 0; // 18% GST on INR collected
+  const gstPayable = totalRevenue * 0.18; // 18% GST on INR collected
 
   const formatMoney = (amount: number) => {
-      if (currency === 'INR') {
-          return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount);
-      } else {
-          return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount);
-      }
+    return formatINR(amount);
   };
 
   return (
@@ -72,17 +67,10 @@ export default function FinanceOSTab({ userRole }: { userRole: string }) {
       <div className="px-8 py-8 border-b bg-white flex justify-between items-end sticky top-0 z-10 shadow-sm">
         <div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">FinanceOS</h1>
-          <p className="text-sm text-slate-500 mt-1">Unified revenue collection, margin tracking, and vendor settlements.</p>
+          <p className="text-sm text-slate-500 mt-1">Unified revenue collection, margin tracking, and vendor settlements (INR).</p>
         </div>
-        <div className="flex gap-2 bg-slate-100 p-1 rounded-lg border border-slate-200">
-            <button 
-                onClick={() => setCurrency('INR')}
-                className={cn("px-4 py-1.5 text-xs font-bold rounded-md transition-all", currency === 'INR' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-            >₹ INR</button>
-            <button 
-                onClick={() => setCurrency('USD')}
-                className={cn("px-4 py-1.5 text-xs font-bold rounded-md transition-all", currency === 'USD' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
-            >$ USD</button>
+        <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm">
+          ₹ Indian Rupees (INR)
         </div>
       </div>
 

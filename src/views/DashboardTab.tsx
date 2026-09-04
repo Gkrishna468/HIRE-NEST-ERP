@@ -51,6 +51,7 @@ import CandidatePortalWorkspace from "./workspaces/CandidatePortalWorkspace";
 import { subscribeToEvents } from "../services/eventBus";
 import { EnterpriseViewModelService } from "../services/EnterpriseViewModelService";
 import { ProductionDataGuard } from "../lib/ProductionDataGuard";
+import { formatBudget } from "../lib/currency";
 import { 
   ResponsiveContainer, 
   AreaChart, 
@@ -339,7 +340,7 @@ export default function DashboardTab() {
                 data.email === "pending@hirenest.os" ||
                 data.name === "Pending Distillation" ||
                 data.name === "Parsing Pending" ||
-                data.name === "Sarah Jenkins" ||
+                data.name === "Priya Sharma" ||
                 data.name === "Unnamed Candidate" ||
                 data.name === "Unknown Candidate"
               ) {
@@ -660,7 +661,11 @@ export default function DashboardTab() {
       const interviewProb = hasOverlap ? 88 : 38;
       const offerProb = hasOverlap ? 72 : 24;
       const placementProb = hasOverlap ? 68 : 12;
-      const expectedProfitValue = req?.budget ? Math.round(Number(req.budget) * 0.15) : 145000;
+      const rawBudget = typeof req?.budget === 'object' ? (req.budget.amount || req.budget.clientBudget) : req?.budget;
+      const budgetNum = Number(rawBudget);
+      const expectedProfitValue = (budgetNum && !isNaN(budgetNum) && budgetNum > 0) 
+        ? Math.round((budgetNum <= 150 ? budgetNum * 100000 : budgetNum) * 0.15) 
+        : 145000;
 
       setSimResult({
         interviewProbability: interviewProb,
@@ -737,6 +742,14 @@ export default function DashboardTab() {
 
   if (isCandidate) {
     return <CandidatePortalWorkspace userName={session?.user?.name || "Candidate"} orgId={session?.user?.organizationId} metrics={metrics} />;
+  }
+
+  // Non-admin fallbacks must never expose admin BOS cockpit
+  if (!isAdmin) {
+    if (isIndependent) {
+      return <VendorPartnerWorkspace vendorName={session?.user?.name || "Independent Partner"} orgId={session?.user?.organizationId} metrics={metrics} />;
+    }
+    return <RecruiterWorkspace userName={session?.user?.name || "Recruiter"} orgId={session?.user?.organizationId} metrics={metrics} />;
   }
 
   const handleNodeClick = (node: any) => {
@@ -887,7 +900,7 @@ export default function DashboardTab() {
                       <div className="bg-slate-950/40 border border-slate-900 p-4 rounded-2xl space-y-3">
                         <div>
                           <span className="text-[10px] text-slate-500 block">Top Opportunity</span>
-                          <span className="text-xs font-bold text-white block mt-0.5 truncate">Healthcare GCC (Acme)</span>
+                          <span className="text-xs font-bold text-white block mt-0.5 truncate">Healthcare GCC (Apex)</span>
                         </div>
                         <div className="border-t border-slate-900 pt-2">
                           <span className="text-[10px] text-slate-400 block font-bold flex items-center gap-1 text-amber-400">
@@ -1755,7 +1768,7 @@ export default function DashboardTab() {
                         ) : (
                           requirementsList.map(r => (
                             <option key={r.id} value={r.id}>
-                              {r.title || 'Unnamed Job'} (Budget: ₹{Number(r.budget || 0).toLocaleString()})
+                              {r.title || 'Unnamed Job'} (Budget: {formatBudget(r.budget)})
                             </option>
                           ))
                         )}

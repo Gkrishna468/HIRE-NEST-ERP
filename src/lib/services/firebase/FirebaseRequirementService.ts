@@ -19,12 +19,20 @@ export class FirebaseRequirementService implements IRequirementService {
     const docRef = doc(collection(db, this.collectionName));
     const reqId = docRef.id;
     
-    // Default Provenance fields if not provided
+    // Default Provenance and status fields if not provided
+    const status = (data.status || 'ACTIVE').toUpperCase();
     const newDoc = { 
       ...data,
-      createdFrom: data.createdFrom || 'RECRUITER',
+      status,
+      source: data.source || 'CLIENT_OS',
+      sourceType: 'PORTAL',
+      createdFrom: data.createdFrom || 'CLIENT',
       createdVia: data.createdVia || 'OS',
       createdByRole: data.createdByRole || 'RECRUITER',
+      isFallbackPreview: false,
+      syncStatus: 'DIRECT_ENTRY',
+      whatsappQueueStatus: status === 'ACTIVE' ? 'PENDING_PUBLICATION_1' : 'INACTIVE',
+      whatsappPubHistory: [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     };
@@ -41,12 +49,12 @@ export class FirebaseRequirementService implements IRequirementService {
         vendorId: "Direct",
         candidateId: "",
         candidateName: "Requirement Room",
-        status: "active",
+        status: status === 'ACTIVE' ? "active" : "inactive",
         createdAt: new Date().toISOString(),
         createdBy: "system",
         matchScore: 100,
         expectedFee: 0,
-        isActive: true
+        isActive: status === 'ACTIVE'
       });
     } catch (e) {
       console.warn("Deal Room auto-creation deferred in service:", e);

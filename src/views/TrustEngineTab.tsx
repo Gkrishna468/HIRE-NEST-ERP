@@ -43,8 +43,8 @@ export default function TrustEngineTab({ userRole, orgId }: { userRole: string, 
   const trustEntities: TrustEntity[] = [
     // 1. Candidates
     {
-      id: "cand_sarah",
-      name: "Sarah Jenkins (React Architect)",
+      id: "cand_priya",
+      name: "Priya Sharma (React Architect)",
       type: "candidate",
       score: 94,
       grade: "A+",
@@ -151,8 +151,8 @@ export default function TrustEngineTab({ userRole, orgId }: { userRole: string, 
 
     // 3. Clients
     {
-      id: "client_acme",
-      name: "Acme Corp (Enterprise)",
+      id: "client_apex",
+      name: "Apex Global (Enterprise)",
       type: "client",
       score: 94,
       grade: "A+",
@@ -174,7 +174,7 @@ export default function TrustEngineTab({ userRole, orgId }: { userRole: string, 
     // 4. Requirements
     {
       id: "req_react_dev",
-      name: "Lead React Architect (Acme Corp)",
+      name: "Lead React Architect (Apex Global)",
       type: "requirement",
       score: 95,
       grade: "A+",

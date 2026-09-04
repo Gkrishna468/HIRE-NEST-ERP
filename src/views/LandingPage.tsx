@@ -668,7 +668,7 @@ export default function LandingPage() {
                         value={formData.companyName}
                         onChange={handleChange}
                         className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
-                        placeholder="Acme Staffing"
+                        placeholder="Apex Staffing"
                       />
                     </div>
                     <div>
@@ -706,7 +706,7 @@ export default function LandingPage() {
                         value={formData.companyEmail}
                         onChange={handleChange}
                         className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-500 transition-colors"
-                        placeholder="john@acme.com"
+                        placeholder="john@apex.com"
                       />
                     </div>
                   </div>

@@ -539,7 +539,7 @@ export default function AdminUsersManager({ orgData }: { orgData: any }) {
                   onChange={(e) => setCompanyName(e.target.value)}
                   required
                   className="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-600 rounded-2xl p-4 text-sm font-bold focus:bg-white transition-all outline-none"
-                  placeholder="e.g. acme agency"
+                  placeholder="e.g. apex agency"
                 />
               </div>
               

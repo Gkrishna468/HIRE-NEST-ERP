@@ -473,7 +473,7 @@ export default function FounderControlTower() {
                      <div className="bg-rose-100 p-2 rounded-lg text-rose-600"><AlertTriangle size={16} /></div>
                      <div>
                          <p className="text-sm font-bold text-slate-800">Client Feedback Pending</p>
-                         <p className="text-xs text-slate-500">"Acme Corp" has not responded to 4 candidate submissions in over 48 hours. Follow-up agent is awaiting approval.</p>
+                         <p className="text-xs text-slate-500">"Apex Global" has not responded to 4 candidate submissions in over 48 hours. Follow-up agent is awaiting approval.</p>
                      </div>
                  </div>
                  <button className="text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2 rounded-lg transition-colors">Approve Follow-up</button>

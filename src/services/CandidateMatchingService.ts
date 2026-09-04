@@ -12,6 +12,7 @@ import {
   limit
 } from "firebase/firestore";
 import { SkillNormalizer } from "../resume-engine/matching/skill-normalizer";
+import { formatBudget } from "../lib/currency";
 
 export interface CandidateMatchResult {
   requirementId: string;
@@ -250,7 +251,7 @@ export class CandidateMatchingService {
           workMode: req.workMode || "Onsite",
           location: req.location || "Bengaluru",
           experienceRequired: req.experience || req.minExperience || "3-5 Years",
-          budget: req.budget || req.rate || "Market Standard",
+          budget: formatBudget(req.budget || req.rate, "Market Standard"),
           fitmentScore: evaluation.score,
           matchTier: evaluation.tier,
           skillsOverlap: evaluation.skillsOverlap,

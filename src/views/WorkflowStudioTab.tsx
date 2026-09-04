@@ -517,7 +517,7 @@ export default function WorkflowStudioTab({ userRole }: { userRole: string }) {
             decisionType: "Auto",
             actionResult: "SMS Interview Guide dispatched instantly to Candidate"
           },
-          simulatedOutput: "SMS Dispatch: 'Hi Rajesh! Your interview with Acme is scheduled for tomorrow at 10 AM. Prep handbook: https://hirenest.io/prep/rajesh-acme'"
+          simulatedOutput: "SMS Dispatch: 'Hi Rajesh! Your interview with Apex Global is scheduled for tomorrow at 10 AM. Prep handbook: https://hirenest.io/prep/rajesh-apex'"
         }
       ];
 
@@ -794,13 +794,13 @@ export default function WorkflowStudioTab({ userRole }: { userRole: string }) {
     // Construct dynamic simulated trace
     let outputText = "";
     if (rule.trigger === "CANDIDATE_MATCHED") {
-      outputText = `[DRAFT OUTBOX - CLIENT SUBMISSION PACKAGE]\nTo: client.hiring.manager@acme-corp.com\nSubject: Verified HireNest Sourcing Dossier: Priyah S. (Senior Cloud Architect - 95% Match)\n\nDear Client,\nWe have evaluated Priyah S. using HireNest's cognitive model. She scores a 95% match for your requirement. Core stack match:\n- AWS Services: Expert (6 years)\n- Terraform IaC: Advanced\n- System Architecture SLA: Proven\n\nClick below to proceed to the secure Deal Room:\n[https://hirenest.io/deal-room/dr-acme-priyah]\n\nGenerated autonomously by HireNest AI Sourcing Node.`;
+      outputText = `[DRAFT OUTBOX - CLIENT SUBMISSION PACKAGE]\nTo: client.hiring.manager@apex-global.com\nSubject: Verified HireNest Sourcing Dossier: Priyah S. (Senior Cloud Architect - 95% Match)\n\nDear Client,\nWe have evaluated Priyah S. using HireNest's cognitive model. She scores a 95% match for your requirement. Core stack match:\n- AWS Services: Expert (6 years)\n- Terraform IaC: Advanced\n- System Architecture SLA: Proven\n\nClick below to proceed to the secure Deal Room:\n[https://hirenest.io/deal-room/dr-apex-priyah]\n\nGenerated autonomously by HireNest AI Sourcing Node.`;
     } else if (rule.trigger === "INTERVIEW_SCHEDULED") {
-      outputText = `[DRAFT OUTBOX - CANDIDATE MOBILE DISPATCH]\nTo: +1 (555) 019-2234 (Candidate)\nContent: "Hi Rajesh! Your technical panel with Acme Corp is officially locked for tomorrow, July 1st, at 10:00 AM UTC. Please review our preparation booklet here: https://hirenest.io/prep/rajesh-acme. Best of luck!"`;
+      outputText = `[DRAFT OUTBOX - CANDIDATE MOBILE DISPATCH]\nTo: +1 (555) 019-2234 (Candidate)\nContent: "Hi Rajesh! Your technical panel with Apex Global is officially locked for tomorrow, July 1st, at 10:00 AM UTC. Please review our preparation booklet here: https://hirenest.io/prep/rajesh-apex. Best of luck!"`;
     } else if (rule.trigger === "SLA_RISK_DETECTED") {
       outputText = `[DRAFT OUTBOX - INTERNAL WARNING TELEGRAM]\nTo: Admin / Vendor Partner Manager\nSubject: WARNING: SLA Expiry Risk Detected on Project Alpha\n\nSystem Audit: Requirement ID: REQ-902 unfilled for 12 days. Current risk index is 82%. Submissions required immediately to prevent SLA penalty of ₹10,000/day.`;
     } else if (rule.trigger === "REVENUE_ALERT") {
-      outputText = `[DRAFT OUTBOX - FOUNDERS OFFICE BROADCAST]\nTo: Slack Channel #executive-briefings\nContent: "🚨 High-Value Milestone Alert! Acme Corp has unlocked Requirement REQ-772 with an estimated annualized contract value of ₹15,00,000. Matching routines triggered on 8 target bench candidates."`;
+      outputText = `[DRAFT OUTBOX - FOUNDERS OFFICE BROADCAST]\nTo: Slack Channel #executive-briefings\nContent: "🚨 High-Value Milestone Alert! Apex Global has unlocked Requirement REQ-772 with an estimated annualized contract value of ₹15,00,000. Matching routines triggered on 8 target bench candidates."`;
     } else {
       outputText = `[DRAFT OUTBOX - DEFAULT ACTION OUTPUT]\nTarget: ${rule.actions[0]?.target || "General Node"}\nAction: ${rule.actions[0]?.type || "EXECUTE"}\nDetails: ${rule.actions[0]?.template || "No template configured."}`;
     }

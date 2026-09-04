@@ -242,39 +242,54 @@ export default async function handler(req: any, res: any) {
             `[USER_API] Fetching proxy requirements for orgId: ${queryOrgId} under role: ${queryRole}`,
           );
           let requirementsSnap;
+          const allReqsSnap = await adminDb
+            .collection("requirements_public")
+            .get();
+
           if (
             queryRole === "admin" ||
             queryRole === "super_admin" ||
             queryRole === "ops_admin"
           ) {
-            requirementsSnap = await adminDb
-              .collection("requirements_public")
-              .get();
+            requirements = allReqsSnap.docs.map((doc: any) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
           } else if (
             queryRole === "vendor" ||
             queryRole?.includes("vendor") ||
             queryRole?.includes("recruiter") ||
             queryRole?.includes("independent")
           ) {
-            requirementsSnap = await adminDb
-              .collection("requirements_public")
-              .where("visibility", "==", "VENDOR_NETWORK")
-              .where("status", "==", "PUBLISHED")
-              .get();
+            // Supply layer sees all non-deleted, active/published public requirements
+            requirements = allReqsSnap.docs
+              .map((doc: any) => ({ id: doc.id, ...doc.data() }))
+              .filter((r: any) => {
+                const s = (r.status || "").toUpperCase();
+                return s !== "DELETED" && s !== "ARCHIVED" && s !== "DRAFT";
+              });
           } else {
-            requirementsSnap = await adminDb
-              .collection("requirements_public")
-              .where("clientId", "==", queryOrgId)
-              .get();
+            // Clients see their own requirements and all active public requirements
+            requirements = allReqsSnap.docs
+              .map((doc: any) => ({ id: doc.id, ...doc.data() }))
+              .filter((r: any) => {
+                const s = (r.status || "").toUpperCase();
+                return (
+                  r.clientId === queryOrgId ||
+                  s === "ACTIVE" ||
+                  s === "PUBLISHED" ||
+                  s === "OPEN"
+                );
+              });
           }
-          if (requirementsSnap && requirementsSnap.docs) {
-            requirements = requirementsSnap.docs.map((doc: any) => ({
-              id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt
-                ? typeof doc.data().createdAt.toDate === "function"
-                  ? doc.data().createdAt.toDate().toISOString()
-                  : doc.data().createdAt
+
+          if (requirements && requirements.length > 0) {
+            requirements = requirements.map((r: any) => ({
+              ...r,
+              createdAt: r.createdAt
+                ? typeof r.createdAt.toDate === "function"
+                  ? r.createdAt.toDate().toISOString()
+                  : r.createdAt
                 : null,
             }));
           }

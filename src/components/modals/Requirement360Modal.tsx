@@ -55,32 +55,65 @@ export default function Requirement360Modal({
       where("requirementId", "==", job.id)
     );
 
-    const unsubSubs = onSnapshot(subQ, (snap) => {
-      setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    const matchQ = query(
-      collection(db, "candidateMatches"),
-      where("requirementId", "==", job.id),
-      orderBy("matchScore", "desc"),
-      limit(20)
+    const unsubSubs = onSnapshot(
+      subQ, 
+      (snap) => {
+        setSubmissions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      },
+      (err) => {
+        console.warn("[Requirement360Modal] Submissions listener note:", err?.message);
+      }
     );
 
-    const unsubMatches = onSnapshot(matchQ, (snap) => {
-      setMatches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+    // Query canonical candidate_matches without compound orderBy to avoid requiring an unbuilt composite index
+    const matchQ = query(
+      collection(db, "candidate_matches"),
+      where("requirementId", "==", job.id)
+    );
 
+    const unsubMatches = onSnapshot(
+      matchQ, 
+      (snap) => {
+        const sorted = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a: any, b: any) => {
+            const scoreA = Number(a.matchScore ?? a.score ?? 0);
+            const scoreB = Number(b.matchScore ?? b.score ?? 0);
+            return scoreB - scoreA;
+          })
+          .slice(0, 20);
+        setMatches(sorted);
+      },
+      (err) => {
+        console.warn("[Requirement360Modal] candidate_matches listener note:", err?.message);
+      }
+    );
+
+    // Query operationalEvents by entityId without compound orderBy to eliminate composite index requirement
     const eventQ = query(
       collection(db, "operationalEvents"),
-      where("entityId", "==", job.id),
-      orderBy("timestamp", "desc"),
-      limit(20)
+      where("entityId", "==", job.id)
     );
 
-    const unsubEvents = onSnapshot(eventQ, (snap) => {
-      setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    }, () => setLoading(false));
+    const unsubEvents = onSnapshot(
+      eventQ, 
+      (snap) => {
+        const sorted = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a: any, b: any) => {
+            const tA = a.timestamp?.seconds ? a.timestamp.seconds * 1000 : new Date(a.timestamp || 0).getTime();
+            const tB = b.timestamp?.seconds ? b.timestamp.seconds * 1000 : new Date(b.timestamp || 0).getTime();
+            return tB - tA;
+          })
+          .slice(0, 20);
+        setEvents(sorted);
+        setLoading(false);
+      }, 
+      (err) => {
+        console.warn("[Requirement360Modal] operationalEvents listener note:", err?.message);
+        setLoading(false);
+      }
+    );
 
     return () => {
       unsubSubs();
@@ -253,7 +286,7 @@ export default function Requirement360Modal({
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           >
                             <option value="">Unassigned</option>
-                            <option value="REC-Sarah Jenkins">REC-Sarah Jenkins</option>
+                            <option value="REC-Priya Sharma">REC-Priya Sharma</option>
                             <option value="REC-Michael Chang">REC-Michael Chang</option>
                             <option value="REC-Elena Rostova">REC-Elena Rostova</option>
                           </select>

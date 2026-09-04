@@ -199,10 +199,12 @@ export class ProprietaryMatchingEngine {
   static async calculateRequirementHealth(requirementId: string): Promise<number> {
     const matchesSnap = await db.collection('candidate_matches')
       .where('requirementId', '==', requirementId)
-      .where('matchScore', '>=', 80)
       .get();
     
-    const highQualityMatches = matchesSnap.size;
+    const highQualityMatches = matchesSnap.docs.filter((d: any) => {
+      const data = d.data();
+      return (data?.matchScore || data?.score || 0) >= 80;
+    }).length;
     
     // Health Index = (Matches count / Ideal count) * Weight + (Vendor Coverage) * Weight
     // Ideal: 10 high quality matches

@@ -8,6 +8,7 @@ import {
   CheckCircle,
   ShieldAlert,
   DollarSign,
+  IndianRupee,
   BrainCircuit,
   MessageSquare,
   ExternalLink,
@@ -49,6 +50,7 @@ import {
 } from "../lib/infrastructureService";
 import { Switch } from "../lib/Switch";
 import { analyzeCandidateMatch } from "../services/aiService";
+import { formatBudget } from "../lib/currency";
 
 const setDoc = async (ref: any, data: any, options?: any) => {
   const result = await firebaseSetDoc(ref, data, options);
@@ -118,7 +120,7 @@ export default function JobsTab() {
   const [jdText, setJdText] = useState("");
   const [budgetAmount, setBudgetAmount] = useState<number>(0);
   const [budgetPeriod, setBudgetPeriod] = useState<"LPA" | "LPM">("LPA");
-  const [currency, setCurrency] = useState<"INR" | "USD">("INR");
+  const [currency, setCurrency] = useState<"INR">("INR");
   const [workMode, setWorkMode] = useState<
     "Onsite" | "Remote" | "Hybrid" | "C2C" | "C2H" | "Permanent"
   >("Remote");
@@ -288,7 +290,7 @@ export default function JobsTab() {
               "Unnamed Candidate",
               "Local Mock Generated",
               "Unknown Candidate",
-              "Sarah Jenkins",
+              "Priya Sharma",
               "Candidate (Requires Human Review)",
             ];
             if (
@@ -636,31 +638,36 @@ export default function JobsTab() {
         console.warn("Requirements Proxy failed");
       }
 
-      // Real-time fallback
+      // Real-time snapshot with resilient client-side filtering
       const q = collection(db, "requirements_public");
-      const requirementsQuery = isAdmin
-        ? q
-        : isSupplyLayer
-          ? query(
-              q,
-              where("visibility", "==", "VENDOR_NETWORK"),
-              where("status", "==", "PUBLISHED"),
-            )
-          : query(q, where("clientId", "==", orgId));
-
       unsubscribe = onSnapshot(
-        requirementsQuery,
+        q,
         (snap) => {
-          const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          let data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+          if (isSupplyLayer) {
+            // Vendors and recruiters see all public non-deleted requirements
+            data = data.filter((r: any) => {
+              const s = (r.status || "").toUpperCase();
+              return s !== "DELETED" && s !== "ARCHIVED";
+            });
+          } else if (isClient) {
+            // Clients see their own requirements and public active opportunities
+            data = data.filter((r: any) => {
+              const s = (r.status || "").toUpperCase();
+              return r.clientId === orgId || s === "ACTIVE" || s === "PUBLISHED" || s === "OPEN";
+            });
+          }
+
           setJobs(
             data.sort((a: any, b: any) => {
               const timeA =
                 a.createdAt?.seconds ||
-                new Date(a.createdAt).getTime() / 1000 ||
+                new Date(a.createdAt || a.updatedAt || 0).getTime() / 1000 ||
                 0;
               const timeB =
                 b.createdAt?.seconds ||
-                new Date(b.createdAt).getTime() / 1000 ||
+                new Date(b.createdAt || b.updatedAt || 0).getTime() / 1000 ||
                 0;
               return timeB - timeA;
             }),
@@ -847,33 +854,22 @@ export default function JobsTab() {
 
       const reqId = "REQ-" + Math.random().toString(36).substr(2, 9);
 
-      let initialStatus = "DRAFT";
-      let initialVisibility = "INTERNAL";
-      let adminApproved = false;
-      let financials: any = null;
-
-      if (budgetPeriod === "LPA") {
-        // Direct Post: Deduct 8.33% and publish across vendor network immediately
-        const platformProfit = Math.round(budgetAmount * 0.0833);
-        const vendorVisible = budgetAmount - platformProfit;
-        initialStatus = "PUBLISHED";
-        initialVisibility = "VENDOR_NETWORK";
-        adminApproved = true;
-        financials = {
-          clientBudget: budgetAmount,
-          clientCurrency: currency,
-          staffingModel: "Permanent",
-          adminMargin: platformProfit,
-          vendorPayout: vendorVisible,
-          platformProfit: platformProfit,
-          marginConfig: { type: "PERCENTAGE", value: 8.33 },
-        };
-      } else {
-        // LPM: Mandatory Admin Approval required
-        initialStatus = "PENDING_FINANCIAL_APPROVAL";
-        initialVisibility = "INTERNAL";
-        adminApproved = false;
-      }
+      // Requirements created in the OS are immediately active and visible across public network
+      const platformProfit = Math.round(budgetAmount * 0.0833);
+      const vendorVisible =
+        budgetAmount > platformProfit ? budgetAmount - platformProfit : budgetAmount;
+      const initialStatus = "ACTIVE";
+      const initialVisibility = "VENDOR_NETWORK";
+      const adminApproved = true;
+      const financials = {
+        clientBudget: budgetAmount,
+        clientCurrency: currency,
+        staffingModel: budgetPeriod === "LPA" ? "Permanent" : "Contract",
+        adminMargin: platformProfit,
+        vendorPayout: vendorVisible,
+        platformProfit: platformProfit,
+        marginConfig: { type: "PERCENTAGE", value: 8.33 },
+      };
 
       const newReq = {
         canonicalRequirementId: reqId,
@@ -921,6 +917,18 @@ export default function JobsTab() {
       };
 
       await setDoc(doc(db, "requirements_public", reqId), newReq);
+
+      // Instantly inject into local jobs state for immediate visual confirmation
+      setJobs((prev) => [
+        {
+          id: reqId,
+          ...newReq,
+          createdAt: new Date().toISOString(),
+          status: "ACTIVE",
+          visibility: "VENDOR_NETWORK",
+        },
+        ...prev.filter((j) => (j as any).id !== reqId),
+      ]);
 
       // Auto-create matching Deal Room
       try {
@@ -1791,16 +1799,13 @@ export default function JobsTab() {
                             <MapPin size={12} className="text-slate-300" />{" "}
                             {job.location || job.workMode}
                           </div>
-                          {(job.budget?.amount > 0 ||
-                            job.clientTargetBudget > 0) && (
+                          {formatBudget(job.budget || job.clientTargetBudget, "") && (
                             <div className="flex items-center gap-1 text-[10px] font-black text-slate-500 uppercase border-l pl-4 border-slate-100">
-                              <DollarSign
+                              <IndianRupee
                                 size={12}
                                 className="text-slate-300"
                               />{" "}
-                              {job.budget?.currency || "INR"}{" "}
-                              {job.budget?.amount || job.clientTargetBudget}{" "}
-                              {job.budget?.period || "LPA"}
+                              {formatBudget(job.budget || job.clientTargetBudget)}
                             </div>
                           )}
                         </div>
@@ -2482,38 +2487,19 @@ export default function JobsTab() {
             </div>
             <div className="p-6 space-y-6">
               <div className="flex items-center justify-center gap-4 mb-4">
-                <button
-                  onClick={() => setCurrency("INR")}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                    currency === "INR"
-                      ? "bg-orange-100 text-orange-700 shadow-sm border border-orange-200"
-                      : "bg-slate-50 text-slate-400 border border-transparent",
-                  )}
-                >
+                <div className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-200">
                   ₹ INDIAN RUPEE (INR)
-                </button>
-                <button
-                  onClick={() => setCurrency("USD")}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-xs font-black transition-all",
-                    currency === "USD"
-                      ? "bg-indigo-100 text-indigo-700 shadow-sm border border-indigo-200"
-                      : "bg-slate-50 text-slate-400 border border-transparent",
-                  )}
-                >
-                  $ US DOLLAR (USD)
-                </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
-                    Client Billing ({currency})
+                    Client Billing (₹ INR)
                   </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">
-                      {currency === "INR" ? "₹" : "$"}
+                      ₹
                     </span>
                     <input
                       id="actualBudget"

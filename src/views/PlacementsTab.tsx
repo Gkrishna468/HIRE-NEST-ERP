@@ -3,10 +3,11 @@ import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { PlacementOrchestrator, PlacementStage } from '../lib/workflows/PlacementOrchestrator';
 import { Button } from '../lib/Button';
-import { DollarSign, UserCheck, Calendar, Receipt, CreditCard, ChevronRight, CheckCircle, TrendingUp } from 'lucide-react';
+import { IndianRupee, UserCheck, Calendar, Receipt, CreditCard, ChevronRight, CheckCircle, TrendingUp } from 'lucide-react';
+import { formatINR } from '../lib/currency';
 
 const STAGES: { id: PlacementStage; label: string; icon: any }[] = [
-  { id: 'OFFER_RELEASED', label: 'Offer Released', icon: DollarSign },
+  { id: 'OFFER_RELEASED', label: 'Offer Released', icon: IndianRupee },
   { id: 'OFFER_ACCEPTED', label: 'Accepted', icon: UserCheck },
   { id: 'NOTICE_PERIOD', label: 'Notice Period', icon: Calendar },
   { id: 'JOINING_CONFIRMED', label: 'Confirmed', icon: CheckCircle },
@@ -96,14 +97,14 @@ export function PlacementsTab() {
            <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
               <div>
                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Total Booked Value</p>
-                 <p className="text-4xl font-black text-emerald-600 mt-2">${totalExpectedRevenue.toLocaleString()}</p>
+                 <p className="text-4xl font-black text-emerald-600 mt-2">{formatINR(totalExpectedRevenue)}</p>
                  <p className="text-sm font-medium text-emerald-500 mt-2 flex items-center gap-1"><TrendingUp size={14}/> Across {placements.length} placements</p>
               </div>
            </div>
            <div className="bg-white p-6 rounded-2xl shadow-sm border border-indigo-100 flex items-center justify-between">
               <div>
                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Realized Revenue</p>
-                 <p className="text-4xl font-black text-indigo-600 mt-2">${totalRealizedRevenue.toLocaleString()}</p>
+                 <p className="text-4xl font-black text-indigo-600 mt-2">{formatINR(totalRealizedRevenue)}</p>
                  <p className="text-sm font-medium text-slate-500 mt-2 flex items-center gap-1"><Receipt size={14}/> Invoiced & Paid</p>
               </div>
            </div>
@@ -136,11 +137,11 @@ export function PlacementsTab() {
                            <div className="text-xs text-slate-500 mt-1">Req: {p.requirementId.substring(0, 8)}</div>
                         </td>
                         <td className="p-4">
-                           <div className="font-bold text-slate-700">{p.offerDetails?.baseSalary?.toLocaleString()} {p.offerDetails?.currency}</div>
+                           <div className="font-bold text-slate-700">{p.offerDetails?.baseSalary ? formatINR(p.offerDetails.baseSalary) : "Competitive"}</div>
                            <div className="text-xs text-slate-500 mt-1">{p.offerDetails?.placementFeePercent || 20}% Margin/Fee</div>
                         </td>
                         <td className="p-4">
-                           <div className="font-bold text-emerald-600">${(p.expectedFee || 0).toLocaleString()}</div>
+                           <div className="font-bold text-emerald-600">{formatINR(p.expectedFee || 0)}</div>
                         </td>
                         <td className="p-4 text-center">
                            <div className="inline-flex flex-col items-center gap-2">
@@ -163,7 +164,7 @@ export function PlacementsTab() {
                 {placements.length === 0 && (
                   <tr>
                      <td colSpan={5} className="p-12 text-center text-slate-500">
-                        <DollarSign size={48} className="mx-auto text-slate-300 mb-4" />
+                        <IndianRupee size={48} className="mx-auto text-slate-300 mb-4" />
                         <h3 className="font-bold text-slate-700 text-lg">No placements yet</h3>
                         <p className="text-sm">When candidates are offered and hired, they will appear here for revenue tracing.</p>
                      </td>

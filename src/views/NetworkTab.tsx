@@ -11,7 +11,7 @@ import {
   FileText,
   Bot,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   ShieldCheck,
   Cpu,
   Activity,
@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, limit, orderBy } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatCompactINR } from '../lib/currency';
 
 export default function NetworkTab() {
   const navigate = useNavigate();
@@ -79,7 +80,7 @@ export default function NetworkTab() {
     { label: "Global Vendors", value: stats.vendors.toLocaleString(), icon: Globe, color: "text-indigo-500", bg: "bg-indigo-50", trend: "+3%" },
     { label: "Global Clients", value: stats.clients.toLocaleString(), icon: Building, color: "text-amber-500", bg: "bg-amber-50", trend: "+5%" },
     { label: "Global Placements", value: stats.placements.toLocaleString(), icon: ShieldCheck, color: "text-purple-500", bg: "bg-purple-50", trend: "+15%" },
-    { label: "Global Revenue", value: `$${(stats.revenue / 1000000).toFixed(1)}M`, icon: DollarSign, color: "text-rose-500", bg: "bg-rose-50", trend: "+22%" },
+    { label: "Global Revenue", value: formatCompactINR(stats.revenue), icon: IndianRupee, color: "text-rose-500", bg: "bg-rose-50", trend: "+22%" },
   ];
 
   const quickActions = [

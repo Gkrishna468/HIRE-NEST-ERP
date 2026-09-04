@@ -6,7 +6,7 @@ export default function ApprovalQueue() {
     {
       id: "app-11",
       actorId: "system:ai-agent:recruiter",
-      tenantId: "org-acme",
+      tenantId: "org-apex",
       targetEntityId: "sub-12491",
       targetEntityType: "SUBMISSION",
       proposedAction: "REJECT_CANDIDATE",

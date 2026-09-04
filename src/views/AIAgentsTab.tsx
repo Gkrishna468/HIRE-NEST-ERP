@@ -64,7 +64,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
         prompt: "Draft an outbound email targeting Senior Python Developers detailing our hybrid benefits package",
         agentId: "RecruiterAgent",
         agentName: "Recruiter Conductor",
-        output: "Subject: High-Impact Python Engineering Opportunity with Elite Hybrid Flexibility\n\nHi [Candidate Name],\n\nI came across your profile and was thoroughly impressed by your extensive experience building resilient, highly scalable Python applications. Here at HireNest, we are currently expanding our core backend team to support an enterprise staffing engine that operates with deep microservice autonomy.\n\nWe would love to discuss a Senior Python Developer role that offers:\n- Fully flexible hybrid model (2 days a week in our state-of-the-art Downtown office)\n- Competitive base salary up to $180,000 + equity options\n- Comprehensive health, dental, and wellness package starting Day 1\n\nIf you're open to a brief introductory conversation, let me know when you'd be free for a 15-minute sync this week.\n\nBest regards,\n[Your Name]\nHireNest Recruitment Conductor",
+        output: "Subject: High-Impact Python Engineering Opportunity with Elite Hybrid Flexibility\n\nHi [Candidate Name],\n\nI came across your profile and was thoroughly impressed by your extensive experience building resilient, highly scalable Python applications. Here at HireNest, we are currently expanding our core backend team to support an enterprise staffing engine that operates with deep microservice autonomy.\n\nWe would love to discuss a Senior Python Developer role that offers:\n- Fully flexible hybrid model (2 days a week in our state-of-the-art Downtown office)\n- Competitive base salary up to ₹35,00,000 + equity options\n- Comprehensive health, dental, and wellness package starting Day 1\n\nIf you're open to a brief introductory conversation, let me know when you'd be free for a 15-minute sync this week.\n\nBest regards,\n[Your Name]\nHireNest Recruitment Conductor",
         success: true,
         provider: "Gemini 2.5 Flash",
         metrics: { durationMs: 420, tokens: 284, cost: 0.00014 },
@@ -388,13 +388,13 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
         avgDurationMs: 440,
         successRate: 100,
         avgTokens: 380,
-        costIndex: "$0.00019"
+        costIndex: "₹0.016"
       },
       deepseek: {
         avgDurationMs: 1250,
         successRate: 100,
         avgTokens: 410,
-        costIndex: "$0.00000"
+        costIndex: "₹0.000"
       },
       winner: "Gemini 2.5 Flash"
     });
@@ -592,7 +592,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
       memory: ['Working (Active Deals)', 'Long (Client Purchase History)'],
       kpis: ['Win Rate', 'Sales Cycle Length', 'Average Deal Size'],
       hours: 'Client Timezone',
-      escalation: 'If Deal > $50k stalled -> Escalate to Founder Office',
+      escalation: 'If Deal > ₹40,00,000 stalled -> Escalate to Founder Office',
       queue: 15,
       blocked: 2,
       objectives: 'Close 3 enterprise deals this week.',
@@ -626,7 +626,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
       queue: 5,
       blocked: 1,
       objectives: 'Generate end-of-month invoices.',
-      results: '12 invoices sent, $45k collected.'
+      results: '12 invoices sent, ₹38,00,000 collected.'
     },
     'Chief Operating Office': {
       mission: 'Enterprise conductor coordinating all Offices.',
@@ -1870,7 +1870,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
                                                   <td className="px-4 py-3 text-emerald-400">Active</td>
                                                   <td className="px-4 py-3">85%</td>
                                                   <td className="px-4 py-3 text-emerald-400">92%</td>
-                                                  <td className="px-4 py-3 font-mono">$12.40</td>
+                                                  <td className="px-4 py-3 font-mono">₹1,035</td>
                                                   <td className="px-4 py-3"><button className="text-xs text-indigo-400 hover:text-indigo-300">Rebalance</button></td>
                                               </tr>
                                               <tr className="border-b border-slate-800/50">
@@ -1878,7 +1878,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
                                                   <td className="px-4 py-3 text-emerald-400">Active</td>
                                                   <td className="px-4 py-3">45%</td>
                                                   <td className="px-4 py-3 text-emerald-400">98%</td>
-                                                  <td className="px-4 py-3 font-mono">$4.20</td>
+                                                  <td className="px-4 py-3 font-mono">₹350</td>
                                                   <td className="px-4 py-3"><button className="text-xs text-indigo-400 hover:text-indigo-300">Rebalance</button></td>
                                               </tr>
                                               <tr className="border-b border-slate-800/50">
@@ -1886,7 +1886,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
                                                   <td className="px-4 py-3 text-amber-400">Spiking</td>
                                                   <td className="px-4 py-3">94%</td>
                                                   <td className="px-4 py-3 text-amber-400">76%</td>
-                                                  <td className="px-4 py-3 font-mono">$24.80</td>
+                                                  <td className="px-4 py-3 font-mono">₹2,070</td>
                                                   <td className="px-4 py-3"><button className="text-xs text-indigo-400 hover:text-indigo-300">Scale Up</button></td>
                                               </tr>
                                               <tr className="border-b border-slate-800/50">
@@ -1894,7 +1894,7 @@ export default function AIAgentsTab({ userRole }: { userRole: string }) {
                                                   <td className="px-4 py-3 text-emerald-400">Active</td>
                                                   <td className="px-4 py-3">60%</td>
                                                   <td className="px-4 py-3 text-emerald-400">99%</td>
-                                                  <td className="px-4 py-3 font-mono">$8.15</td>
+                                                  <td className="px-4 py-3 font-mono">₹680</td>
                                                   <td className="px-4 py-3"><button className="text-xs text-indigo-400 hover:text-indigo-300">Rebalance</button></td>
                                               </tr>
                                           </tbody>

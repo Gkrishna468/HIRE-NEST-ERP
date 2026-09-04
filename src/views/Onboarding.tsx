@@ -753,7 +753,7 @@ export default function Onboarding({ onComplete }: { onComplete: (orgData: any) 
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-250 focus:border-indigo-600 rounded-xl p-3 text-xs font-bold transition-all outline-none"
-                        placeholder="e.g. Acme Corporation Pvt Ltd"
+                        placeholder="e.g. Apex Global Systems Pvt Ltd"
                       />
                     </div>
                   )}

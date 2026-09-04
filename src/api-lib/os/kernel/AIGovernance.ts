@@ -33,14 +33,29 @@ export class AIGovernance {
 
     // 2. Hourly Executions Limit
     const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-    const telemetrySnap = await db
-      .collection("office_telemetry")
-      .where("office", "==", officeName)
-      .where("executedAt", ">=", oneHourAgo)
-      .count()
-      .get();
+    let count = 0;
+    try {
+      const telemetrySnap = await db
+        .collection("office_telemetry")
+        .where("office", "==", officeName)
+        .where("executedAt", ">=", oneHourAgo)
+        .count()
+        .get();
+      count = telemetrySnap.data().count;
+    } catch (indexErr) {
+      // Fallback to single-field filter if composite index is missing or building
+      try {
+        const snap = await db
+          .collection("office_telemetry")
+          .where("office", "==", officeName)
+          .limit(200)
+          .get();
+        count = snap.docs.filter((d) => (d.data()?.executedAt || "") >= oneHourAgo).length;
+      } catch (fallbackErr) {
+        console.warn("[AIGovernance] Telemetry count check fallback failed:", fallbackErr);
+      }
+    }
 
-    const count = telemetrySnap.data().count;
     if (count >= maxHourlyExecutions) {
       return { allowed: false, reason: "Hourly execution limit exceeded" };
     }

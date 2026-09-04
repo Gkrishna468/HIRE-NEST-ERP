@@ -16,6 +16,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "motion/react";
 import { cn } from "../lib/utils";
+import { formatBudget } from "../lib/currency";
 
 interface JDIntelligenceProps {
   job: any;
@@ -50,7 +51,7 @@ export const JDIntelligence: React.FC<JDIntelligenceProps> = ({ job }) => {
           </div>
 
           <div className="flex flex-wrap gap-6 mt-8">
-            {(job.budget?.amount || job.clientTargetBudget) > 0 && (
+            {formatBudget(job.budget || job.clientTargetBudget, "") && (
               <div className="flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-3 rounded-2xl backdrop-blur-sm">
                 <Banknote className="text-indigo-400" size={18} />
                 <div>
@@ -58,9 +59,7 @@ export const JDIntelligence: React.FC<JDIntelligenceProps> = ({ job }) => {
                     Budget
                   </p>
                   <p className="text-sm font-bold">
-                    {job.budget?.currency || "INR"}{" "}
-                    {job.budget?.amount || job.clientTargetBudget}{" "}
-                    {job.budget?.period || "LPA"}
+                    {formatBudget(job.budget || job.clientTargetBudget)}
                   </p>
                 </div>
               </div>

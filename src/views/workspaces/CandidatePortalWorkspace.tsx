@@ -44,6 +44,7 @@ import {
 import { signOut } from "firebase/auth";
 import { Badge } from "../../lib/Badge";
 import { Button } from "../../lib/Button";
+import { formatBudget } from "../../lib/currency";
 import { auth, db } from "../../lib/firebase";
 import {
   collection,
@@ -488,7 +489,7 @@ export default function CandidatePortalWorkspace({
           location: applyingJob.location,
           skills: applyingJob.skills || [],
           experience: applyingJob.experience || "3-6 Years",
-          budget: applyingJob.budget || applyingJob.rate || "Industry Standard",
+          budget: formatBudget(applyingJob.budget || applyingJob.rate, "Industry Standard"),
           description: (applyingJob.description || "").slice(0, 500)
         },
         candidateSnapshot: {
@@ -920,7 +921,7 @@ export default function CandidatePortalWorkspace({
                       workMode: match.workMode,
                       location: match.location,
                       experience: match.experienceRequired,
-                      budget: match.budget,
+                      budget: formatBudget(match.budget),
                       clientName: match.companyName,
                       description: "Direct verified opportunity matched to your verified profile."
                     };
@@ -1205,7 +1206,7 @@ export default function CandidatePortalWorkspace({
                           </span>
                           {job.budget && (
                             <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[11px] font-semibold">
-                              {job.budget}
+                              {formatBudget(job.budget)}
                             </span>
                           )}
                         </div>
@@ -1837,7 +1838,7 @@ export default function CandidatePortalWorkspace({
               {selectedJobForDetail.budget && (
                 <div>
                   <h4 className="font-bold text-slate-900 mb-1">Compensation / Budget</h4>
-                  <p className="font-bold text-emerald-700 text-sm">{selectedJobForDetail.budget}</p>
+                  <p className="font-bold text-emerald-700 text-sm">{formatBudget(selectedJobForDetail.budget)}</p>
                 </div>
               )}
             </div>

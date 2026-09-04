@@ -5,7 +5,7 @@ import {
   BarChart2, 
   Clock, 
   Percent, 
-  DollarSign, 
+  IndianRupee, 
   Users, 
   ShieldAlert, 
   RotateCcw, 
@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Play
 } from "lucide-react";
+import { formatINR } from "../../lib/currency";
 import { 
   collection, 
   query, 
@@ -327,7 +328,7 @@ export default function PredictiveAnalytics() {
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-xl pointer-events-none" />
             <div>
               <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider block">Simulated Monthly Revenue</span>
-              <h4 className="text-2xl font-black text-white mt-1.5 font-mono">${computedPredictions.revenueForecast.toLocaleString()}</h4>
+              <h4 className="text-2xl font-black text-white mt-1.5 font-mono">{formatINR(computedPredictions.revenueForecast)}</h4>
               <span className="text-[9px] text-slate-500 mt-1 block">Projected revenue pipeline output</span>
             </div>
             <div className="flex items-center gap-1 text-[9px] text-emerald-400 font-bold mt-2">
@@ -507,7 +508,7 @@ export default function PredictiveAnalytics() {
                   
                   <div className="space-y-1">
                     <span className="text-[9px] uppercase font-bold text-slate-500 block">Simulated Projections</span>
-                    <div className="text-[10px] text-indigo-400 font-bold">Rev: ${snap.predictions.revenueForecast.toLocaleString()}</div>
+                    <div className="text-[10px] text-indigo-400 font-bold">Rev: {formatINR(snap.predictions.revenueForecast)}</div>
                     <div className="text-[10px] text-rose-400">Breach: {snap.predictions.slaBreachRisk}%</div>
                     <div className="text-[10px] text-slate-300">Latency: {snap.predictions.avgFulfillmentDays} days</div>
                   </div>

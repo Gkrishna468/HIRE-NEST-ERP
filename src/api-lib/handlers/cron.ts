@@ -3,6 +3,7 @@ import { db } from "../../lib/firebase-admin.js";
 import { MailOSService } from "../services/MailOSService.js";
 import { AgentOrchestrator } from "../services/AgentOrchestrator.js";
 import { renewExpiringGmailWatches } from "./workspace.js";
+import { WhatsAppSyndicationService } from "../../services/WhatsAppSyndicationService.js";
 
 const cronHandler = express.Router();
 
@@ -113,6 +114,15 @@ cronHandler.get("/", async (req, res) => {
   } catch (err: any) {
     console.error("[CRON] MailOS sync routine failed:", err.message);
     report.results.mailSync = `failed: ${err.message}`;
+  }
+
+  // 6. WhatsApp Community 3x Syndication Queue Processor
+  try {
+    const waResults = await WhatsAppSyndicationService.processPendingPublications(false);
+    report.results.whatsappSyndication = waResults;
+  } catch (err: any) {
+    console.error("[CRON] WhatsApp syndication routine failed:", err.message);
+    report.results.whatsappSyndication = `failed: ${err.message}`;
   }
 
   res.json({ success: true, report });

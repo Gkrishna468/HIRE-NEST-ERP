@@ -12,8 +12,12 @@ export default defineConfig({
   server: { hmr: false }, 
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      'node-domexception': path.resolve(__dirname, './src/lib/domexception-shim.ts'),
+      '@': path.resolve(process.cwd(), './src'),
+      'node-domexception': path.resolve(process.cwd(), './src/lib/domexception-shim.ts'),
     },
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: false,
   },
 });

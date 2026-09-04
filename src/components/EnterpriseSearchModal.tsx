@@ -30,6 +30,7 @@ import { collection, getDocs, query, limit } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { Badge } from "../lib/Badge";
+import { formatBudget } from "../lib/currency";
 import { ExplainableEvidenceCard, EvidenceObject } from "./ExplainableEvidenceCard";
 
 interface GraphSearchResult {
@@ -71,33 +72,33 @@ export function EnterpriseSearchModal({
   // Pre-configured canonical graph search data covering candidates, requirements, clients, and emails in a single unified graph
   const canonicalGraphData: GraphSearchResult[] = [
     {
-      id: "candidate_sarah",
+      id: "candidate_priya",
       type: "CANDIDATE",
-      title: "Sarah Jenkins",
+      title: "Priya Sharma",
       subtitle: "Lead React Architect (7.5y exp) • Active in 2 Pipelines",
       status: "MATCHED_REVIEW",
       trustScore: 96,
       url: "/candidates",
-      experienceNotes: "Outstanding architecture grasp. Optimized large scale canvas engines and complex state machines. Sourced from TechStaff Inc (V-901).",
+      experienceNotes: "Outstanding architecture grasp. Optimized large scale canvas engines and complex state machines. Sourced from PrimeStaff Workforce (V-901).",
       relationships: [
-        { target: "Lead React Architect (Acme Corp)", type: "CANDIDATE_MATCH", details: "96% Skill Overlap" },
-        { target: "TechStaff Inc", type: "SOURCED_BY", details: "SLA verified within 2.4 hours" },
-        { target: "Sarah Jenkins <> Acme Corp Interview", type: "SCHEDULED_FOR", details: "L1 Technical Round scheduled for Wednesday" },
-        { target: "Acme Corp Placement (Pending)", type: "REVENUE_ROUTE", details: "₹24,0,000 projected contract value" }
+        { target: "Lead React Architect (Apex Global Systems)", type: "CANDIDATE_MATCH", details: "96% Skill Overlap" },
+        { target: "PrimeStaff Workforce", type: "SOURCED_BY", details: "SLA verified within 2.4 hours" },
+        { target: "Priya Sharma <> Apex Global Systems Interview", type: "SCHEDULED_FOR", details: "L1 Technical Round scheduled for Wednesday" },
+        { target: "Apex Global Systems Placement (Pending)", type: "REVENUE_ROUTE", details: "₹24,0,000 projected contract value" }
       ],
       timeline: [
-        { event: "Resume parsed via MailOS (Jenkins_CV.pdf)", timestamp: "2026-06-22T10:00:00Z", actor: "MailOS Parser" },
+        { event: "Resume parsed via MailOS (Priya_Sharma_CV.pdf)", timestamp: "2026-06-22T10:00:00Z", actor: "MailOS Parser" },
         { event: "Semantic match indexed (96% overlap score)", timestamp: "2026-06-22T10:02:00Z", actor: "AI Matching Engine" },
-        { event: "SLA notification broadcast to Acme hiring managers", timestamp: "2026-06-23T09:05:00Z", actor: "Notification Service" }
+        { event: "SLA notification broadcast to Apex hiring managers", timestamp: "2026-06-23T09:05:00Z", actor: "Notification Service" }
       ],
       evidence: {
-        id: "ev-sarah-jenkins-match",
+        id: "ev-priya-sharma-match",
         decision: "Recommend immediate fast-track to L1 Client Interview",
         confidence: 96,
-        graphNodes: ["candidate_sarah", "req_react_dev", "vendor_techstaff", "client_acme"],
+        graphNodes: ["candidate_priya", "req_react_dev", "vendor_primestaff", "client_apex"],
         experiences: [
-          "Candidate matches historical high-performance profile of successful Acme Corp hires",
-          "TechStaff Inc has a 98% placement retention warranty record"
+          "Candidate matches historical high-performance profile of successful Apex Global Systems hires",
+          "PrimeStaff Workforce has a 98% placement retention warranty record"
         ],
         decisionFactors: [
           "96% overlap with React, TypeScript and Next.js specifications",
@@ -112,22 +113,22 @@ export function EnterpriseSearchModal({
         supportingEvents: ["CANDIDATE_INGESTION", "MATCH_INDEX_UPDATED"],
         version: "v1.2.0-search",
         entityType: "candidate_match",
-        entityId: "candidate_sarah"
+        entityId: "candidate_priya"
       }
     },
     {
       id: "req_react_dev",
       type: "REQUIREMENT",
       title: "Lead React Architect",
-      subtitle: "Acme Corp • Open Position • Budget ₹24,00,000 PA",
+      subtitle: "Apex Global Systems • Open Position • Budget ₹24,00,000 PA",
       status: "OPEN_PUBLISHED",
       trustScore: 94,
       url: "/jobs",
       experienceNotes: "Urgent recruitment drive. Client demands strong performance architecture skills and immediate availability. Prior placements closed in 11 days.",
       relationships: [
-        { target: "Acme Corp", type: "CLIENT_WORKSPACE", details: "Primary Account Owner" },
-        { target: "Sarah Jenkins", type: "POTENTIAL_MATCH", details: "96% matched candidate pool" },
-        { target: "TechStaff Inc", type: "BROADCAST_TO", details: "Tier-1 Vendor SLA Active" }
+        { target: "Apex Global Systems", type: "CLIENT_WORKSPACE", details: "Primary Account Owner" },
+        { target: "Priya Sharma", type: "POTENTIAL_MATCH", details: "96% matched candidate pool" },
+        { target: "PrimeStaff Workforce", type: "BROADCAST_TO", details: "Tier-1 Vendor SLA Active" }
       ],
       timeline: [
         { event: "Requirement parsed and extracted from MSA", timestamp: "2026-06-20T14:10:00Z", actor: "AI JD Ingestion" },
@@ -137,7 +138,7 @@ export function EnterpriseSearchModal({
         id: "ev-react-dev-req",
         decision: "Allocate 3 additional matching candidate profiles via Vendor SLA",
         confidence: 91,
-        graphNodes: ["req_react_dev", "client_acme", "vendor_techstaff"],
+        graphNodes: ["req_react_dev", "client_apex", "vendor_primestaff"],
         experiences: [
           "React requirements usually require average 4.2 resumes to secure client placement"
         ],
@@ -157,17 +158,17 @@ export function EnterpriseSearchModal({
       }
     },
     {
-      id: "client_acme",
+      id: "client_apex",
       type: "CLIENT",
-      title: "Acme Corp",
-      subtitle: "Tier-1 Enterprise Account • domain: acme.com",
+      title: "Apex Global Systems",
+      subtitle: "Tier-1 Enterprise Account • domain: apex-global.com",
       status: "ACTIVE_PARTNER",
       trustScore: 98,
       url: "/client-360",
       experienceNotes: "Strong preference for candidate stability and tenure. Active recruitment workflows in React and DevOps architectures.",
       relationships: [
         { target: "Lead React Architect", type: "CONTRACTS_ACTIVE", details: "1 active role in sourcing pipeline" },
-        { target: "Sarah Jenkins", type: "MATCHED_CANDIDATE", details: "Pending shortlist feedback" },
+        { target: "Priya Sharma", type: "MATCHED_CANDIDATE", details: "Pending shortlist feedback" },
         { target: "Raj Kumar (HQ)", type: "ACCOUNT_MANAGED_BY", details: "Senior Client Success Officer" }
       ],
       timeline: [
@@ -175,12 +176,12 @@ export function EnterpriseSearchModal({
         { event: "Enterprise Tenant workspace partitioned", timestamp: "2026-01-10T10:15:00Z", actor: "System Kernel" }
       ],
       evidence: {
-        id: "ev-client-acme-governance",
+        id: "ev-client-apex-governance",
         decision: "Maintain active Tier-1 Preferred partner standing",
         confidence: 98,
-        graphNodes: ["client_acme", "req_react_dev", "sub_sarah_react"],
+        graphNodes: ["client_apex", "req_react_dev", "sub_priya_react"],
         experiences: [
-          "Acme Corp has a 98% invoice paid-on-time rate",
+          "Apex Global Systems has a 98% invoice paid-on-time rate",
           "Zero warranty disputes registered across 12 prior placements"
         ],
         decisionFactors: [
@@ -194,8 +195,8 @@ export function EnterpriseSearchModal({
         ],
         supportingEvents: ["MSA_GOVERNANCE_AUDIT", "COMPLIANCE_LOCK_VERIFIED"],
         version: "v1.2.0-search",
-        entityType: "client_acme",
-        entityId: "client_acme"
+        entityType: "client_apex",
+        entityId: "client_apex"
       }
     }
   ];
@@ -390,7 +391,7 @@ export function EnterpriseSearchModal({
             id: d.id,
             type: 'REQUIREMENT' as const,
             title: data.title || "Requirement Context",
-            subtitle: `${data.clientName || "Client Account"} • Budget ₹${data.budget || "Competitive"}`,
+            subtitle: `${data.clientName || "Client Account"} • Budget ${formatBudget(data.budget, "Competitive")}`,
             status: data.status || "OPEN",
             trustScore: 94,
             url: "/jobs",

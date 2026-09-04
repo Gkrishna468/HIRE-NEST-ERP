@@ -3,7 +3,7 @@ import { Clock, CheckCircle2, AlertTriangle, PlayCircle } from "lucide-react";
 
 export default function SLAMonitor() {
   const slaWorkflows = [
-    { type: "INTERVIEW_FEEDBACK_SLA", id: "wf-sla-1", tenant: "org-acme", entity: "int-0912", status: "TICKING", remainingHrs: 18 },
+    { type: "INTERVIEW_FEEDBACK_SLA", id: "wf-sla-1", tenant: "org-apex", entity: "int-0912", status: "TICKING", remainingHrs: 18 },
     { type: "VENDOR_SLA", id: "wf-sla-2", tenant: "org-global", entity: "req-771", status: "BREACHED", remainingHrs: -2 },
     { type: "CLIENT_FEEDBACK_SLA", id: "wf-sla-3", tenant: "org-startup", entity: "sub-110", status: "FULFILLED", remainingHrs: 0 },
   ];

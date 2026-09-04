@@ -10,8 +10,8 @@ export function NotificationCenter({ userRole }: { userRole?: string }) {
   
   if (userRole === "admin" || userRole === "super_admin" || userRole === "ops_admin" || userRole === "hq" || userRole === "hq_admin") {
      notifications = [
-        { id: 1, type: "warning", text: "Delete Request: Candidate John Doe Data Erasure", time: "10m ago", icon: AlertTriangle },
-        { id: 2, type: "alert", text: "Ownership Dispute: Multiple vendors claimed Sarah Jenkins", time: "1h ago", icon: ShieldAlert },
+        { id: 1, type: "warning", text: "Delete Request: Candidate Data Erasure Verification", time: "10m ago", icon: AlertTriangle },
+        { id: 2, type: "alert", text: "Ownership Dispute: Multiple vendors claimed Priya Sharma", time: "1h ago", icon: ShieldAlert },
         { id: 3, type: "info", text: "Governance Warning: Unapproved budget floated", time: "2h ago", icon: ShieldAlert },
      ];
   } else if (userRole?.includes("client")) {
@@ -21,7 +21,7 @@ export function NotificationCenter({ userRole }: { userRole?: string }) {
      ];
   } else if (userRole?.includes("vendor") || userRole?.includes("recruiter")) {
      notifications = [
-        { id: 1, type: "success", text: "Candidate Submitted successfully to Client Acme", time: "2m ago", icon: Users },
+        { id: 1, type: "success", text: "Candidate Submitted successfully to Client Apex", time: "2m ago", icon: Users },
         { id: 2, type: "info", text: "Interview Scheduled for Michael Tech", time: "1h ago", icon: MessageSquare },
         { id: 3, type: "warning", text: "Ownership Conflict: Another agency submitted this profile", time: "1d ago", icon: AlertTriangle },
      ];

@@ -4,12 +4,12 @@ import { db, auth } from '../lib/firebase';
 import { collection, query, getDocs, orderBy, getDoc, doc, where, limit } from 'firebase/firestore';
 import { EmptyState } from '../components/EmptyState';
 import { EntityName } from '../components/EntityName';
+import { formatINR } from '../lib/currency';
 
 export default function InvoicesTab() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'AR' | 'AP'>('AR');
-  const [currency, setCurrency] = useState<'USD' | 'INR'>('INR');
 
   useEffect(() => {
     const fetchInvoices = async () => {
@@ -52,9 +52,7 @@ export default function InvoicesTab() {
                issueDate: '2023-10-01',
                dueDate: '2023-10-31',
                amountINR: 230000,
-               amountUSD: 2750,
                vendorRateINR: 210000,
-               vendorRateUSD: 2500,
                gstPercent: 18,
                tdsPercent: 10,
                status: 'SENT',
@@ -74,9 +72,6 @@ export default function InvoicesTab() {
     fetchInvoices();
   }, []);
 
-  const formatCurrency = (val: number, cur: 'USD' | 'INR') => 
-    new Intl.NumberFormat(cur === 'USD' ? 'en-US' : 'en-IN', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(val);
-
   const getFilteredInvoices = () => {
     return invoices.filter(inv => activeTab === 'AR' ? (inv.type !== 'PAYABLE') : (inv.type === 'PAYABLE' || inv.vendorRateINR > 0));
   };
@@ -88,22 +83,11 @@ export default function InvoicesTab() {
           <h1 className="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
             <Receipt className="text-indigo-600" /> FinanceOS Engine
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-1">Full revenue recognition lifecycle, GST tracking, Gross Margins, and settlements.</p>
+          <p className="text-sm font-medium text-slate-500 mt-1">Full revenue recognition lifecycle, GST tracking, Gross Margins, and settlements (INR).</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-slate-200 p-1 rounded-lg flex items-center">
-            <button 
-              onClick={() => setCurrency('INR')}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${currency === 'INR' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              INR (₹)
-            </button>
-            <button 
-              onClick={() => setCurrency('USD')}
-              className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${currency === 'USD' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              USD ($)
-            </button>
+          <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold">
+            <span>₹ Indian Rupees (INR)</span>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -124,29 +108,29 @@ export default function InvoicesTab() {
            <Calculator className="absolute -right-4 -bottom-4 text-slate-100" size={80} />
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Uncollected Revenue (AR)</p>
            <p className="text-2xl font-black text-slate-800 mt-1 relative z-10">
-             {formatCurrency(invoices.filter(i => i.status === 'SENT' || i.status === 'OVERDUE').reduce((acc, i) => acc + (currency === 'INR' ? (i.amountINR || i.amount || 0) : (i.amountUSD || i.amount || 0)), 0), currency)}
+             {formatINR(invoices.filter(i => i.status === 'SENT' || i.status === 'OVERDUE').reduce((acc, i) => acc + (i.amountINR || i.amount || 0), 0))}
            </p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Total Gross Margin (YTD)</p>
            <p className="text-2xl font-black text-indigo-600 mt-1 relative z-10">
-             {formatCurrency(invoices.reduce((acc, i) => {
-                const clientRate = currency === 'INR' ? (i.amountINR || i.amount || 0) : (i.amountUSD || i.amount || 0);
-                const vendorRate = currency === 'INR' ? (i.vendorRateINR || 0) : (i.vendorRateUSD || 0);
+             {formatINR(invoices.reduce((acc, i) => {
+                const clientRate = i.amountINR || i.amount || 0;
+                const vendorRate = i.vendorRateINR || 0;
                 return acc + (clientRate - vendorRate);
-             }, 0), currency)}
+             }, 0))}
            </p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Pending Vendor Settlements (AP)</p>
            <p className="text-2xl font-black text-amber-600 mt-1 relative z-10">
-             {formatCurrency(invoices.reduce((acc, i) => acc + (currency === 'INR' ? (i.vendorRateINR || 0) : (i.vendorRateUSD || 0)), 0), currency)}
+             {formatINR(invoices.reduce((acc, i) => acc + (i.vendorRateINR || 0), 0))}
            </p>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden">
            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest relative z-10">Total Collected</p>
            <p className="text-2xl font-black text-emerald-600 mt-1 relative z-10">
-             {formatCurrency(invoices.filter(i => i.status === 'PAID').reduce((acc, i) => acc + (currency === 'INR' ? (i.amountINR || i.amount || 0) : (i.amountUSD || i.amount || 0)), 0), currency)}
+             {formatINR(invoices.filter(i => i.status === 'PAID').reduce((acc, i) => acc + (i.amountINR || i.amount || 0), 0))}
            </p>
         </div>
       </div>
@@ -203,8 +187,8 @@ export default function InvoicesTab() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {getFilteredInvoices().map(inv => {
-                   const clientRate = currency === 'INR' ? (inv.amountINR || inv.amount || 0) : (inv.amountUSD || inv.amount || 0);
-                   const vendorRate = currency === 'INR' ? (inv.vendorRateINR || 0) : (inv.vendorRateUSD || 0);
+                   const clientRate = inv.amountINR || inv.amount || 0;
+                   const vendorRate = inv.vendorRateINR || 0;
                    const grossMargin = clientRate - vendorRate;
                    const gstAmount = (clientRate * (inv.gstPercent || 0)) / 100;
 
@@ -227,15 +211,15 @@ export default function InvoicesTab() {
                          <div className="font-bold text-slate-700 mt-1">Due: {inv.dueDate || inv.paymentTerms || 'Net30'}</div>
                        </td>
                        <td className="p-3 text-right">
-                         <div className="font-mono text-sm font-black text-slate-800">{formatCurrency(clientRate, currency)}</div>
+                         <div className="font-mono text-sm font-black text-slate-800">{formatINR(clientRate)}</div>
                        </td>
                        <td className="p-3 text-right">
-                         <div className="font-mono text-sm font-bold text-slate-500">{formatCurrency(vendorRate, currency)}</div>
+                         <div className="font-mono text-sm font-bold text-slate-500">{formatINR(vendorRate)}</div>
                        </td>
                        <td className="p-3 text-right">
-                         <div className="font-mono text-xs font-black text-emerald-600 mb-1">{formatCurrency(grossMargin, currency)}</div>
+                         <div className="font-mono text-xs font-black text-emerald-600 mb-1">{formatINR(grossMargin)}</div>
                          {inv.gstPercent > 0 && (
-                            <div className="text-[10px] font-bold text-slate-400">+ {inv.gstPercent}% GST ({formatCurrency(gstAmount, currency)})</div>
+                            <div className="text-[10px] font-bold text-slate-400">+ {inv.gstPercent}% GST ({formatINR(gstAmount)})</div>
                          )}
                          {inv.tdsPercent > 0 && (
                             <div className="text-[10px] font-bold text-slate-400">- {inv.tdsPercent}% TDS</div>

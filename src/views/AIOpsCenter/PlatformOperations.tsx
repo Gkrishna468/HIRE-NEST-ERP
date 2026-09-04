@@ -110,10 +110,10 @@ export default function PlatformOperations({
       id: "act-05",
       timestamp: new Date(Date.now() - 120 * 60000).toISOString(),
       actor: "Finance OS (System)",
-      action: "Successfully raised placement fee invoice for $22,500. Sent to Initech billing.",
+      action: "Successfully raised placement fee invoice for ₹18,50,000. Sent to Initech billing.",
       type: "FINANCE",
       status: "success",
-      payload: { invoiceId: "inv-98122", amount: 22500, feeRate: "15%", status: "PAID" }
+      payload: { invoiceId: "inv-98122", amount: 1850000, feeRate: "15%", status: "PAID" }
     },
     {
       id: "act-06",

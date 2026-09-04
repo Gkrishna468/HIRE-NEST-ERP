@@ -328,7 +328,7 @@ export default function InfrastructureConsole() {
     { 
       role: "assistant", 
       content: "Hello! I am connected to the HireNest AI Workspace. Select an active model API above, write a prompt or pick a recruitment preset, and let's test our semantic capabilities.",
-      metrics: "System Handshake • Latency: 0ms • Cost: $0.00"
+      metrics: "System Handshake • Latency: 0ms • Cost: ₹0.00"
     }
   ]);
 
@@ -491,7 +491,7 @@ export default function InfrastructureConsole() {
     setTimeout(() => {
       let assistantReply = "";
       if (promptToSend.toLowerCase().includes("email") || promptToSend.toLowerCase().includes("outreach")) {
-        assistantReply = `Subject: Sourcing Opening: Senior Platform Architect position at TechCorp Inc.\n\nDear Lead Candidate,\n\nI am Emma, your Lead Cognitive Recruiter here at HireNest. I recently performed a semantic match review over our tech-allies recruitment bench and identified your remarkable background in high-performance cloud container infrastructure.\n\nWe would love to discuss a fully-hybrid Lead Platform Architect role at TechCorp ($150,000 baseline). Our infrastructure stacks are fully automated using Coolify, n8n, and local Ollama GPU runners which allows engineers to deploy fast, secure pipelines without red-tape bureaucracy.\n\nIf you are interested, please let me know your availability for a brief technical screening call.\n\nBest regards,\nEmma (AI Recruiter)`;
+        assistantReply = `Subject: Sourcing Opening: Senior Platform Architect position at TechCorp Inc.\n\nDear Lead Candidate,\n\nI am Emma, your Lead Cognitive Recruiter here at HireNest. I recently performed a semantic match review over our tech-allies recruitment bench and identified your remarkable background in high-performance cloud container infrastructure.\n\nWe would love to discuss a fully-hybrid Lead Platform Architect role at TechCorp (₹28 LPA - ₹35 LPA baseline). Our infrastructure stacks are fully automated using Coolify, n8n, and local Ollama GPU runners which allows engineers to deploy fast, secure pipelines without red-tape bureaucracy.\n\nIf you are interested, please let me know your availability for a brief technical screening call.\n\nBest regards,\nEmma (AI Recruiter)`;
       } else if (promptToSend.toLowerCase().includes("risk") || promptToSend.toLowerCase().includes("intake")) {
         assistantReply = `### Requirement Intelligence & Risk Assessment: Lead Go Developer\n\n**1. Market Skill Sourcing Risk**: HIGH. High-concurrency Go developers with Kubernetes operator expertise are in severe demand. Average time-to-fill exceeds 24 days in APAC region.\n\n**2. Core Requirements Detected**:\n- Go (Advanced routines, Context architecture, channels)\n- Kubernetes Operator SDK & Custom Resource Definitions (CRDs)\n- Qdrant Embedding Indexes & Redis structures\n\n**3. Strategic Advice**: Trigger global sourcing agent (Conrad Recruiter Conductor) event immediately to crawl bench pipelines and bypass manual queue review limits to capture premium talent within 4 hours.`;
       } else {
@@ -499,12 +499,12 @@ export default function InfrastructureConsole() {
       }
 
       const latency = activeModel.latencyMs + Math.floor(Math.random() * 80) - 40;
-      const calculatedCost = (promptToSend.length * 0.0000015 + assistantReply.length * 0.000004) * activeModel.costPerMillion;
+      const calculatedCostINR = ((promptToSend.length * 0.0000015 + assistantReply.length * 0.000004) * activeModel.costPerMillion) * 83.5;
 
       setChatMessages(prev => [...prev, { 
         role: "assistant", 
         content: assistantReply,
-        metrics: `Model: ${activeModel.name} • Latency: ${latency}ms • Cost: $${calculatedCost.toFixed(5)}`
+        metrics: `Model: ${activeModel.name} • Latency: ${latency}ms • Cost: ₹${calculatedCostINR.toFixed(4)}`
       }]);
       setIsChatLoading(false);
     }, 2000);
@@ -586,7 +586,7 @@ export default function InfrastructureConsole() {
       () => {
         setCrawlLogs(prev => [...prev, `[KNOWLEDGE GRAPH] Extracted entities and updated Enterprise relationships.`, `[SUCCESS] Crawl completed in 5.2 seconds.`]);
         
-        setCrawledContent(`## TechCorp Job Post: Lead React Engineer\n\n**Location**: Fully Remote, US / APAC Hybrid\n**Salary Range**: $130,000 - $160,000\n\n### Tech Stack Requirements\n- **Vite & React 19** with Tailwind CSS\n- **TypeScript** standard compilation & strict structures\n- **D3.js or Recharts** complex dashboard analytics\n- **Firestore DB** direct integration and live synchronizations\n\n### Core Mission\nJoin our recruitment platform team and build modular client dashboards that support millions of candidate vector screenings.`);
+        setCrawledContent(`## TechCorp Job Post: Lead React Engineer\n\n**Location**: Fully Remote, Hybrid (India)\n**Salary Range**: ₹24 LPA - ₹32 LPA\n\n### Tech Stack Requirements\n- **Vite & React 19** with Tailwind CSS\n- **TypeScript** standard compilation & strict structures\n- **D3.js or Recharts** complex dashboard analytics\n- **Firestore DB** direct integration and live synchronizations\n\n### Core Mission\nJoin our recruitment platform team and build modular client dashboards that support millions of candidate vector screenings.`);
         
         // Add parsed entities
         setKnowledgeEntities(prev => [
