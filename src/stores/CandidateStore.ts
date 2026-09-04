@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { ServiceProvider } from '../lib/providers/ServiceProvider';
 import { Candidate, CandidateInput, CandidateUpdate } from '../types/Candidate';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface CandidateState {
   candidate: Candidate | null;
@@ -176,13 +178,26 @@ export const useCandidateStore = create<CandidateState>((set, get) => ({
   },
 
   subscribeToCandidate: (id: string, callback: (data: any) => void) => {
-    // In a real app we might call ServiceProvider.candidateService.subscribeToCandidate(...)
-    // For now, return a mock unsubscribe function to ensure stores own lifecycle
-    console.log(`Subscribed to candidate ${id}`);
-    ServiceProvider.candidateService.getCandidate(id).then(c => {
-       if (c) callback(c);
-    });
-    return () => console.log(`Unsubscribed from candidate ${id}`);
+    console.log(`[REAL-TIME] Subscribing to candidatePool doc: ${id}`);
+    try {
+      const docRef = doc(db, "candidatePool", id);
+      return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          callback({ id: docSnap.id, ...docSnap.data() });
+        }
+      }, (err) => {
+        console.warn(`[REAL-TIME] Snapshot subscription failed for ${id}, falling back to single get:`, err);
+        ServiceProvider.candidateService.getCandidate(id).then(c => {
+           if (c) callback(c);
+        });
+      });
+    } catch (e) {
+      console.warn(`[REAL-TIME] Setup failed for ${id}, falling back to single get:`, e);
+      ServiceProvider.candidateService.getCandidate(id).then(c => {
+         if (c) callback(c);
+      });
+      return () => {};
+    }
   },
 
   subscribeToEvents: (id: string, callback: (events: any[]) => void) => {

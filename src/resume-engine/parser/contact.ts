@@ -46,7 +46,12 @@ const NON_NAME_PATTERNS = [
   /http/i,
   /www\./i,
   /linkedin/i,
-  /github/i
+  /github/i,
+  // Strict Job titles, technical terms, and non-name section keywords:
+  /\b(developer|engineer|architect|manager|analyst|consultant|specialist|lead|senior|junior|principal|director|executive|intern|student|associate|coordinator|administrator|designer|writer|head|officer|president|vp|member|expert|professional|pmp|scrum)\b/i,
+  /\b(react|node|python|java|sql|aws|kubernetes|javascript|docker|git|html|css|c\+\+|rust|go|gcp|azure|redux|typescript|linux|spark|hadoop|data|cloud|software|full\s*stack|frontend|backend|devops|security|network|system|database|mobile|ios|android|web|machine\s*learning|artificial\s*intelligence|nlp|deep\s*learning|data\s*scientist)\b/i,
+  /\b(university|college|institute|school|academy|technologies|solutions|services|systems|corp|inc|co|limited|ltd|pvt|private|group|enterprise|global|national|international|technological)\b/i,
+  /\b(summary|projects|objective|certifications|awards|languages|interests|hobbies|activities|courses|publications|references|education|experience|skills|contact|profile)\b/i
 ];
 
 export function extractEmail(text: string): string {
@@ -105,12 +110,54 @@ export function extractPortfolio(text: string): string {
 
 export function extractLocation(text: string): string {
   if (!text) return "";
-  for (const loc of KNOWN_LOCATIONS) {
-    const regex = new RegExp(`\\b${loc}\\b`, "i");
-    if (regex.test(text)) {
-      return loc === "Bangalore" ? "Bengaluru, India" : loc.includes("India") ? loc : `${loc}, India`;
+
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  
+  // 1. Check for explicit location prefix lines in the top of the document or anywhere
+  const prefixRegex = /\b(?:location|address|based\s+in|reside\s+in|living\s+in|current\s+location)\s*:\s*([^\n|]+)/i;
+  const prefixMatch = text.match(prefixRegex);
+  if (prefixMatch) {
+    const candidateLoc = prefixMatch[1].trim();
+    // Validate if it is a sane length
+    if (candidateLoc.length > 2 && candidateLoc.length < 50) {
+      return candidateLoc.replace(/[,|\s]+$/, "").trim();
     }
   }
+
+  // 2. Prioritize looking at the first 15 lines for any of our KNOWN_LOCATIONS
+  const topLines = lines.slice(0, 15);
+  for (const loc of KNOWN_LOCATIONS) {
+    // Skip general terms like "India" or "Remote" as first-choice specific city
+    if (loc === "India" || loc === "Remote") continue;
+    
+    const regex = new RegExp(`\\b${loc}\\b`, "i");
+    for (const line of topLines) {
+      if (regex.test(line)) {
+        return loc === "Bangalore" ? "Bengaluru, India" : `${loc}, India`;
+      }
+    }
+  }
+
+  // 3. Fallback to scanning the rest of the lines for known specific cities
+  for (const loc of KNOWN_LOCATIONS) {
+    if (loc === "India" || loc === "Remote") continue;
+    
+    const regex = new RegExp(`\\b${loc}\\b`, "i");
+    for (const line of lines) {
+      if (regex.test(line)) {
+        return loc === "Bangalore" ? "Bengaluru, India" : `${loc}, India`;
+      }
+    }
+  }
+
+  // 4. Last fallback: general "India" or "Remote"
+  if (/\bIndia\b/i.test(text)) {
+    return "India";
+  }
+  if (/\bRemote\b/i.test(text)) {
+    return "Remote / Flexible";
+  }
+
   return "Remote / Flexible";
 }
 

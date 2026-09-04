@@ -45,15 +45,16 @@ export function parseResumeDeterministically(params: {
     ? nonContactLines.join(" ") 
     : `${contact.candidateName} is an experienced ${employment.currentRole} with ${employment.totalExperience} years of experience specializing in ${normalizedSkills.slice(0, 4).join(", ")}.`;
 
-  // 7. Status classification
+  // 7. Status classification (strict validation engine)
   const hasIdentity = Boolean(contact.candidateName && contact.candidateName.trim().length > 0);
-  const hasContact = Boolean(contact.email || contact.phone);
-  const hasSkills = normalizedSkills.length > 0;
+  const hasContact = Boolean(contact.email && contact.email.trim().length > 0);
+  const hasSkills = normalizedSkills.length >= 2;
+  const hasExperience = employment.history.length > 0 || employment.totalExperience > 0;
 
   let status: "PARSED" | "PARTIAL" | "MANUAL_REVIEW_REQUIRED";
-  if (hasIdentity && (hasContact || hasSkills)) {
-    status = "PARSED";
-  } else if (!hasIdentity) {
+  if (hasIdentity && hasContact && hasSkills && hasExperience) {
+    status = "PARSED"; // Represents fully completed and validated
+  } else if (!hasIdentity || (!hasContact && !hasExperience)) {
     status = "MANUAL_REVIEW_REQUIRED";
   } else {
     status = "PARTIAL";
