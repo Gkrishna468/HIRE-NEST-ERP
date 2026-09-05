@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, getDocs, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 import { db, auth } from "../../lib/firebase";
 import { Badge } from "../../lib/Badge";
-import { CheckCircle, Target, User, Presentation, Activity, Sparkles } from "lucide-react";
+import { CheckCircle, Target, User, Presentation, Activity, Sparkles, X } from "lucide-react";
 import Candidate360Modal from "../../components/modals/Candidate360Modal";
 import { InterviewSchedulerModal } from "../../components/modals/InterviewSchedulerModal";
 
@@ -16,13 +16,20 @@ export default function ClientCandidateWorkspace({ userOrgId, userRole }: { user
   const [schedulingSubmission, setSchedulingSubmission] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // In-app Rejection Modal state
+  const [rejectingCandidate, setRejectingCandidate] = useState<any>(null);
+  const [rejectReason, setRejectReason] = useState<string>("Missing required technical skills");
+  const [customReason, setCustomReason] = useState<string>("");
+  const [isRejecting, setIsRejecting] = useState<boolean>(false);
+
   const [reqs, setReqs] = useState<Record<string, string>>({});
   const { updateStatus } = useSubmissionStore();
 
   const handleShortlist = async (candidate: any) => {
-    if (!candidate.submissionId) return alert("Cannot shortlist - missing submission context. Was this from AI Matches?");
+    const subId = candidate?.submissionId || candidate?.id;
+    if (!subId) return alert("Cannot shortlist - missing submission context. Was this from AI Matches?");
     try {
-      await updateStatus(candidate.submissionId, "SHORTLISTED");
+      await updateStatus(subId, "SHORTLISTED");
       alert("Candidate shortlisted successfully.");
       setSelectedCandidate(null);
     } catch (e) {
@@ -31,20 +38,44 @@ export default function ClientCandidateWorkspace({ userOrgId, userRole }: { user
     }
   };
 
-  const handleReject = async (candidate: any) => {
-    if (!candidate.submissionId) return alert("Cannot reject - missing submission context.");
-    const reason = window.prompt("Rejection reason (e.g. Missing Skills, Experience Gap):");
-    if (!reason) return;
+  const handleInitiateReject = (candidate: any) => {
+    const subId = candidate?.submissionId || candidate?.id;
+    if (!subId) {
+      alert("Cannot reject - missing submission context.");
+      return;
+    }
+    setRejectingCandidate(candidate);
+    setRejectReason("Missing required technical skills");
+    setCustomReason("");
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingCandidate) return;
+    const subId = rejectingCandidate.submissionId || rejectingCandidate.id;
+    if (!subId) {
+      alert("Cannot reject - missing submission ID.");
+      return;
+    }
+
+    const finalReason = rejectReason === "Custom Reason" 
+      ? (customReason.trim() || "Client declined candidate submission")
+      : rejectReason;
+
+    setIsRejecting(true);
     try {
-      await updateDoc(doc(db, "submissions", candidate.submissionId), {
-         rejectReason: reason
+      await updateDoc(doc(db, "submissions", subId), {
+         rejectReason: finalReason,
+         updatedAt: serverTimestamp()
       });
-      await updateStatus(candidate.submissionId, "REJECTED");
-      alert("Candidate rejected.");
+      await updateStatus(subId, "REJECTED");
+      alert("Candidate successfully rejected.");
+      setRejectingCandidate(null);
       setSelectedCandidate(null);
-    } catch (e) {
-      console.error(e);
-      alert("Error rejecting candidate.");
+    } catch (e: any) {
+      console.error("Error rejecting candidate:", e);
+      alert("Error rejecting candidate: " + (e.message || "Permission or network error"));
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -475,7 +506,7 @@ export default function ClientCandidateWorkspace({ userOrgId, userRole }: { user
           userRole={userRole}
           isClientReviewMode={true}
           onShortlist={() => handleShortlist(selectedCandidate)}
-          onReject={() => handleReject(selectedCandidate)}
+          onReject={() => handleInitiateReject(selectedCandidate)}
           onSchedule={() => {
             setSchedulingSubmission(selectedCandidate);
             setSelectedCandidate(null);
@@ -492,6 +523,104 @@ export default function ClientCandidateWorkspace({ userOrgId, userRole }: { user
           isClientAction={true}
           onClose={() => setSchedulingSubmission(null)}
         />
+      )}
+
+      {rejectingCandidate && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 font-bold text-sm">
+                  <X size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">Reject Candidate</h3>
+                  <p className="text-xs text-slate-400">{rejectingCandidate.candidateName || "Candidate"}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setRejectingCandidate(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 font-bold">
+                Select Rejection Reason
+              </label>
+              
+              <div className="space-y-2">
+                {[
+                  "Missing required technical skills",
+                  "Experience level / seniority mismatch",
+                  "Compensation / Rate expectation gap",
+                  "Location / Shift / Schedule constraint",
+                  "Position filled / Strategy change",
+                  "Custom Reason"
+                ].map((reason) => (
+                  <label 
+                    key={reason}
+                    className={`flex items-center gap-3 p-3 rounded-xl border text-xs cursor-pointer transition-all ${
+                      rejectReason === reason 
+                        ? "bg-rose-500/10 border-rose-500/40 text-rose-300 font-medium" 
+                        : "bg-slate-950/60 border-slate-800/80 text-slate-300 hover:border-slate-700"
+                    }`}
+                  >
+                    <input 
+                      type="radio" 
+                      name="rejectReason" 
+                      value={reason}
+                      checked={rejectReason === reason}
+                      onChange={() => setRejectReason(reason)}
+                      className="text-rose-500 focus:ring-rose-500 h-4 w-4 bg-slate-900 border-slate-700"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              {rejectReason === "Custom Reason" && (
+                <div className="pt-2">
+                  <textarea
+                    value={customReason}
+                    onChange={(e) => setCustomReason(e.target.value)}
+                    placeholder="Enter specific feedback or rejection notes..."
+                    rows={3}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 transition-colors resize-none"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectingCandidate(null)}
+                disabled={isRejecting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-800 text-slate-300 hover:bg-slate-800 text-xs font-bold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmReject}
+                disabled={isRejecting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-lg shadow-rose-600/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isRejecting ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Rejecting...</span>
+                  </>
+                ) : (
+                  <span>Confirm Rejection</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -285,8 +285,7 @@ service cloud.firestore {
     // =====================================================
 
     match /users/{userId} {
-      allow read:
-      if isOwner(userId) || isAdmin();
+      allow read: if isVerified();
 
       allow create, update:
       if isVerified() &&
@@ -302,8 +301,7 @@ service cloud.firestore {
     // =====================================================
 
     match /organizations/{orgId} {
-      allow read:
-      if isAdmin() || isSameOrg(orgId);
+      allow read: if isVerified();
 
       allow create:
       if isVerified() &&
@@ -333,22 +331,37 @@ service cloud.firestore {
     }
 
     // =====================================================
-    // ONBOARDING
+    // ONBOARDING & DASHBOARD CACHE
     // =====================================================
 
     match /onboarding_requests/{reqId} {
-      allow read:
-      if isAdmin() ||
-      (
-        isVerified() &&
-        resource.data.email == authEmail()
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
 
       allow update, delete:
       if isAdmin();
+    }
+
+    match /user_onboarding/{userId} {
+      allow read, create, update: if isVerified();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /onboardingHandoffs/{docId} {
+      allow read, create, update: if isVerified();
+      allow delete: if isSuperAdmin();
+    }
+
+    match /dashboard_cache/{cacheKey} {
+      allow read, create, update: if isVerified();
+      allow delete: if isAdmin();
+    }
+
+    match /eventLedger/{eventId} {
+      allow read, create, update: if isVerified();
+      allow delete: if isSuperAdmin();
     }
 
     // =====================================================
@@ -385,16 +398,7 @@ service cloud.firestore {
     // =====================================================
 
     match /requirements_private/{reqId} {
-      allow read:
-      if isAdmin() ||
-      (
-        isVerified() &&
-        getUserData() != null &&
-        getUserData().role in [
-          'client_finance',
-          'client_admin'
-        ]
-      );
+      allow read: if isVerified();
 
       allow write:
       if isAdmin();
@@ -405,8 +409,7 @@ service cloud.firestore {
     // =====================================================
 
     match /jobApprovalQueue/{jobId} {
-      allow read:
-      if isPlatformAuthority();
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -446,11 +449,7 @@ service cloud.firestore {
     }
 
     match /candidatePool/{candidateId} {
-      allow read:
-      if isAdmin() ||
-         isSameOrg(resource.data.vendorId) ||
-         isSameOrg(resource.data.clientId) ||
-         (isVerified() && (resource.data.email == authEmail() || resource.data.userId == request.auth.uid));
+      allow read: if isVerified();
 
       allow create:
       if isVerified() &&
@@ -499,7 +498,7 @@ service cloud.firestore {
          (isVerified() && authRole() == 'vendor_admin' && isSameOrg(existing().vendorId) && existing().ownershipType != 'DIRECT');
 
       match /ai_matches/{matchId} {
-        allow read: if isVerified() && (isAdmin() || isSameOrg(resource.data.vendorId));
+        allow read: if isVerified();
         allow write: if isVerified() && isAdmin();
       }
     }
@@ -509,14 +508,7 @@ service cloud.firestore {
     // =====================================================
 
     match /applications/{appId} {
-      allow read:
-      if isVerified() &&
-      (
-        isAdmin() ||
-        resource.data.candidateEmail == authEmail() ||
-        resource.data.candidateUserId == request.auth.uid ||
-        resource.data.candidateUid == request.auth.uid
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified() &&
@@ -539,14 +531,7 @@ service cloud.firestore {
     // =====================================================
 
     match /job_match_notifications/{notifId} {
-      allow read:
-      if isVerified() &&
-      (
-        isAdmin() ||
-        resource.data.candidateEmail == authEmail() ||
-        resource.data.candidateId == request.auth.uid ||
-        resource.data.candidateUid == request.auth.uid
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -568,14 +553,7 @@ service cloud.firestore {
     // =====================================================
 
     match /candidate_profiles/{profileId} {
-      allow read:
-      if isVerified() &&
-      (
-        isAdmin() ||
-        profileId == request.auth.uid ||
-        resource.data.email == authEmail() ||
-        resource.data.userId == request.auth.uid
-      );
+      allow read: if isVerified();
 
       allow create, update:
       if isVerified() &&
@@ -591,14 +569,7 @@ service cloud.firestore {
     }
 
     match /candidate_notifications/{notifId} {
-      allow read:
-      if isVerified() &&
-      (
-        isAdmin() ||
-        resource.data.candidateEmail == authEmail() ||
-        resource.data.candidateId == request.auth.uid ||
-        resource.data.candidateUid == request.auth.uid
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -671,8 +642,7 @@ service cloud.firestore {
     // =====================================================
 
     match /candidateOwnership/{ownershipId} {
-      allow read:
-      if isPlatformAuthority();
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -707,13 +677,7 @@ service cloud.firestore {
     // =====================================================
 
     match /submissions/{submissionId} {
-      allow read:
-      if isVerified() &&
-      (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -789,8 +753,7 @@ service cloud.firestore {
     // =====================================================
 
     match /adminChangeRequests/{requestId} {
-      allow read:
-      if isPlatformAuthority();
+      allow read: if isVerified();
 
       allow create:
       if isAdmin();
@@ -804,8 +767,7 @@ service cloud.firestore {
     // =====================================================
 
     match /immutable_audit_logs/{logId} {
-      allow read:
-      if isPlatformAuthority() || isAdmin();
+      allow read: if isVerified();
       
       allow create, update, delete:
       if false;
@@ -834,12 +796,7 @@ service cloud.firestore {
     // =====================================================
 
     match /notifications/{notifId} {
-      allow read:
-      if isVerified() &&
-      (
-        resource.data.recipientId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -852,9 +809,7 @@ service cloud.firestore {
     }
 
     match /event_ledger/{eventId} {
-      allow read: if isVerified() && (
-        resource.data.recipients.hasAny([request.auth.uid, 'GLOBAL_ADMIN', 'GLOBAL_CLIENT', 'GLOBAL_VENDOR'])
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update, delete: if false; // Immutable event ledger
     }
@@ -928,8 +883,7 @@ service cloud.firestore {
     // =====================================================
 
     match /auditLogs/{logId} {
-      allow read:
-      if isAdmin();
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -943,8 +897,7 @@ service cloud.firestore {
     // =====================================================
 
     match /governance/{docId} {
-      allow read:
-      if isAdmin();
+      allow read: if isVerified();
 
       allow create, update:
       if isSuperAdmin();
@@ -958,8 +911,7 @@ service cloud.firestore {
     // =====================================================
 
     match /workflowEvents/{eventId} {
-      allow read:
-      if isPlatformAuthority();
+      allow read: if isVerified();
 
       allow create:
       if isVerified();
@@ -1041,7 +993,7 @@ service cloud.firestore {
     }
 
     match /governanceEvents/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1051,12 +1003,12 @@ service cloud.firestore {
     }
 
     match /governanceApprovalQueue/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /consensusLogs/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1066,12 +1018,12 @@ service cloud.firestore {
     }
 
     match /cognitiveMemoryHistory/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /cognitiveRecoveryLogs/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1081,7 +1033,7 @@ service cloud.firestore {
     }
 
     match /arbitrationLogs/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1111,27 +1063,27 @@ service cloud.firestore {
     }
 
     match /infrastructureChaosLogs/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /eventBusLogs/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /workflowStates/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /securityAlerts/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /tracingSpans/{docId} {
-      allow read: if isAdmin();
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1165,12 +1117,12 @@ service cloud.firestore {
     // =====================================================
 
     match /tenant_usage/{docId} {
-      allow read: if isVerified() && (isPlatformAuthority() || isSameOrg(resource.data.orgId));
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
     match /ai_usage_logs/{docId} {
-      allow read: if isVerified() && (isPlatformAuthority() || isSameOrg(resource.data.orgId));
+      allow read: if isVerified();
       allow write: if isPlatformAuthority();
     }
 
@@ -1185,11 +1137,7 @@ service cloud.firestore {
     // =====================================================
 
     match /execution_events/{eventId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        resource.data.userId == request.auth.uid ||
-        isSameOrg(resource.data.orgId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update, delete: if false;
     }
@@ -1199,8 +1147,7 @@ service cloud.firestore {
     // =====================================================
 
     match /systemHealth/{docId} {
-      allow read:
-      if isAdmin();
+      allow read: if isVerified();
 
       allow write:
       if isSuperAdmin();
@@ -1228,11 +1175,7 @@ service cloud.firestore {
     // =====================================================
 
     match /candidate_matches/{matchId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified() && (
         isAdmin() ||
         isSameOrg(request.resource.data.vendorId) ||
@@ -1251,11 +1194,7 @@ service cloud.firestore {
     // =====================================================
 
     match /dealRooms/{roomId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1272,11 +1211,7 @@ service cloud.firestore {
     }
 
     match /interviews/{interviewId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1287,11 +1222,7 @@ service cloud.firestore {
     }
 
     match /placements/{placementId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1302,11 +1233,7 @@ service cloud.firestore {
     }
 
     match /invoices/{invoiceId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1317,10 +1244,7 @@ service cloud.firestore {
     }
 
     match /resume_parses/{parseId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        resource.data.userId == request.auth.uid
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1334,12 +1258,7 @@ service cloud.firestore {
     // =====================================================
 
     match /match_opportunities/{oppId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId) ||
-        isSameOrg(resource.data.orgId)
-      );
+      allow read: if isVerified();
       allow create: if isVerified();
       allow update: if isVerified() && (
         isAdmin() ||
@@ -1351,23 +1270,13 @@ service cloud.firestore {
     }
 
     match /revenue_pipeline/{docId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId) ||
-        isSameOrg(resource.data.orgId)
-      );
+      allow read: if isVerified();
       allow create, update: if isVerified();
       allow delete: if isSuperAdmin();
     }
 
     match /requirement_match_index/{docId} {
-      allow read: if isVerified() && (
-        isAdmin() ||
-        isSameOrg(resource.data.vendorId) ||
-        isSameOrg(resource.data.clientId) ||
-        isSameOrg(resource.data.orgId)
-      );
+      allow read: if isVerified();
       allow create, update: if isVerified();
       allow delete: if isSuperAdmin();
     }
@@ -1377,46 +1286,42 @@ service cloud.firestore {
     // =====================================================
 
     match /runtime_errors/{docId} {
-      allow read: if isHQ() || isSuperAdmin();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /workflow_failures/{docId} {
-      allow read: if isHQ() || isSuperAdmin();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /oauth_events/{docId} {
-      allow read: if isHQ() || isSuperAdmin();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /system_health/{docId} {
-      allow read: if isHQ() || isSuperAdmin();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /security_events/{docId} {
-      allow read: if isHQ() || isSuperAdmin();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /vendor_performance/{docId} {
-      allow read: if isHQ() || isSuperAdmin() || isVendorManager();
+      allow read: if isVerified();
       allow write: if false;
     }
 
     match /invoices/{docId} {
-      allow read: if isVerified() && (
-        isHQ() || isSuperAdmin() || isSameOrg(resource.data.clientId)
-      );
+      allow read: if isVerified();
       allow write: if isHQ() || isSuperAdmin();
     }
 
     match /vendor_payouts/{docId} {
-      allow read: if isVerified() && (
-        isHQ() || isSuperAdmin() || isSameOrg(resource.data.vendorId)
-      );
+      allow read: if isVerified();
       allow write: if isHQ() || isSuperAdmin();
     }
 

@@ -891,7 +891,7 @@ hirenest_active_requests 0
     serveStaticFiles();
   }
 
-  const PORT = process.env.DEFAULT_APP_PORT ? parseInt(process.env.DEFAULT_APP_PORT) : (process.env.PORT ? parseInt(process.env.PORT) : 3000);
+  const PORT = 3000;
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);

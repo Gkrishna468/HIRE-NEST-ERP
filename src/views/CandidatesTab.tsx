@@ -630,13 +630,11 @@ export default function CandidatesTab() {
               ? query(
                   collection(db, "candidatePool"),
                   where("clientId", "==", orgId),
-                  orderBy("updatedAt", "desc"),
                   limit(50),
                 )
               : query(
                   collection(db, "candidatePool"),
                   where("vendorId", "==", orgId),
-                  orderBy("updatedAt", "desc"),
                   limit(50),
                 );
 
@@ -651,8 +649,14 @@ export default function CandidatesTab() {
                 q,
                 (snap) => {
                   consecutiveErrorsRef.current = 0; // reset on success!
+                  const rawList = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+                  rawList.sort((a: any, b: any) => {
+                    const timeA = a.updatedAt?.toMillis ? a.updatedAt.toMillis() : (a.updatedAt?.seconds ? a.updatedAt.seconds * 1000 : (Date.parse(a.updatedAt) || 0));
+                    const timeB = b.updatedAt?.toMillis ? b.updatedAt.toMillis() : (b.updatedAt?.seconds ? b.updatedAt.seconds * 1000 : (Date.parse(b.updatedAt) || 0));
+                    return timeB - timeA;
+                  });
                   setCandidates(
-                    snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter((c: any) => {
+                    rawList.filter((c: any) => {
                        const nameLower = (c.name || "").toLowerCase().trim();
                        if (
                          c.status === "DELETED" || 
