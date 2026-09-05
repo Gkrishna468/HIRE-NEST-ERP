@@ -13,14 +13,6 @@ service cloud.firestore {
     }
 
     // =====================================================
-    // GLOBAL DEFAULT DENY
-    // =====================================================
-
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // =====================================================
     // GLOBAL HELPERS
     // =====================================================
 
@@ -1351,12 +1343,246 @@ service cloud.firestore {
     }
 
     // =====================================================
-    // GLOBAL HQ OVERRIDE
+    // CORE PLATFORM OPERATIONAL & WORKSPACE COLLECTIONS
+    // =====================================================
+
+    match /candidates/{candId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /jobs/{jobId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /requirements/{reqId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /clients/{clientId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /vendors/{vendorId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /ai_agents/{agentId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /agent_queue/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /agent_executions/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /aiFeedback/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /decision_intelligence/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /predictive_metrics/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /workflow_rules/{ruleId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /workflow_executions/{execId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /workflow_events/{eventId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /workflow_telemetry/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /workflow_instances/{instId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /approval_requests/{reqId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /approvals_queue/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /validation_results/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /error_monitoring_logs/{logId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /ai_metrics_ledger/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /audit_logs/{logId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /contracts/{contractId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /timesheets/{tsId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /slas/{slaId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /offices/{officeId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /hie_telemetry/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /coo_recommendations/{recId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /activities/{actId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /activity_feed/{feedId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /business_events/{eventId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /customer_feedback/{fbId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /saved_reports/{reportId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /risk_assessments/{riskId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /system_capabilities/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /event_subscriptions/{subId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /integration_mappings/{mapId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /resume_cache/{cacheId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /dealRoomApprovals/{appId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /execution_tracker/{trackId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /dlq_events/{eventId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /ai_learning_events/{eventId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /recommendation_feedback/{fbId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /requirementLedger/{docId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /work_items/{itemId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    match /platform_events/{eventId} {
+      allow read, create, update: if true;
+      allow delete: if isSuperAdmin();
+    }
+
+    // =====================================================
+    // GLOBAL FALLBACK OVERRIDE
     // =====================================================
 
     match /{document=**} {
-      allow read, write:
-      if isHQ();
+      allow read: if true;
+      allow write: if isHQ() || isSuperAdmin();
     }
   }
 }
